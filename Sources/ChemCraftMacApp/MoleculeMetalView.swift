@@ -131,7 +131,16 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         let packagedBundleURL = Bundle.main.resourceURL?
             .appendingPathComponent("ChemViewer_ChemViewerApp.bundle")
         let shaderBundle = packagedBundleURL.flatMap(Bundle.init(url:)) ?? .module
-        guard let library = try? device.makeDefaultLibrary(bundle: shaderBundle) else { return }
+        let library: MTLLibrary?
+        if let compiledLibrary = try? device.makeDefaultLibrary(bundle: shaderBundle) {
+            library = compiledLibrary
+        } else if let sourceURL = shaderBundle.url(forResource: "MoleculeShaders", withExtension: "metal"),
+                  let source = try? String(contentsOf: sourceURL, encoding: .utf8) {
+            library = try? device.makeLibrary(source: source, options: nil)
+        } else {
+            library = nil
+        }
+        guard let library else { return }
 
         let atomDescriptor = MTLRenderPipelineDescriptor()
         atomDescriptor.label = "Atom impostors"
