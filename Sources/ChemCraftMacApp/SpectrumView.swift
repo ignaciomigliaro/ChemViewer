@@ -66,7 +66,7 @@ struct SpectrumView: View {
                 height: max(1, size.height - top - bottom)
             )
             guard !lines.isEmpty else {
-                context.draw(Text("No IR intensities in this file").foregroundStyle(.secondary), at: CGPoint(x: size.width / 2, y: size.height / 2))
+                context.draw(Text("No IR intensities in this file").foregroundColor(.secondary), at: CGPoint(x: size.width / 2, y: size.height / 2))
                 return
             }
 
@@ -104,7 +104,7 @@ struct SpectrumView: View {
                 mark.addLine(to: CGPoint(x: x, y: plot.maxY + 5))
                 context.stroke(mark, with: .color(.secondary), lineWidth: 1)
                 context.draw(
-                    Text(String(format: "%.0f", tick)).font(.caption2).foregroundStyle(.secondary),
+                    Text(String(format: "%.0f", tick)).font(.caption2).foregroundColor(.secondary),
                     at: CGPoint(x: x, y: plot.maxY + 17),
                     anchor: .center
                 )
