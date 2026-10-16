@@ -15,6 +15,13 @@ struct ChemViewerApp: App {
                 Button("Open…") { workspace.isImporterPresented = true }
                     .keyboardShortcut("o")
             }
+            CommandGroup(replacing: .saveItem) {
+                Button("Export Current Geometry as XYZ") {
+                    workspace.isExporterPresented = true
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+                .disabled(workspace.currentFrame == nil)
+            }
         }
     }
 }

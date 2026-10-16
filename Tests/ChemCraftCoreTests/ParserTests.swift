@@ -19,6 +19,28 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(document.frames[1].atoms[1].position.z, 0.75, accuracy: 1e-6)
     }
 
+    func testXYZExportRoundTripIsDeterministic() throws {
+        let frame = MoleculeFrame(id: 3, atoms: [
+            Atom(id: 0, element: "O", position: Vector3(0, -0.0, 0)),
+            Atom(id: 1, element: "H", position: Vector3(0.9572, 0, 0)),
+            Atom(id: 2, element: "H", position: Vector3(-0.2399872, 0.9266272, 0))
+        ], comment: "edited\ngeometry")
+
+        let first = XYZWriter.string(frame: frame)
+        let second = XYZWriter.string(frame: frame)
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(first.split(separator: "\n", omittingEmptySubsequences: false)[1], "edited geometry")
+
+        let parsed = try XYZParser.parse(text: first)
+        XCTAssertEqual(parsed.frames.count, 1)
+        XCTAssertEqual(parsed.frames[0].atoms.map(\.element), ["O", "H", "H"])
+        for index in frame.atoms.indices {
+            XCTAssertEqual(parsed.frames[0].atoms[index].position.x, frame.atoms[index].position.x, accuracy: 1e-7)
+            XCTAssertEqual(parsed.frames[0].atoms[index].position.y, frame.atoms[index].position.y, accuracy: 1e-7)
+            XCTAssertEqual(parsed.frames[0].atoms[index].position.z, frame.atoms[index].position.z, accuracy: 1e-7)
+        }
+    }
+
     func testORCAFrequencyAndDisplacements() throws {
         let text = """
         CARTESIAN COORDINATES (ANGSTROEM)

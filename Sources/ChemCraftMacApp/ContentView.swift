@@ -33,6 +33,11 @@ struct ContentView: View {
                 }
                 if workspace.document != nil {
                     Button {
+                        workspace.isExporterPresented = true
+                    } label: {
+                        Label("Export XYZ", systemImage: "square.and.arrow.down")
+                    }
+                    Button {
                         workspace.isCoordinateEditorPresented = true
                     } label: {
                         Label("Coordinates", systemImage: "tablecells")
@@ -76,10 +81,20 @@ struct ContentView: View {
                 workspace.errorMessage = error.localizedDescription
             }
         }
+        .fileExporter(
+            isPresented: $workspace.isExporterPresented,
+            document: workspace.exportDocument,
+            contentType: UTType(filenameExtension: "xyz") ?? .plainText,
+            defaultFilename: "geometry.xyz"
+        ) { result in
+            if case .failure(let error) = result {
+                workspace.errorMessage = error.localizedDescription
+            }
+        }
         .onOpenURL { url in
             workspace.open(url)
         }
-        .alert("Could not open file", isPresented: Binding(
+        .alert("ChemViewer error", isPresented: Binding(
             get: { workspace.errorMessage != nil },
             set: { if !$0 { workspace.errorMessage = nil } }
         )) {
@@ -277,5 +292,29 @@ struct ContentView: View {
         } catch {
             return "\(indices.count) selected: \(atoms)"
         }
+    }
+}
+
+struct XYZExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] {
+        [UTType(filenameExtension: "xyz") ?? .plainText]
+    }
+
+    var text: String
+
+    init(text: String) {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let text = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        self.text = text
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }

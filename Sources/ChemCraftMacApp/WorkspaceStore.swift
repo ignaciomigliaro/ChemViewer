@@ -10,6 +10,7 @@ final class WorkspaceStore: ObservableObject {
     @Published var isVibrating = true
     @Published var vibrationAmplitude: Float = 0.6
     @Published var isImporterPresented = false
+    @Published var isExporterPresented = false
     @Published var isSpectrumPresented = false
     @Published var isCoordinateEditorPresented = false
     @Published var isLoading = false
@@ -59,6 +60,11 @@ final class WorkspaceStore: ObservableObject {
     }
 
     var canUndoGeometry: Bool { !geometryUndoStack.isEmpty }
+
+    var exportDocument: XYZExportDocument {
+        guard let frame = currentFrame else { return XYZExportDocument(text: "0\n\n") }
+        return XYZExportDocument(text: XYZWriter.string(frame: frame))
+    }
 
     func selectFrame(_ index: Int) {
         guard let document, document.frames.indices.contains(index) else { return }
