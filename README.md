@@ -54,6 +54,11 @@ CI validates compilation and noninteractive tests only. Metal appearance,
 Finder opening, gestures, and other interactive behavior must still pass
 `docs/macos-gui-acceptance-tests.md` on the physical Mac.
 
+The private repository is `https://github.com/ignaciomigliaro/ChemViewer`.
+Apple Silicon run `38922066239` passed all seven Swift tests plus the arm64,
+bundle-signature, packaging, and artifact-upload checks. Download its
+`ChemViewer-macos-arm64` artifact from the repository's **Actions** page.
+
 ## Tests on the evidence host
 
 The portable reference test runs without third-party Python packages:

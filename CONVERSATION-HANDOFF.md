@@ -133,8 +133,13 @@ The tests validate:
    hashes, and signature shape, when those local artifacts are available.
 
 Both shell scripts pass `bash -n`, and `Packaging/Info.plist` parses as XML.
-Swift tests have not been run because the evidence host has no Swift/macOS
-toolchain.
+GitHub Actions run `38922066239` built commit `42e3cbd` on a native Apple
+Silicon `macos-15` runner. All seven Swift tests passed, the release executable
+was verified as arm64, the ad-hoc bundle signature passed strict verification,
+and the `ChemViewer-macos-arm64` artifact was uploaded. This is CI evidence,
+not a substitute for a physical-Mac GUI launch.
+
+Private repository: `https://github.com/ignaciomigliaro/ChemViewer`
 
 ## First commands on the Apple Silicon Mac
 
@@ -187,7 +192,8 @@ build under Rosetta separately and record Rosetta availability.
 
 ## Important limitations
 
-- No `.app` was produced on Windows.
+- A CI-built ARM64 `.app` artifact exists, but it has not yet been launched on
+  the user's physical Apple Silicon Mac.
 - No target-Mac runtime or crash evidence exists yet.
 - The current renderer is a prototype without depth testing or bond picking;
   CPU screen-space atom picking is implemented but not yet run on a Mac.
