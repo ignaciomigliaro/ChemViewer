@@ -19,9 +19,9 @@ cp "$project_dir/Packaging/Info.plist" "$app_dir/Contents/Info.plist"
 
 resource_bundle="$(find "$project_dir/.build/arm64-apple-macosx/release" -maxdepth 1 -name '*ChemViewerApp.bundle' -print -quit)"
 if [[ -n "$resource_bundle" ]]; then
-    # SwiftPM's generated Bundle.module accessor resolves this bundle relative
-    # to Bundle.main.bundleURL, which is the .app root for a packaged app.
-    ditto "$resource_bundle" "$app_dir/$(basename "$resource_bundle")"
+    # Keep nested resources in the standard signed-app location. The renderer
+    # checks this packaged location before falling back to SwiftPM's .module.
+    ditto "$resource_bundle" "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
 else
     echo "missing SwiftPM Metal resource bundle" >&2
     exit 1

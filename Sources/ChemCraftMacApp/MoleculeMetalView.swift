@@ -128,7 +128,10 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     override var acceptsFirstResponder: Bool { true }
 
     private func buildPipelines(device: MTLDevice) {
-        guard let library = try? device.makeDefaultLibrary(bundle: .module) else { return }
+        let packagedBundleURL = Bundle.main.resourceURL?
+            .appendingPathComponent("ChemViewer_ChemViewerApp.bundle")
+        let shaderBundle = packagedBundleURL.flatMap(Bundle.init(url:)) ?? .module
+        guard let library = try? device.makeDefaultLibrary(bundle: shaderBundle) else { return }
 
         let atomDescriptor = MTLRenderPipelineDescriptor()
         atomDescriptor.label = "Atom impostors"
