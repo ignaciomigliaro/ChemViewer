@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "reference_application": {
+    "executable_sha256": "79fe75015a1e48c4df29e7bac4c3c05e67057bf3a0ed03a7b77fe85528d4f05a",
+    "screen_pixels": [2560, 1440],
+    "scale_percent": 100
+  },
+  "measurements": {
+    "water_xyz_sha256": "ad9798ab5b0e47faa79fd95b835b23295353c3801a0e9cba36109cd83c8aa1f6",
+    "oh_distance_angstrom": 0.95720,
+    "hoh_angle_degrees": 104.520,
+    "dihedral_xyz_sha256": "2c8cf8aaac94de44aff27431ec554814804ef06756acc291cfadf4c99b5e4e14",
+    "signed_dihedral_degrees": 116.565
+  },
+  "orca_frequency_case": {
+    "input_sha256": "7839f1e071ac21dfba79082069972a10623ef484f0ab6fde0ed6872dcc7c463a",
+    "frequencies_cm_minus_1": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1606.12, 3678.02, 3777.72],
+    "mode_1606_12_auto_animates": true,
+    "displacement_vectors": "manual-retest-required"
+  },
+  "reaction_path_cases": {
+    "gaussian_pes": {
+      "input_sha256": "2c31ec941c96ffc3c5bcad903ee147c6441ca40c10099494df9895ec8f3fb71b",
+      "tree_label": "Scan",
+      "point_count": 21,
+      "coordinate_labels": [120, 118, 116, 114, 112, 110, 108, 106, 104, 102, 100, 98, 96, 94, 92, 90, 88, 86, 84, 82, 80]
+    },
+    "gaussian_irc_compound": {
+      "input_sha256": "a4fbaee06430e7771d77122be4adc5e30a88d4b5d95f3ce9877e1fdbcfef56ca",
+      "job_roots": ["Frequencies", "Optimization", "Frequencies", "IRC"],
+      "irc_frame_navigation": "partial",
+      "detailed_tree_run": "invalidated-by-focus-mismatch"
+    },
+    "quantum_espresso_neb_coordinates": {
+      "input_sha256": "1ab07dfb013b7187ebd8dba48b8adcb0100b75bcc130c9aed321f247dca244ed",
+      "status": "blocked-by-supplementary-files-dialog"
+    }
+  },
+  "camera": {
+    "right_drag": "rotate",
+    "mouse_wheel": "zoom",
+    "toolbar_rotation_zoom_translation": "observed"
+  },
+  "exports": {
+    "xyz_sha256": "5f84daa4586c654358e01f8e1199c58d740ac78605faa70f3128c8c6b2e61fec",
+    "jpeg_sha256": "dcdc5dabc3f387cafa52cb297f783c005ae47dfc21c5c07effcda45aa8a2dd2b",
+    "jpeg_pixels": [816, 447]
+  }
+}

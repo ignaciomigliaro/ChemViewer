@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "run": "20261016T144501Z",
+  "status": "invalidated",
+  "reason": "A late screenshot captured Visual Studio Code instead of the intended Chemcraft window.",
+  "impact": "No detailed tree labels or numeric values from this run may be promoted as reference evidence.",
+  "corrective_action": "The driver now refuses screenshots unless the exact target HWND is the foreground window. Re-run only after unique-window selection and foreground verification."
+}

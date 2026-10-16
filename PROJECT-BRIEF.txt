@@ -1,0 +1,413 @@
+# Project: Reverse Engineer Chemcraft and Build a Fully Functional macOS Version
+
+You are an expert reverse-engineering engineer, macOS software developer, and computational chemistry software architect.
+
+Your task is to investigate Chemcraft, understand how the Windows application works, and develop a fully functional, reliable macOS application with feature parity.
+
+**This is an implementation project, not just a research or documentation task.** I want a working application that I can use daily for computational chemistry.
+
+## 1. Primary objective
+
+Chemcraft is a molecular visualization and computational chemistry analysis program.
+
+Official website:
+https://www.chemcraftprog.com/
+
+Windows download:
+https://www.chemcraftprog.com/download.html
+
+macOS beta:
+https://chemcraftprog.com/MacVersion.html
+
+Documentation:
+https://www.chemcraftprog.com/help.html
+
+The Windows version works significantly better than the existing macOS beta.
+
+I want to use Chemcraft on an Apple Silicon Mac with all the functionality of the Windows version.
+
+The ultimate deliverable should be a reliable macOS `.app` application, ideally running natively on Apple Silicon without requiring Wine, CrossOver, or a Windows virtual machine.
+
+The application must preserve the scientific functionality, numerical accuracy, interaction behavior, file compatibility, and usability of Chemcraft.
+
+Do not consider the project complete simply because a window opens.
+
+## 2. Available tools and investigation
+
+Use REA (Reverse Engineer Anything) as the primary reverse-engineering tool where appropriate:
+
+https://github.com/morluto/rea
+
+Use its MCP tools to investigate the authorized Chemcraft binaries, supported executable formats, imports, resources, dependencies, function behavior, and application architecture.
+
+You may also use:
+
+- Ghidra for native binary analysis and decompilation.
+- LLDB for macOS debugging.
+- Wine or CrossOver for compatibility experiments.
+- macOS diagnostic tools such as `file`, `otool`, `codesign`, `spctl`, `lipo`, `log`, and crash reports.
+- Python and scientific computing libraries for independent numerical validation.
+- Swift, SwiftUI, AppKit, Metal, C++, or other suitable technologies for implementation.
+
+First discover which tools are installed and which MCP servers are available. Do not assume that a tool, computer, or application is accessible unless you verify it.
+
+If the Windows and Mac environments are separate, design a reproducible workflow for gathering analysis evidence on Windows and transferring only the necessary development artifacts to macOS.
+
+## 3. First investigate the existing macOS version
+
+Before attempting to reimplement the application, investigate why the current macOS version is unreliable.
+
+Determine:
+
+1. Whether the official Mac ARM build can launch on the target machine.
+2. Whether its crashes are caused by missing dependencies, incorrect file permissions, application signing, quarantine, graphics rendering, unsupported APIs, threading, or architecture incompatibilities.
+3. Whether some features are broken while others work.
+4. Whether the Intel version behaves differently under a compatible execution environment.
+5. Whether a lawful, noninvasive compatibility fix can make the existing program reliable.
+
+Capture crash reports and reproduce failures systematically.
+
+Do not automatically remove security protections or modify system security settings.
+
+If the existing macOS application can be repaired sufficiently to deliver full functionality, prioritize that approach. If the defects cannot be resolved without proprietary source code, document the evidence and proceed to the next strategy.
+
+## 4. Reverse engineer the Windows version
+
+Treat the official Windows version as the reference for expected functionality.
+
+Use REA to investigate:
+
+- Application architecture.
+- Executable dependencies and libraries.
+- Rendering engine and graphics pipeline.
+- File parsing and scientific data structures.
+- Geometry representation and editing.
+- Molecular orbital visualization.
+- Vibrational frequency processing.
+- User interface interactions.
+- Animation systems.
+- Data export operations.
+- Preferences and configuration files.
+- Internal numerical algorithms where they affect interoperability.
+
+Where available, inspect behavior through authorized black-box experiments and documented output files.
+
+Use static and dynamic analysis to understand observable behavior. Clearly distinguish verified findings from hypotheses.
+
+Never fabricate decompiled code, function names, or analysis results.
+
+Maintain an evidence notebook containing the investigated functions, test cases, observed behavior, and confidence levels.
+
+## 5. Build a complete feature inventory
+
+Before implementing major functionality, systematically document every relevant Chemcraft feature.
+
+Consult the official documentation and examine the Windows application's menus, dialogs, and workflows.
+
+At minimum, investigate these areas.
+
+### A. Molecular visualization
+
+- 3D atom and bond visualization.
+- Ball-and-stick, wireframe, and space-filling representations.
+- Molecular rotation, translation, and zoom.
+- Atom and bond selection.
+- Element-based coloring.
+- Atomic labels and annotations.
+- Custom rendering settings.
+- Publication-quality molecular images.
+- Multiple molecules and geometries.
+
+### B. Molecular structure editing
+
+- Add, remove, and modify atoms.
+- Add and remove bonds.
+- Edit Cartesian coordinates.
+- Edit internal coordinates and Z-matrices.
+- Change bond lengths, angles, and dihedral angles.
+- Construct molecular fragments.
+- Rotate or move molecular fragments.
+- Merge and compare structures.
+- Apply symmetry operations.
+- Export edited geometries.
+
+### C. Computational chemistry output parsing
+
+Support all formats that the Windows reference application actually supports.
+
+Investigate especially:
+
+- ORCA.
+- Gaussian.
+- GAMESS.
+- Q-Chem.
+- NWChem.
+- Molpro.
+- ADF.
+- Other supported quantum chemistry programs.
+
+Support relevant molecular and volumetric formats such as XYZ, Molden, Gaussian cube, formatted checkpoint files, and other verified formats.
+
+Do not assume proprietary binary formats are readable without testing them.
+
+### D. Geometry optimization and reaction pathways
+
+- Load optimization trajectories.
+- Navigate through optimization steps.
+- Animate geometry changes.
+- Display energies and convergence information.
+- Plot energy versus optimization step.
+- Visualize potential energy surface scans.
+- Display one-dimensional and two-dimensional scans.
+- Visualize intrinsic reaction coordinate (IRC) paths.
+- Compare reactant, transition-state, and product structures.
+- Display energy barriers and relative energies when the file provides sufficient information.
+
+### E. Molecular orbitals and electron density
+
+- Molecular orbital visualization.
+- HOMO and LUMO selection.
+- Orbital energy diagrams.
+- Positive and negative orbital isosurfaces.
+- Electron density surfaces.
+- Electrostatic potential mapping.
+- Cube-file visualization.
+- Adjustable isovalues, colors, and transparency.
+- Volumetric surface export where supported.
+
+### F. Vibrational analysis
+
+- Parse frequency calculations.
+- Animate normal modes.
+- Identify imaginary frequencies.
+- Display displacement vectors.
+- Visualize IR and Raman spectra.
+- Inspect frequency intensities.
+- Animate transition-state imaginary modes.
+- Support Hessian-derived analysis where appropriate.
+
+### G. Scientific visualization and analysis
+
+- Atomic partial charges.
+- Spin populations.
+- Bond orders.
+- Dipole moments.
+- Molecular geometry measurements.
+- TDDFT and UV-visible spectra.
+- NMR-related properties.
+- SCF convergence plots.
+- Scientific data tables.
+- Plot customization and data export.
+
+### H. Application functionality
+
+- Open and save supported files.
+- Drag-and-drop file opening.
+- Clipboard copying and pasting.
+- Keyboard shortcuts.
+- Multiple windows.
+- Preferences.
+- Structure and image export.
+- Animations and image sequences.
+- Responsive interaction with large molecules.
+- High-resolution Retina display support.
+- Reliable macOS file dialog integration.
+
+This list is a starting point, not the complete specification.
+
+Create a comprehensive feature matrix from the actual Windows reference application and official documentation.
+
+For each feature, record whether it is implemented, tested, partially functional, blocked, or unsupported.
+
+## 6. Determine the best implementation approach
+
+Compare these strategies:
+
+**Strategy A — Repair the official macOS version.**
+
+Fix identifiable compatibility and runtime problems where technically possible without modifying protected proprietary functionality or circumventing licensing.
+
+**Strategy B — Run the Windows implementation through a compatibility layer.**
+
+Investigate whether a properly configured Wine or CrossOver environment can provide full feature parity and reliable performance on Apple Silicon. Treat this as a fallback or temporary solution.
+
+**Strategy C — Develop a native macOS implementation.**
+
+Create an independently implemented application using documented formats, observed behavior, and original source code.
+
+Prefer native Apple Silicon execution for the long-term solution.
+
+Evaluate feasibility, maintenance burden, scientific correctness, compatibility, and achievable feature parity before committing to a strategy.
+
+Do not spend excessive effort attempting to reconstruct the original proprietary source code when an independent implementation or existing native fix is more practical.
+
+## 7. Native macOS architecture
+
+If developing an independent implementation, use a modular architecture separating:
+
+1. Scientific file parsers.
+2. Molecular data models.
+3. Geometry editing.
+4. Rendering and volumetric visualization.
+5. Computational chemistry analysis.
+6. Plotting and animation.
+7. macOS graphical user interface.
+8. Import/export functionality.
+
+Use an appropriate native rendering technology, preferably Metal where suitable.
+
+Design the codebase so additional computational chemistry formats can be added without rewriting the UI.
+
+Use verified, maintained libraries when possible instead of reinventing established algorithms.
+
+The application should remain responsive while parsing large output files or calculating molecular surfaces.
+
+## 8. Scientific validation
+
+Scientific correctness is a strict requirement.
+
+Construct a test suite using representative quantum chemistry results.
+
+Prioritize ORCA 6.x workflows, particularly:
+
+- Geometry optimizations.
+- Transition-state optimizations.
+- Frequency calculations.
+- NEB pathways and reaction profiles.
+- IRC calculations.
+- Molecular orbital analysis.
+- Potential energy surface scans.
+- Cartesian coordinate editing.
+- Export of structures and graphics.
+
+Compare parsed coordinates, energies, frequencies, intensities, orbital properties, and plots against the same files opened in Windows Chemcraft.
+
+Maintain consistent scientific units and verify any conversions.
+
+Never invent missing chemical data to make a plot or visualization appear complete.
+
+Use regression tests to ensure scientific calculations remain consistent after changes.
+
+## 9. Feature parity and interface testing
+
+Maintain a Windows-to-macOS functionality comparison.
+
+For every feature, identify:
+
+- Its behavior in Windows Chemcraft.
+- Its implementation on macOS.
+- Input data needed for testing.
+- Expected results.
+- Actual results.
+- Known limitations.
+
+Automate tests where possible.
+
+For interactive functionality, use reproducible GUI test procedures.
+
+Prioritize working functionality, scientific accuracy, and stability over superficial visual resemblance.
+
+However, preserve the familiar Chemcraft workflows and interface behavior wherever practical.
+
+## 10. Licensing and intellectual property constraints
+
+Chemcraft is proprietary commercial software.
+
+Use only legally obtained software and authorized analysis environments.
+
+Preserve its licensing requirements. Do not bypass registration, trial restrictions, license verification, or other access controls.
+
+Do not redistribute Chemcraft binaries, proprietary assets, or decompiled source code.
+
+If building an independent implementation, use original code and appropriately licensed dependencies. Use observable behavior and documented file formats as reference material rather than copying proprietary implementation.
+
+Keep the resulting project independently maintainable.
+
+## 11. Required development workflow
+
+Work through these milestones:
+
+**Milestone 1 — Environment and diagnosis**
+
+- Inspect the development environment.
+- Verify REA availability.
+- Identify accessible Chemcraft binaries.
+- Investigate the existing macOS version.
+- Determine the causes of observed failures.
+
+**Milestone 2 — Windows reference analysis**
+
+- Inventory Chemcraft functionality.
+- Investigate representative workflows.
+- Document file formats and rendering behavior.
+- Generate reference results for scientific tests.
+
+**Milestone 3 — Architecture and first working application**
+
+- Choose the implementation strategy.
+- Establish the development environment.
+- Create an initial working application.
+- Load and render a real molecular structure.
+- Implement basic interaction and file handling.
+
+**Milestone 4 — Scientific functionality**
+
+- Implement and validate parsers.
+- Add trajectories, spectra, molecular orbitals, and reaction pathways.
+- Implement editing and visualization tools.
+- Continuously compare against the Windows reference.
+
+**Milestone 5 — Full feature parity**
+
+- Work through the complete feature inventory.
+- Implement remaining functionality.
+- Run compatibility and regression tests.
+- Address performance and stability defects.
+
+**Milestone 6 — Packaging and delivery**
+
+- Produce a functioning macOS `.app`.
+- Support Apple Silicon.
+- Provide reproducible build instructions.
+- Document installation and dependency requirements.
+- Run final functional tests.
+- Clearly document any remaining feature gaps.
+
+## 12. Expected output
+
+Create and maintain:
+
+- `docs/architecture.md`
+- `docs/windows-feature-inventory.md`
+- `docs/macos-diagnostics.md`
+- `docs/reverse-engineering-findings.md`
+- `docs/feature-parity.md`
+- `docs/scientific-validation.md`
+- `README.md`
+- Automated tests and test fixtures.
+- Working application source code.
+- Build and packaging scripts.
+
+Keep the documentation synchronized with the implementation.
+
+Do not mark a feature complete until it has passed a meaningful test.
+
+## 13. Execution instructions
+
+Start by inspecting the actual environment and available software.
+
+Identify which required inputs are missing, but proceed with everything that can be done independently.
+
+Do not stop after producing a development plan.
+
+Once an implementation strategy is supported by the evidence, begin implementing it immediately.
+
+Build, test, debug, and improve the software iteratively.
+
+Avoid unnecessary confirmation requests for ordinary technical decisions. Explain significant architectural choices and their tradeoffs.
+
+Report genuine blockers and feature gaps accurately.
+
+The final goal is a usable, stable, scientifically accurate macOS application offering the same practical capabilities as Windows Chemcraft, rather than a limited molecular viewer.
+
+Begin with the environment inspection, macOS failure diagnosis, and REA-based feature audit.

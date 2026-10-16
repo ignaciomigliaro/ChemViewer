@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "observed_at_utc": "2026-10-16T00:39:11Z",
+  "run_directory": "tests/references/windows/runs/20261016T003911Z",
+  "fixture_sha256": "7839f1e071ac21dfba79082069972a10623ef484f0ab6fde0ed6872dcc7c463a",
+  "selected_mode": "7: Frequency 1606.12",
+  "attempted_control": "Show displacement vectors",
+  "result": "automation worker remained running, Chemcraft process remained responding, but no visible Chemcraft top-level window was exposed",
+  "classification": "manual retest required; not counted as a passed feature",
+  "recovery": "stopped only the exact test-created Python and Chemcraft process IDs"
+}

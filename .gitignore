@@ -1,0 +1,16 @@
+.build/
+dist/
+diagnostics/
+DerivedData/
+*.xcuserstate
+__pycache__/
+*.py[cod]
+.DS_Store
+.tools/
+.venv/
+tests/gui/windows/.venv/
+tests/references/windows/runs/
+Tests/gui/windows/.venv/
+Tests/references/windows/runs/
+evidence/official-macos-b638m/*.dmg
+evidence/official-macos-b638m/extracted-*/
