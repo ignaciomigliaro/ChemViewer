@@ -5,8 +5,9 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
+    @ObservedObject private var chemistry = ChemistryRuntime.shared
 
-    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs"]
+    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,23 +26,27 @@ struct ContentView: View {
             Divider()
             ScrollView(.horizontal, showsIndicators: false) { classicToolbar }
             Divider()
-            if workspace.isDraggingEnabled { ManipulationToolbar() }
+            if workspace.isDraggingEnabled && workspace.activeTab != "ChemRefine" { ManipulationToolbar() }
+            if !workspace.buildingHint.isEmpty && workspace.activeTab != "ChemRefine" {
+                HStack { Text(workspace.buildingHint).font(.caption); Spacer(); Button("Finish placement") { workspace.clearSelection() } }.padding(6)
+            }
             Divider()
             HSplitView {
-                if workspace.showExplorer {
+                if workspace.showExplorer && workspace.activeTab != "ChemRefine" {
                     sidebar.frame(minWidth: 220, idealWidth: 255, maxWidth: 340)
                 }
                 tabContent
-                if workspace.isBuilderVisible { BuilderPanel() }
+                if workspace.isBuilderVisible && workspace.activeTab != "ChemRefine" { BuilderPanel() }
             }
         }
         .preferredColorScheme(.light)
-        .background(GeometryNavigationKeys(enabled: !["Source", "Coord"].contains(workspace.activeTab), step: workspace.stepFrame,
+        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine"].contains(workspace.activeTab), step: workspace.stepFrame,
             clear: workspace.clearSelection,
             selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--fragment-placement-smoke-test") { await FragmentPlacementSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--builder-chemistry-smoke-test") { await BuilderChemistrySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--neb-smoke-test") { await NEBSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--merge-smoke-test") { await MergeSmokeTest.run(workspace: workspace) }
@@ -85,6 +90,7 @@ struct ContentView: View {
         } message: {
             Text(workspace.errorMessage ?? "Unknown error")
         }
+        .sheet(isPresented: $workspace.isFragmentLibraryPresented) { FragmentBrowserView() }
         .sheet(isPresented: $workspace.isAnimationExportPresented) { AnimationExportView() }
         .sheet(isPresented: $workspace.isEnergyLandscapePresented) {
             EnergyLandscapeView()
@@ -121,7 +127,7 @@ struct ContentView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { viewportAction("export") }
             }.disabled(workspace.currentFrame == nil)
             Divider().frame(height: 24)
-            tool("Build molecule", "plus") { workspace.isBuilderVisible.toggle() }
+            tool("Fragment library", "plus") { workspace.presentFragmentLibrary() }
             tool("Toggle dragging", "hand.point.up.fill") { workspace.isDraggingEnabled.toggle() }
             tool("Select connected molecule", "globe") { workspace.selectConnectedGroup() }
             Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Toggle hydrogen visibility")
@@ -158,6 +164,7 @@ struct ContentView: View {
 
     @ViewBuilder private var tabContent: some View {
         switch workspace.activeTab {
+        case "ChemRefine": LocalWorkflowView(embedded: true)
         case "Abstract": abstractPanel
         case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)
         case "Coord":
@@ -286,6 +293,7 @@ struct ContentView: View {
                     selectedAtomIndices: $workspace.selectedAtomIndices,
                     showMeasurementOverlay: workspace.showMeasurementOverlay,
                     draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
+                    onEmptyBuilderClick: workspace.placeBuilderItem(inEmptySpace:),
                     onBuilderClick: workspace.placeBuilderItem,
                     onClearSelection: workspace.clearSelection,
                     onManipulationSelection: { _ = workspace.selectManipulationSeed($0) },
@@ -331,7 +339,7 @@ struct ContentView: View {
                     .font(.largeTitle)
                 Text("Molecular structures and ORCA calculations")
                     .foregroundStyle(.secondary)
-                Button("New molecule / Build fragments") { workspace.newMolecule() }.buttonStyle(.bordered)
+                Button("New molecule / Build fragments") { workspace.newMolecule(); workspace.presentFragmentLibrary() }.buttonStyle(.bordered)
                 Button("Open chemistry file…") { workspace.isImporterPresented = true }
                     .buttonStyle(.borderedProminent)
             }

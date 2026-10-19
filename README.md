@@ -172,3 +172,7 @@ GIF export defaults to a transparent background (switch it off for white). Atom-
 ## Expanded builder and local workflows (0.9.0)
 
 Command-B opens the searchable 258-entry fragment/metal-center library. Choose a fragment, then click a host atom; right-click finishes. Add any element, reuse/save selected fragments, remove unused X sites, and run cancellable UFF cleanup with fixed atoms and undo. **ChemRefine workflow…** opens the real local workflow editor seeded from the current geometry; configure installed engines there. The chemistry runtime is already installed on this Mac. See [usage and validation](docs/building-and-local-workflows.md).
+
+## Popup builder and ChemRefine tab (0.9.1)
+
+Press **Command-B** or **+** to open the fragment preview gallery. Choose a structure, then left-click blank canvas to place it (including in an empty molecule), or an atom to attach it. Right-click finishes. The gallery contains 265 choices including the original templates. **Command-Shift-B** opens editing/UFF controls. **ChemRefine** now has its own main tab (**Command-6**) with the real local workflow editor.

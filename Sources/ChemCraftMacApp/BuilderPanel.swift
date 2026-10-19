@@ -5,10 +5,7 @@ import SwiftUI
 struct BuilderPanel: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var chemistry = ChemistryRuntime.shared
-    @State private var query = ""
-    @State private var category = "All"
     @State private var freezeSelection = false
-    @State private var fragmentIndex = 0
     @State private var imported: [Atom]?
     @State private var importedName = ""
     @State private var leaving = 1
@@ -17,7 +14,7 @@ struct BuilderPanel: View {
     @State private var axis = "X"
     @State private var distance: Float = 0.1
     @State private var degrees: Float = 10
-    private var fragment: [Atom] { imported ?? BuildingProject.fragment(fragmentIndex) }
+    private var fragment: [Atom] { workspace.pendingAttachment ?? imported ?? BuildingProject.fragment(0) }
     private var sites: [Int] { fragment.indices.filter { ["H", "X"].contains(fragment[$0].element) } }
     var body: some View {
         ScrollView {
@@ -58,46 +55,29 @@ struct BuilderPanel: View {
                 Text("Fragments are initial geometries; use UFF cleanup where supported. Review charge and multiplicity before export. Projects save the working geometry, groups and selection; calculation outputs and normal modes stay in the original file.").font(.caption).foregroundStyle(.secondary)
             }.padding(14)
         }.frame(width: 310).background(Color(nsColor: .windowBackgroundColor)).controlSize(.small)
-            .sheet(isPresented: $chemistry.showingWorkflow) { LocalWorkflowView() }
             .onChange(of: element) { value in if workspace.pendingElement != nil { workspace.pendingElement = value } }
             .onChange(of: leaving) { value in workspace.pendingAttachmentLeaving = value }
             .onAppear { resetSite(); selection = workspace.selectedAtomIndices.map { String($0 + 1) }.joined(separator: ",") }
-            .onDisappear { workspace.pendingAttachment = nil; workspace.pendingElement = nil; workspace.buildingHint = "" }
             .onChange(of: workspace.selectedAtomIndices) { indices in selection = indices.map { String($0 + 1) }.joined(separator: ",") }
     }
     private var fragmentControls: some View {
         VStack(alignment: .leading, spacing: 8) {
                 heading("BUILD MOLECULE")
-                Picker("Fragment", selection: $fragmentIndex) {
-                    ForEach(Array(BuildingProject.fragmentNames.enumerated()), id: \.offset) { Text($0.element).tag($0.offset) }
-                }.onChange(of: fragmentIndex) { _ in imported = nil; workspace.pendingAttachment = nil; resetSite() }
-                TextField("Search 258 fragments / metal centers", text: $query)
-                Picker("Category", selection: $category) {
-                    Text("All").tag("All")
-                    ForEach(Array(Set(LibraryFragment.all.map(\.category))).sorted(), id: \.self) { Text($0).tag($0) }
-                }
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(LibraryFragment.all.filter { (category == "All" || $0.category == category) && (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) }) { item in
-                            Button { chooseFragment(item) } label: {
-                                HStack { Text(item.name); Spacer(); if importedName == item.name { Image(systemName: "checkmark") } }.frame(maxWidth: .infinity, alignment: .leading)
-                            }.buttonStyle(.plain).padding(3)
-                        }
-                    }
-                }.frame(height: 145).background(Color(nsColor: .textBackgroundColor))
+                Button("Browse fragments & previews…") { workspace.presentFragmentLibrary() }
                 if imported != nil { Text("Fragment: \(importedName)").font(.caption) }
                 HStack { Button("Use selected atoms") { useSelection() }; Button("Save fragment…") { saveFragment() } }.disabled(workspace.selectedAtomIndices.isEmpty)
                 Button("My saved fragments…", action: loadSavedFragment)
-                HStack { Button("Add fragment") { workspace.pendingAttachment = nil; workspace.pendingElement = nil; workspace.buildingHint = ""; workspace.addBuildingFragment(fragment) }; Button("Import XYZ…") { importFragment() } }
+                HStack { Button("Add fragment") { let chosen = fragment; workspace.pendingAttachment = nil; workspace.pendingElement = nil; workspace.buildingHint = ""; workspace.addBuildingFragment(chosen) }; Button("Import XYZ…") { importFragment() } }
                 Picker("Leaving site", selection: $leaving) {
+                    if sites.isEmpty { Text("No H/X site").tag(-1) }
                     ForEach(sites, id: \.self) { Text("\($0 + 1) \(fragment[$0].element)").tag($0) }
                 }
                 Button("Attach to selected atom") { workspace.attachBuildingFragment(fragment, leaving: leaving) }.disabled(sites.isEmpty || workspace.selectedAtomIndices.count != 1)
-                Toggle("Click an atom to attach fragment", isOn: Binding(get: { workspace.pendingAttachment != nil }, set: { enabled in
+                Toggle("Click to place fragment", isOn: Binding(get: { workspace.pendingAttachment != nil }, set: { enabled in
                     workspace.pendingElement = nil; workspace.isDraggingEnabled = false
                     workspace.pendingAttachment = enabled ? fragment : nil; workspace.pendingAttachmentLeaving = leaving
                     workspace.buildingHint = enabled ? "Click H/X, or a heavy atom to use its available H/X site. Right-click finishes." : ""
-                })).disabled(sites.isEmpty)
+                })).disabled(fragment.isEmpty)
                 Text("X marks a replaceable attachment site. Clicking a heavy atom uses its first H/X site, or adds a bond if none exist. Check valence, then clean up.").font(.caption).foregroundStyle(.secondary)
                 Picker("Element", selection: $element) { ForEach(BuildingProject.elements, id: \.self) { Text($0).tag($0) } }
                 HStack { TextField("Element", text: $element).frame(width: 48); Button("Insert") { workspace.editElement(element, insert: true) }; Button("Replace") { workspace.editElement(element, insert: false) }.disabled(workspace.selectedAtomIndices.isEmpty) }
@@ -123,25 +103,20 @@ struct BuilderPanel: View {
                     if chemistry.busy { ProgressView().controlSize(.small); Button("Cancel") { chemistry.cancel() } }
                 }
                 Text("UFF needs supported atom types and no X sites. Metal complexes may need a suitable MLIP or QM method.").font(.caption).foregroundStyle(.secondary)
-                Button(chemistry.guiURL == nil ? "ChemRefine workflow…" : "Reopen ChemRefine workflow…") { chemistry.openWorkflow(workspace) }
-                if chemistry.guiURL != nil { Button("New workflow from current geometry…") { chemistry.newWorkflow(workspace) } }
+                Button(chemistry.guiURL == nil ? "ChemRefine workflow…" : "Reopen ChemRefine workflow…") { workspace.activeTab = "ChemRefine" }
+                if chemistry.guiURL != nil { Button("New workflow from current geometry…") { workspace.activeTab = "ChemRefine"; chemistry.newWorkflow(workspace) } }
                 Text("The local editor can validate, run and resume workflows. Configure installed engine paths under Executables; ORCA and MLIP weights are separate installations.").font(.caption).foregroundStyle(.secondary)
                 if !chemistry.status.isEmpty { Text(chemistry.status).font(.caption).textSelection(.enabled) }
         }
     }
-    private func chooseFragment(_ item: LibraryFragment) {
-        imported = item.geometry; importedName = item.name; resetSite()
-        workspace.isDraggingEnabled = false; workspace.pendingElement = nil
-        workspace.pendingAttachment = fragment; workspace.pendingAttachmentLeaving = leaving
-        workspace.buildingHint = "Click a host atom to attach \(item.name). Right-click finishes."
-    }
     private func useSelection() {
         guard let frame = workspace.currentFrame else { return }
+        workspace.pendingAttachment = nil
         imported = workspace.selectedAtomIndices.filter(frame.atoms.indices.contains).map { frame.atoms[$0] }
         importedName = "Selected fragment"; resetSite()
         workspace.pendingElement = nil; workspace.isDraggingEnabled = false
-        workspace.pendingAttachment = sites.isEmpty ? nil : imported; workspace.pendingAttachmentLeaving = leaving
-        workspace.buildingHint = sites.isEmpty ? "Include a terminal H or X in your selected fragment to define an attachment site." : "Click a host atom to attach the selected fragment. Right-click finishes."
+        workspace.pendingAttachment = imported; workspace.pendingAttachmentLeaving = leaving
+        workspace.buildingHint = sites.isEmpty ? "Click empty space to place this fragment; include H/X to allow attachment." : "Click empty space to place, or a host atom to attach the selected fragment. Right-click finishes."
     }
     private var savedFolder: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/ChemViewer/Fragments") }
     private func saveFragment() {
@@ -172,6 +147,8 @@ struct BuilderPanel: View {
                 }.value
                 workspace.pendingAttachment = nil; workspace.pendingElement = nil
                 imported = atoms; importedName = url.lastPathComponent; resetSite()
+                workspace.isDraggingEnabled = false; workspace.pendingAttachment = atoms; workspace.pendingAttachmentLeaving = leaving
+                workspace.buildingHint = "Click empty space to place \(importedName). Right-click finishes."
             } catch { workspace.errorMessage = error.localizedDescription }
         }
     }

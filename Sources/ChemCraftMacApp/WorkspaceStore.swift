@@ -6,6 +6,28 @@ import Foundation
 @MainActor
 final class WorkspaceStore: ObservableObject {
     @Published var isBuilderVisible = false
+    @Published var isFragmentLibraryPresented = false
+    func presentFragmentLibrary() {
+        if document == nil { newMolecule() }
+        isFragmentLibraryPresented = true
+    }
+    func armFragment(_ item: LibraryFragment) {
+        if document == nil { newMolecule() }
+        isDraggingEnabled = false; stopTrajectoryPlayback(); isVibrating = false
+        pendingElement = nil; pendingAttachment = item.geometry
+        pendingAttachmentLeaving = item.geometry.firstIndex(where: { $0.element == "X" }) ?? item.geometry.firstIndex(where: { $0.element == "H" }) ?? -1
+        activeTab = "Image"
+        buildingHint = "Place \(item.name): click empty space, or click an atom to attach. Right-click finishes."
+    }
+    @discardableResult func placeBuilderItem(inEmptySpace location: Vector3) -> Bool {
+        let atoms: [Atom]
+        if let fragment = pendingAttachment { atoms = fragment }
+        else if let element = pendingElement { atoms = [Atom(id: 0, element: element, position: .zero)] }
+        else { return false }
+        do { applyBuildingProject(try buildingProject().placing(atoms, at: location)) }
+        catch { errorMessage = error.localizedDescription }
+        return true
+    }
     @Published var pendingAttachment: [Atom]?
     var pendingAttachmentLeaving = 0
     @Published var pendingElement: String?
@@ -17,6 +39,9 @@ final class WorkspaceStore: ObservableObject {
             if let element = pendingElement {
                 applyBuildingProject(try project.attachingAtom(element, hostAtom: index))
             } else if let fragment = pendingAttachment {
+                guard fragment.indices.contains(pendingAttachmentLeaving) else {
+                    buildingHint = "This fragment has no H/X attachment site. Click empty space to place it."; return true
+                }
                 applyBuildingProject(try project.attachingAtAtom(fragment, hostAtom: index, fragmentLeaving: pendingAttachmentLeaving))
             }
             buildingHint = "Attached. Click another site to add again; right-click to finish."
@@ -427,7 +452,7 @@ extension WorkspaceStore {
         sourceText = ""; frameIndex = 0; selectedModeIndex = nil; selectedAtomIndices = []
         groupsByFrame = [:]; geometryUndoStacks = [:]; geometryRedoStacks = [:]; editedFrames = []
         calculationFacts = []; modesByFrame = [:]; storedBondAxis = nil; charge = 0; multiplicity = 1
-        activeTab = "Image"; isBuilderVisible = true; geometryRevision += 1
+        activeTab = "Image"; isBuilderVisible = false; geometryRevision += 1
     }
     func buildingProject() throws -> BuildingProject {
         try BuildingProject(atoms: currentFrame?.atoms ?? [], groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity)

@@ -26,6 +26,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     var showMeasurementOverlay = false
     var draggingEnabled = false
     var dragAxis: DragAxis = .screen
+    var onEmptyBuilderClick: (Vector3) -> Bool = { _ in false }
     var onBuilderClick: (Int) -> Bool = { _ in false }
     var onClearSelection: () -> Void = {}
     var onManipulationSelection: (Int) -> Void = { _ in }
@@ -41,10 +42,16 @@ struct MoleculeMetalView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> MolecularMTKView {
         let view = MolecularMTKView()
-        view.onAtomClick = { index, extendSelection in
+        view.onAtomClick = { [weak view] index, extendSelection in
+            view?.preservePlacementCamera = true
             if context.coordinator.parent.onBuilderClick(index) { return }
+            view?.preservePlacementCamera = false
             if context.coordinator.parent.draggingEnabled { context.coordinator.parent.onManipulationSelection(index) }
             else { context.coordinator.selectAtom(index, extendSelection: extendSelection) }
+        }
+        view.onEmptyClick = { [weak view] location in
+            view?.preservePlacementCamera = true
+            if !context.coordinator.parent.onEmptyBuilderClick(location) { view?.preservePlacementCamera = false }
         }
         view.onClearSelection = { context.coordinator.parent.selectedAtomIndices = []; context.coordinator.parent.onClearSelection() }
         view.onBeginAtomDrag = { context.coordinator.parent.onBeginAtomDrag($0) }
@@ -151,9 +158,10 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             } else if !oldValue.animate && scene.animate {
                 animationStart = CACurrentMediaTime() - animationElapsed
             }
-            if oldValue.atoms.isEmpty || scene.geometryID != oldValue.geometryID || scene.atoms.count != oldValue.atoms.count || scene.style != oldValue.style {
+            if !preservePlacementCamera && (oldValue.atoms.isEmpty || scene.geometryID != oldValue.geometryID || scene.atoms.count != oldValue.atoms.count || scene.style != oldValue.style) {
                 recalculateBounds()
             }
+            preservePlacementCamera = false
             enableSetNeedsDisplay = !scene.animate && !atomDragActive
             isPaused = !scene.animate && !atomDragActive
             setNeedsDisplay(bounds)
@@ -183,7 +191,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var center = SIMD3<Float>(repeating: 0)
     private var animationStart = CACurrentMediaTime()
     private var animationElapsed: Double = 0
-    private var fitScale: Float = 1
+    private var fitScale: Float = 0.12
+    var preservePlacementCamera = false
     private var roll: Float = 0
     private var yaw: Float = 0.45
     private var pitch: Float = -0.30
@@ -209,6 +218,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var mouseDownPoint = CGPoint.zero
     private var didDrag = false
     var onAtomClick: ((Int, Bool) -> Void)?
+    var onEmptyClick: ((Vector3) -> Void)?
 
     init() {
         let metalDevice = MTLCreateSystemDefaultDevice()
@@ -321,7 +331,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     private func recalculateBounds() {
-        guard !scene.atoms.isEmpty else { return }
+        guard !scene.atoms.isEmpty else { center = .zero; fitScale = 0.12; return }
         let sum = scene.atoms.reduce(SIMD3<Float>(repeating: 0)) {
             $0 + SIMD3($1.position.x, $1.position.y, $1.position.z)
         }
@@ -753,7 +763,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         if atomDragActive { commitAtomDrag(); return }
         guard !didDrag else { return }
         let point = convert(event.locationInWindow, from: nil)
-        guard let index = atomIndex(at: point) else { return }
+        guard let index = atomIndex(at: point) else { onEmptyClick?(placementPosition(at: point)); return }
         let extend = !event.modifierFlags.intersection([.shift, .command]).isEmpty
         onAtomClick?(index, extend)
     }
@@ -773,6 +783,13 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     override func rightMouseDragged(with event: NSEvent) {}
+
+    func placementPosition(at point: CGPoint) -> Vector3 {
+        let x = Float(point.x / max(bounds.width, 1)) * 2 - 1
+        let y = Float(point.y / max(bounds.height, 1)) * 2 - 1
+        let world = makeMVP(size: bounds.size).inverse * SIMD4<Float>(x, y, 0, 1)
+        return Vector3(world.x / world.w, world.y / world.w, world.z / world.w)
+    }
 
     func projectedAtomPoint(_ index: Int) -> CGPoint? {
         guard scene.atoms.indices.contains(index) else { return nil }

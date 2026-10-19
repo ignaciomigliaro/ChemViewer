@@ -8,6 +8,12 @@ struct LibraryFragment: Decodable, Identifiable {
     let atoms: [Coordinate]
     var id: String { category + "/" + name }
     var geometry: [Atom] { atoms.enumerated().map { Atom(id: $0.offset, element: $0.element.element, position: Vector3($0.element.x, $0.element.y, $0.element.z)) } }
+    static var catalog: [LibraryFragment] {
+        let molecules = BuildingProject.fragmentNames.enumerated().map { index, name in
+            LibraryFragment(name: name, category: "Molecules", atoms: BuildingProject.fragment(index).map { Coordinate(element: $0.element, x: $0.position.x, y: $0.position.y, z: $0.position.z) })
+        }
+        return molecules + all
+    }
     static let all: [LibraryFragment] = {
         guard let url = ChemistryResources.bundle.url(forResource: "Fragments", withExtension: "json"),
               let data = try? Data(contentsOf: url), let items = try? JSONDecoder().decode([LibraryFragment].self, from: data) else { return [] }

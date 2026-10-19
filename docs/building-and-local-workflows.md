@@ -1,12 +1,12 @@
 # Fragment building and local workflows — ChemViewer 0.9.0
 
-Open **Build & Edit** with Command-B. The existing Paton rendering styles,
+Open the popup **Fragment Library** with Command-B or the **+** toolbar button. Choose a preview, then left-click empty canvas to place a fragment or an atom to attach it. The gallery includes the original seven templates as well as 258 fragment/metal entries. Command-Shift-B opens **Build & Edit** controls. The existing Paton rendering styles,
 frequency/geometry explorer, measurements, GIF exports and editing controls remain.
 
 ## Build by clicking
 
-Search the library or choose a category, then click a library entry. This arms
-placement immediately: click an atom in the molecule to attach the fragment.
+Search the popup gallery or choose a category, then click a structure preview. This arms
+placement immediately: left-click empty space to place an independent fragment, or an atom to attach it. Placement also works in a new, empty molecule.
 Right-click finishes placement and clears selection. The toggle can also stop
 placement. **Add fragment** inserts a separate molecule instead.
 
@@ -53,13 +53,13 @@ not substituted for an electronic SCF energy; edits invalidate existing energies
 
 ## ChemRefine integration
 
-**ChemRefine workflow…** asks for a destination and creates a unique workflow
+The dedicated **ChemRefine** tab (Command-6) starts local workflow creation: choose a destination to create a unique workflow
 folder with the current `seed.xyz`, `input.yaml`, templates and local dispatch.
 It launches the installed, unmodified [ChemRefine](https://github.com/sterling-group/ChemRefine)
 GUI on token-protected loopback and displays its real Builder/input.yaml/Structure,
-validation, template and run controls in an embedded WebKit window. This is the
+validation, template and run controls in the main ChemRefine tab. This is the
 local editor, not the static online playground. **Open in browser** is available.
-**Done** closes the window without stopping the local workflow server or jobs.
+Switching tabs does not stop the local workflow server or jobs.
 Reopen the existing workflow, or choose **New workflow from current geometry…**
 to export another seed. **Open result…** loads an output/XYZ back into ChemViewer.
 

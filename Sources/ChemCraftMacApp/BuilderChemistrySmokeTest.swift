@@ -53,7 +53,7 @@ enum BuilderChemistrySmokeTest {
             try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
             runtime.openWorkflow(workspace, destination: evidence)
             for _ in 0..<100 { if runtime.guiURL != nil { break }; try await Task.sleep(nanoseconds: 200_000_000) }
-            try require(runtime.guiURL != nil && runtime.showingWorkflow, "Embedded workflow startup failed")
+            try require(runtime.guiURL != nil && workspace.activeTab == "ChemRefine", "Embedded workflow startup failed")
             try await Task.sleep(nanoseconds: 2_000_000_000)
             func findWebView(_ view: NSView) -> WKWebView? {
                 if let web = view as? WKWebView { return web }

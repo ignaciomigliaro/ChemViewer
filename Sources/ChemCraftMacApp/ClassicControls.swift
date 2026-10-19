@@ -18,7 +18,7 @@ struct ClassicMenuBar: View {
     var body: some View {
         HStack(spacing: 22) {
             Menu("File") {
-                Button("New Molecule") { workspace.newMolecule() }
+                Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }
                 Button("Open…") { workspace.isImporterPresented = true }
                 Button("Save Project…") { workspace.saveBuildingProject() }
                 Button("Export XYZ…") { workspace.requestXYZExport() }
@@ -29,12 +29,12 @@ struct ClassicMenuBar: View {
             Menu("Edit") {
                 Button("Undo") { workspace.undoGeometry() }.disabled(!workspace.canUndoGeometry)
                 Button("Redo") { workspace.redoGeometry() }.disabled(!workspace.canRedoGeometry)
-                Button("Build & Edit") { workspace.isBuilderVisible.toggle() }
+                Button("Fragment Library…") { workspace.presentFragmentLibrary() }
                 Button("Duplicate Selected") { workspace.duplicateSelectedAtoms() }
                 Button("Delete Selected") { workspace.deleteSelectedAtoms() }
             }
             Menu("View") {
-                ForEach(["Image", "Abstract", "Source", "Coord", "Image/Abs"], id: \.self) { tab in Button(tab) { workspace.activeTab = tab } }
+                ForEach(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"], id: \.self) { tab in Button(tab) { workspace.activeTab = tab } }
                 Toggle("Result Explorer", isOn: $workspace.showExplorer)
                 Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible)
                 Button("Fit Molecule") { action("reset") }

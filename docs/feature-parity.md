@@ -140,3 +140,30 @@ Actions run 39299377644 failed while type-checking `ManipulationToolbar.scopeIco
 ## 0.9.0 — fragment builder, UFF and local ChemRefine
 
 Added 258 original generated fragments/metal centers, searchable categories, immediate click-to-attach, current-selection fragments and saved XYZ fragments, all-element click placement, removal of unused X sites, genuine cancellable RDKit UFF with fixed atoms/undo/stale-result protection, and the actual separately installed local ChemRefine GUI embedded in WebKit with seed/config/template export and result import. See [building and local workflows](building-and-local-workflows.md) for usage, scientific limits and evidence. User chose UFF/ChemRefine first; UMA is deferred until model access exists. Local runtime is installed under Application Support/ChemViewer/chemistry-venv. ORCA calculations require configuring an installed executable; GUI bootstrap/validation are tested, not an unavailable ORCA calculation.
+
+## 0.9.1 — free placement, preview gallery and ChemRefine tab
+
+Fragment selection now arms placement on empty space as well as attachment to
+atoms. Mouse coordinates are unprojected onto the current camera plane; insertion
+preserves framing so the fragment centroid stays at the clicked location. New
+molecules have an empty editable canvas. Selected/imported fragments without H/X
+can still be placed freely; H/X is required only for attachment.
+
+Command-B and the + toolbar button open a popup gallery with searchable categories
+and lazy, cached thumbnails rendered by the native Paton Metal renderer. The
+original seven templates are included alongside the 258 fragment/metal entries
+(265 choices); the sidebar catalog is removed. Command-Shift-B opens remaining
+Build & Edit controls (custom fragments, atoms, transforms, UFF and exports).
+Right-click or Finish placement ends placement.
+
+ChemRefine is now a dedicated main tab (Command-6), with its local editor spanning
+the workspace and no modal sheet or explorer/edit sidebar. It retains workflow
+creation, new workflow, browser opening and result import. Starting a workflow
+selects this tab; UFF and the chemistry runtime are unchanged.
+
+Validation: 28 standalone core regressions and three migrated suites passed.
+A real packaged Mac test opened the preview popup, rendered organic/metal previews,
+placed fragments by actual mouse down/up on an initially empty canvas, repeated
+placement after rotation/zoom, checked world and projected click coordinates,
+verified unchanged framing, undo and inactive-click safety, and loaded the live
+local ChemRefine editor in the dedicated tab. Local evidence stays in Downloads.

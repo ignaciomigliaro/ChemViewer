@@ -349,3 +349,32 @@ Added 258 original generated fragments/metal centers, searchable categories, imm
 Final local gate passed: 27 core cases, three migrated suites, five Python chemistry tests, and packaged native builder/UFF/WebKit acceptance including attachment of every catalog entry. Verified actual embedded ChemRefine page rendering and visually inspected its snapshot. Installed signed ARM64 v0.9.0 build 18 in both /Applications and ~/Applications. No personal structures, runtime environments, credentials, vendor code or generated local evidence are included in the commit. CI now runs chemistry tests with the pinned runtime setup.
 
 Remote run 39323777153 passed XCTest/build, plotting, the pinned chemistry setup and all five chemistry tests, bundle verification and artifact upload. Final interaction fix clears armed placement when the builder closes or drag mode starts; packaged acceptance passed again, and test teardown now exits with a meaningful status after stopping its own local server.
+
+## 0.9.1 — free placement, preview gallery and ChemRefine tab
+
+Fragment selection now arms placement on empty space as well as attachment to
+atoms. Mouse coordinates are unprojected onto the current camera plane; insertion
+preserves framing so the fragment centroid stays at the clicked location. New
+molecules have an empty editable canvas. Selected/imported fragments without H/X
+can still be placed freely; H/X is required only for attachment.
+
+Command-B and the + toolbar button open a popup gallery with searchable categories
+and lazy, cached thumbnails rendered by the native Paton Metal renderer. The
+original seven templates are included alongside the 258 fragment/metal entries
+(265 choices); the sidebar catalog is removed. Command-Shift-B opens remaining
+Build & Edit controls (custom fragments, atoms, transforms, UFF and exports).
+Right-click or Finish placement ends placement.
+
+ChemRefine is now a dedicated main tab (Command-6), with its local editor spanning
+the workspace and no modal sheet or explorer/edit sidebar. It retains workflow
+creation, new workflow, browser opening and result import. Starting a workflow
+selects this tab; UFF and the chemistry runtime are unchanged.
+
+Validation: 28 standalone core regressions and three migrated suites passed.
+A real packaged Mac test opened the preview popup, rendered organic/metal previews,
+placed fragments by actual mouse down/up on an initially empty canvas, repeated
+placement after rotation/zoom, checked world and projected click coordinates,
+verified unchanged framing, undo and inactive-click safety, and loaded the live
+local ChemRefine editor in the dedicated tab. Local evidence stays in Downloads.
+
+Final 0.9.1 local gate: release ARM64 build/signature, 28 standalone core cases, three migrated suites, new native gallery/empty-click/tab acceptance, retained builder/UFF acceptance and smooth interaction/measurement/GIF-placement acceptance all passed. Installed both /Applications/ChemViewer.app and ~/Applications/ChemViewer.app. Popup thumbnails use one shared renderer with a bounded image cache rather than a Metal view per card.

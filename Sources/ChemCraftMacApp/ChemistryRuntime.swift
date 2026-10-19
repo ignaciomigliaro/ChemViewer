@@ -77,7 +77,7 @@ final class ChemistryRuntime: ObservableObject {
     }
 
     func openWorkflow(_ workspace: WorkspaceStore, destination: URL? = nil) {
-        if let guiProcess, guiProcess.isRunning, guiURL != nil { showingWorkflow = true; return }
+        if let guiProcess, guiProcess.isRunning, guiURL != nil { workspace.activeTab = "ChemRefine"; return }
         guard let frame = workspace.currentFrame, !frame.atoms.isEmpty else { workspace.errorMessage = "Build or open a structure first."; return }
         guard !frame.atoms.contains(where: { $0.element == "X" }) else { workspace.errorMessage = "Remove unused X sites before creating a calculation workflow."; return }
         guard installed else { workspace.errorMessage = "Run bash scripts/setup-chemistry.sh first."; return }
@@ -130,7 +130,7 @@ final class ChemistryRuntime: ObservableObject {
                 for _ in 0..<100 {
                     let text = (try? String(contentsOf: log, encoding: .utf8)) ?? ""
                     if let range = text.range(of: #"http://127\.0\.0\.1:\d+/\?token=[A-Za-z0-9_-]+"#, options: .regularExpression), let url = URL(string: String(text[range])) {
-                        guiURL = url; showingWorkflow = true; status = "Local ChemRefine ready. Configure engines, validate, then run."; return
+                        guiURL = url; workspace.activeTab = "ChemRefine"; status = "Local ChemRefine ready. Configure engines, validate, then run."; return
                     }
                     if !job.isRunning { workspace.errorMessage = "ChemRefine could not start. See \(log.path)"; return }
                     try? await Task.sleep(nanoseconds: 200_000_000)
@@ -142,18 +142,44 @@ final class ChemistryRuntime: ObservableObject {
 }
 
 struct LocalWorkflowView: View {
+    var embedded = false
     @ObservedObject private var runtime = ChemistryRuntime.shared
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var workspace: WorkspaceStore
     var body: some View {
         VStack(spacing: 0) {
-            HStack { Text("ChemRefine · Local workflow").font(.headline); Spacer(); Button("Open result…") {
-                let panel = NSOpenPanel(); panel.directoryURL = runtime.workflowDirectory?.appendingPathComponent("outputs")
-                panel.message = "Open a computed XYZ or calculation output in ChemViewer."
-                if panel.runModal() == .OK, let url = panel.url { workspace.open(url); dismiss() }
-            }; Button("Open in browser") { if let url = runtime.guiURL { NSWorkspace.shared.open(url) } }; Button("Done") { dismiss() } }.padding(10)
-            if let url = runtime.guiURL { WorkflowWebView(url: url) }
-        }.frame(minWidth: 1000, minHeight: 700)
+            HStack {
+                Text("ChemRefine · Local workflow").font(.headline)
+                Spacer()
+                if runtime.guiURL != nil {
+                    Button("New workflow…") { runtime.newWorkflow(workspace) }
+                    Button("Open result…", action: openResult)
+                    Button("Open in browser") { if let url = runtime.guiURL { NSWorkspace.shared.open(url) } }
+                }
+                if !embedded { Button("Done") { dismiss() } }
+            }.padding(10)
+            if let url = runtime.guiURL { WorkflowWebView(url: url).id(url) }
+            else {
+                VStack(spacing: 16) {
+                    Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 44)).foregroundStyle(.secondary)
+                    Text("Build, validate and run a local workflow").font(.title2)
+                    Text("Start from the current structure. The local ChemRefine editor includes workflow steps, templates, YAML, structures and run controls.")
+                        .multilineTextAlignment(.center).frame(maxWidth: 540)
+                    Button("Create workflow from current structure…") { runtime.openWorkflow(workspace) }
+                        .buttonStyle(.borderedProminent).disabled(workspace.currentFrame?.atoms.isEmpty ?? true)
+                    Text(runtime.status.isEmpty ? "Configure installed engine executables in the workflow editor." : runtime.status)
+                        .font(.caption).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, maxHeight: .infinity).padding()
+            }
+        }.frame(minWidth: embedded ? 400 : 1000, minHeight: embedded ? 300 : 700)
+    }
+    private func openResult() {
+        let panel = NSOpenPanel(); panel.directoryURL = runtime.workflowDirectory?.appendingPathComponent("outputs")
+        panel.message = "Open a computed XYZ or calculation output in ChemViewer."
+        if panel.runModal() == .OK, let url = panel.url {
+            workspace.open(url); workspace.activeTab = "Image"
+            if !embedded { dismiss() }
+        }
     }
 }
 private struct WorkflowWebView: NSViewRepresentable {

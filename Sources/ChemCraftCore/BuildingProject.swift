@@ -30,6 +30,11 @@ public struct BuildingProject: Codable {
     public static func fragment(_ index: Int) -> [Atom] { convert(IntegratedBuilding.builtInFragments[min(max(index, 0), IntegratedBuilding.builtInFragments.count - 1)].atoms) }
     public func deleting(_ indices: [Int]) throws -> Self { try Self(state.deleting(Set(indices))) }
     public func appending(_ atoms: [Atom]) throws -> Self { try Self(state.appending(Self.convert(atoms))) }
+    public func placing(_ fragment: [Atom], at location: Vector3) throws -> Self {
+        guard !fragment.isEmpty, [location.x, location.y, location.z].allSatisfy(\.isFinite) else { throw ParseError.malformed("Invalid fragment placement") }
+        let centroid = fragment.reduce(Vector3.zero) { $0 + $1.position } * (1 / Float(fragment.count))
+        return try appending(fragment.map { Atom(id: $0.id, element: $0.element, position: $0.position - centroid + location) })
+    }
     public func attaching(_ fragment: [Atom], hostLeaving: Int, fragmentLeaving: Int, bondLength: Double? = nil) throws -> Self {
         let result = try IntegratedBuilding.attachFragment(host: state.atoms, hostLeaving: hostLeaving, fragment: Self.convert(fragment), fragmentLeaving: fragmentLeaving, bondLength: bondLength)
         return try Self(state.attaching(result, hostLeaving: hostLeaving))

@@ -337,6 +337,26 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(EnergyUnit.kilocaloriePerMole.perHartree, 627.5094740631, accuracy: 1e-8)
     }
 
+    func testFreeFragmentPlacement() throws {
+        let fragment = BuildingProject.fragment(3)
+        let empty = try BuildingProject(atoms: [])
+        let point = Vector3(3, -2, 1)
+        let first = try empty.placing(fragment, at: point)
+        let centroid = first.atoms.reduce(Vector3.zero) { $0 + $1.position } * (1 / Float(first.atoms.count))
+        XCTAssertEqual((centroid - point).length, 0, accuracy: 1e-5)
+        XCTAssertEqual(first.atoms.count, fragment.count)
+        XCTAssertEqual(first.atoms.map(\.element), fragment.map(\.element))
+        let second = try first.placing(fragment, at: Vector3(-4, 2, 0))
+        XCTAssertEqual(Array(second.atoms.prefix(fragment.count)), first.atoms)
+        XCTAssertEqual(second.atoms.count, fragment.count * 2)
+        let a = (fragment[0].position - fragment[1].position).length
+        let b = (first.atoms[0].position - first.atoms[1].position).length
+        XCTAssertEqual(a, b, accuracy: 1e-5)
+        var rejected = false
+        do { _ = try empty.placing(fragment, at: Vector3(.nan, 0, 0)) } catch { rejected = true }
+        XCTAssertTrue(rejected)
+    }
+
     func testBuilderClickAttachmentAndAnyElement() throws {
         let host = try BuildingProject(atoms: BuildingProject.fragment(1)) // methane
         let methyl = BuildingProject.fragment(3)

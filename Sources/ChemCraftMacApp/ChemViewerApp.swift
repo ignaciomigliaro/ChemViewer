@@ -13,7 +13,7 @@ struct ChemViewerApp: App {
         .defaultSize(width: 1100, height: 760)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("New Molecule") { workspace.newMolecule() }.keyboardShortcut("n")
+                Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }.keyboardShortcut("n")
                 Button("Open…") { workspace.isImporterPresented = true }
                     .keyboardShortcut("o")
             }
@@ -23,10 +23,11 @@ struct ChemViewerApp: App {
                 Button("Redo Geometry Edit") { workspace.redoGeometry() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!workspace.canRedoGeometry)
             }
             CommandMenu("View") {
-                ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs"].enumerated()), id: \.offset) { index, tab in
+                ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"].enumerated()), id: \.offset) { index, tab in
                     Button(tab) { workspace.activeTab = tab }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }
-                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b")
+                Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
+                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b", modifiers: [.command, .shift])
                 Toggle("Result Explorer", isOn: $workspace.showExplorer)
                 Divider()
                 Button("Fit and Center") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "reset") }
