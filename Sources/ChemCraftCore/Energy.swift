@@ -42,11 +42,18 @@ public enum XYZCommentEnergy {
     private static let number = #"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][-+]?\d+)?)"#
     private static let named = try! NSRegularExpression(pattern: #"(?i)\b(?:energy|e)(?:[_\s]*(hartree|ha|eh|au|ev))?\s*[:=]\s*"# + number + #"(?![\w.])\s*([A-Za-z./⁻¹0-9-]*)"#)
     private static let bare = try! NSRegularExpression(pattern: #"(?i)^\s*"# + number + #"\s*([A-Za-z./⁻¹0-9-]*)\s*$"#)
+    private static let orca = try! NSRegularExpression(pattern: #"^\s*Coordinates from ORCA-job\s+.+?\s+E\s+"# + number + #"\s*$"#)
     public static func parse(_ comment: String, frameIndex: Int, sourceLine: Int) -> EnergyRecord? {
         let range = NSRange(comment.startIndex..<comment.endIndex, in: comment)
         let match: NSTextCheckingResult
         let numberGroup: Int, unitGroup: Int
         var prefix = ""
+        // ORCA trajectory comments declare electronic energies in atomic units.
+        if let found = orca.firstMatch(in: comment, range: range),
+           let r = Range(found.range(at: 1), in: comment),
+           let value = Double(comment[r].replacingOccurrences(of: "D", with: "E").replacingOccurrences(of: "d", with: "e")), value.isFinite {
+            return EnergyRecord(value: value, unit: .hartree, kind: .xyzComment, frameIndex: frameIndex, sourceLine: sourceLine, sourceText: comment)
+        }
         if let found = named.firstMatch(in: comment, range: range) {
             match = found; numberGroup = 2; unitGroup = 3
             if let r = Range(found.range(at: 1), in: comment) { prefix = String(comment[r]) }

@@ -337,6 +337,25 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(EnergyUnit.kilocaloriePerMole.perHartree, 627.5094740631, accuracy: 1e-8)
     }
 
+    func testORCATrajectoryCommentEnergies() throws {
+        // Independently generated ORCA-style comments, not personal calculation data.
+        let comments = ["Coordinates from ORCA-job sample E -10.125",
+                        "Coordinates from ORCA-job sample_path E -1.000D+01",
+                        "Coordinates from ORCA-job sample E -9.875",
+                        "generic comment E -10.0", "Coordinates from ORCA-job sample E nan"]
+        let doc = try XYZParser.parse(text: comments.map { "1\n\($0)\nH 0 0 0\n" }.joined())
+        XCTAssertEqual(doc.frames.count, 5)
+        XCTAssertEqual(doc.energyRecords.count, 3)
+        XCTAssertEqual(doc.frames[0].energyHartree!, -10.125, accuracy: 1e-12)
+        XCTAssertEqual(doc.frames[1].energyHartree!, -10, accuracy: 1e-12)
+        XCTAssertEqual(doc.frames[2].energyHartree!, -9.875, accuracy: 1e-12)
+        XCTAssertEqual(doc.energyRecords.map(\.sourceLine), [2, 5, 8])
+        XCTAssertEqual(doc.energyRecords.map(\.frameIndex), [0, 1, 2])
+        XCTAssertTrue(doc.energyRecords.allSatisfy { $0.unit == .hartree })
+        XCTAssertEqual(doc.energyRecords[0].sourceText, comments[0])
+        XCTAssertTrue(doc.frames[3].energyHartree == nil && doc.frames[4].energyHartree == nil)
+    }
+
     func testSCFAndFinalEnergyStayDistinct() throws {
         let text = """
         CARTESIAN COORDINATES (ANGSTROEM)
