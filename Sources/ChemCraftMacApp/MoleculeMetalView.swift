@@ -161,7 +161,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             if !preservePlacementCamera && (oldValue.atoms.isEmpty || scene.geometryID != oldValue.geometryID || scene.atoms.count != oldValue.atoms.count || scene.style != oldValue.style) {
                 recalculateBounds()
             }
-            preservePlacementCamera = false
+            if scene.atoms != oldValue.atoms { preservePlacementCamera = false }
             enableSetNeedsDisplay = !scene.animate && !atomDragActive
             isPaused = !scene.animate && !atomDragActive
             setNeedsDisplay(bounds)

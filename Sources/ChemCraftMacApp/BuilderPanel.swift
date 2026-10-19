@@ -132,7 +132,7 @@ struct BuilderPanel: View {
     }
     private func loadSavedFragment() { importFragment(directory: savedFolder) }
     private func heading(_ text: String) -> some View { VStack(alignment: .leading) { Divider(); Text(text).font(.caption.bold()) } }
-    private func resetSite() { leaving = sites.first ?? -1 }
+    private func resetSite() { leaving = fragment.indices.first(where: { fragment[$0].element == "X" }) ?? sites.first ?? -1 }
     private func transform(_ distance: Float, _ degrees: Float) { workspace.transformBuildingSelection(axis: axis, distance: distance, degrees: degrees) }
     private func importFragment(directory: URL? = nil) {
         let panel = NSOpenPanel(); panel.directoryURL = directory; panel.allowedContentTypes = [.plainText, .data]

@@ -37,8 +37,13 @@ enum FragmentPlacementSmokeTest {
                 content.cacheDisplay(in: content.bounds, to: bitmap)
                 if let png = bitmap.representation(using: .png, properties: [:]) { try png.write(to: evidence.appendingPathComponent("fragment-browser.png")) }
             }
+            let ligand = LibraryFragment.all.first { $0.name == "Triphenylphosphine donor" }!
+            workspace.armFragment(ligand); workspace.isFragmentLibraryPresented = false
+            workspace.isBuilderVisible = true; try await Task.sleep(nanoseconds: 200_000_000)
+            try require(workspace.pendingAttachment?[workspace.pendingAttachmentLeaving].element == "X", "Opening edit controls replaced the dummy attachment site with a ligand hydrogen")
+            workspace.isBuilderVisible = false
             let item = LibraryFragment.all[0]
-            workspace.armFragment(item); workspace.isFragmentLibraryPresented = false
+            workspace.armFragment(item)
             try await Task.sleep(nanoseconds: 300_000_000)
             let view = try viewport()
             let point = CGPoint(x: view.bounds.width * 0.65, y: view.bounds.height * 0.55)
@@ -52,7 +57,7 @@ enum FragmentPlacementSmokeTest {
             let projected = atoms.indices.compactMap { view.projectedAtomPoint($0) }
             let cx = projected.reduce(CGFloat(0)) { $0 + $1.x } / CGFloat(projected.count)
             let cy = projected.reduce(CGFloat(0)) { $0 + $1.y } / CGFloat(projected.count)
-            try require(hypot(cx - point.x, cy - point.y) < 2, "Placement reset camera or moved away from click")
+            try require(hypot(cx - point.x, cy - point.y) < 2, "Placement moved: expected \(point), projected \(cx),\(cy), bounds \(view.bounds.size), drawable \(view.drawableSize)")
             NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "left")
             NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "in")
             let secondPoint = CGPoint(x: view.bounds.width * 0.25, y: view.bounds.height * 0.4)
