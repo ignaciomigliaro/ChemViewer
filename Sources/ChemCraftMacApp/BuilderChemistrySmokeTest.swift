@@ -30,6 +30,9 @@ enum BuilderChemistrySmokeTest {
             try require(workspace.placeBuilderItem(at: 0), "Element click not handled")
             try require(workspace.currentFrame?.atoms.last?.element == "Cl", "Chlorine insertion")
             workspace.clearSelection()
+            workspace.pendingElement = "F"; workspace.isDraggingEnabled = true
+            try require(workspace.pendingElement == nil && workspace.pendingAttachment == nil, "Drag mode did not finish placement")
+            workspace.isDraggingEnabled = false
             let water = [Atom(id: 0, element: "O", position: .zero), Atom(id: 1, element: "H", position: Vector3(1.1, 0, 0)), Atom(id: 2, element: "H", position: Vector3(0, 1.1, 0))]
             workspace.applyBuildingProject(try BuildingProject(atoms: water))
             workspace.selectedAtomIndices = [0]
@@ -71,10 +74,10 @@ enum BuilderChemistrySmokeTest {
             }
             runtime.stopWorkflowTestServer()
             print("BUILDER_CHEMISTRY_PASS: 258 catalog fragments, click fragment/element placement, undo, genuine UFF convergence, fixed atoms, cancellation and embedded local ChemRefine GUI")
-            fflush(stdout); NSApp.terminate(nil)
+            fflush(stdout); exit(0)
         } catch {
             runtime.stopWorkflowTestServer()
-            fputs("BUILDER_CHEMISTRY_FAIL: \(error.localizedDescription)\n", stderr); fflush(stderr); NSApp.terminate(nil)
+            fputs("BUILDER_CHEMISTRY_FAIL: \(error.localizedDescription)\n", stderr); fflush(stderr); exit(1)
         }
     }
 }

@@ -62,6 +62,7 @@ struct BuilderPanel: View {
             .onChange(of: element) { value in if workspace.pendingElement != nil { workspace.pendingElement = value } }
             .onChange(of: leaving) { value in workspace.pendingAttachmentLeaving = value }
             .onAppear { resetSite(); selection = workspace.selectedAtomIndices.map { String($0 + 1) }.joined(separator: ",") }
+            .onDisappear { workspace.pendingAttachment = nil; workspace.pendingElement = nil; workspace.buildingHint = "" }
             .onChange(of: workspace.selectedAtomIndices) { indices in selection = indices.map { String($0 + 1) }.joined(separator: ",") }
     }
     private var fragmentControls: some View {

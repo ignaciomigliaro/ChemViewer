@@ -44,7 +44,7 @@ final class WorkspaceStore: ObservableObject {
     private var geometryRedoStacks: [Int: [Snapshot]] = [:]
     @Published var isDraggingEnabled = false {
         didSet {
-            if isDraggingEnabled { stopTrajectoryPlayback(); selectedModeIndex = nil; isVibrating = false }
+            if isDraggingEnabled { pendingAttachment = nil; pendingElement = nil; buildingHint = ""; stopTrajectoryPlayback(); selectedModeIndex = nil; isVibrating = false }
             else { finishAtomDrag() }
         }
     }
