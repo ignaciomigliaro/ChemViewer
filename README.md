@@ -37,6 +37,14 @@ bash scripts/build-macos.sh
 open dist/ChemViewer.app
 ```
 
+To build and update the installed app in one command:
+
+```bash
+bash scripts/install-macos.sh
+```
+
+This updates `/Applications/ChemViewer.app` and any existing `~/Applications/ChemViewer.app` copy, so existing shortcuts open the current version. Quit and reopen ChemViewer after updating; no Finder dragging is needed. After an already validated build, use `bash scripts/install-macos.sh --no-build`. The script does not close the running app or discard unsaved work.
+
 The script runs XCTest when full Xcode is selected. On Command Line Tools-only Macs it instead runs the checked-in core regression assertions through an explicitly standalone runner (not XCTest). CI requires genuine XCTest with `--require-xctest`. It then builds an ARM64 executable, creates a conventional
 `.app` bundle, copies SwiftPM resources, applies an ad-hoc local signature, and
 verifies the bundle. Distribution outside the development machine will require
