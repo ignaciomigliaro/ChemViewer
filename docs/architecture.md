@@ -208,3 +208,5 @@ placed fragments by actual mouse down/up on an initially empty canvas, repeated
 placement after rotation/zoom, checked world and projected click coordinates,
 verified unchanged framing, undo and inactive-click safety, and loaded the live
 local ChemRefine editor in the dedicated tab. Local evidence stays in Downloads.
+
+The ChemRefine tab retains its WKWebView for the current server session across tab changes. The native acceptance test switches to Image and back, verifies the same web view and JavaScript state survive, and checks the real editor still renders. This preserves unsaved workflow form edits while viewing/building structures.

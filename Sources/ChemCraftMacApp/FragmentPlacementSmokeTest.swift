@@ -81,9 +81,16 @@ enum FragmentPlacementSmokeTest {
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             try require(page.contains("Workflow settings"), "ChemRefine tab did not render its local editor")
+            _ = try await web.evaluateJavaScript("window.chemViewerStateProbe = 'preserved'")
+            workspace.activeTab = "Image"; try await Task.sleep(nanoseconds: 150_000_000)
+            workspace.activeTab = "ChemRefine"; try await Task.sleep(nanoseconds: 150_000_000)
+            let returned = NSApp.windows.compactMap(\.contentView).compactMap({ find(WKWebView.self, $0) }).first
+            try require(returned === web, "Switching tabs recreated the workflow editor")
+            let state = try await web.evaluateJavaScript("window.chemViewerStateProbe") as? String
+            try require(state == "preserved", "Switching tabs lost the workflow editor state")
             if let snapshot = try? await web.takeSnapshot(configuration: nil), let tiff = snapshot.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff), let data = bitmap.representation(using: .png, properties: [:]) { try data.write(to: evidence.appendingPathComponent("chemrefine-tab.png")) }
             runtime.stopWorkflowTestServer()
-            print("FRAGMENT_PLACEMENT_PASS: popup gallery, Metal previews, empty-molecule mouse placement, repeated/rotated/zoomed placement, preserved framing, undo, inactive-click safety and dedicated live ChemRefine tab")
+            print("FRAGMENT_PLACEMENT_PASS: popup gallery, Metal previews, empty-molecule mouse placement, repeated/rotated/zoomed placement, preserved framing, undo, inactive-click safety and persistent dedicated live ChemRefine tab")
             fflush(stdout); exit(0)
         } catch { runtime.stopWorkflowTestServer(); fputs("FRAGMENT_PLACEMENT_FAIL: \(error.localizedDescription)\n", stderr); fflush(stderr); exit(1) }
     }

@@ -105,3 +105,5 @@ available; no UMA optimization has been implemented or claimed tested here.
   ChemRefine startup and actual page rendering checked through WebKit.
 - Real local ChemRefine HTTP bootstrap and validation of the generated starter
   workflow passed. Local screenshot/evidence stays in Downloads, not the repository.
+
+The ChemRefine tab retains its WKWebView for the current server session across tab changes. The native acceptance test switches to Image and back, verifies the same web view and JavaScript state survive, and checks the real editor still renders. This preserves unsaved workflow form edits while viewing/building structures.

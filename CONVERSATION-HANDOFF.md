@@ -378,3 +378,5 @@ verified unchanged framing, undo and inactive-click safety, and loaded the live
 local ChemRefine editor in the dedicated tab. Local evidence stays in Downloads.
 
 Final 0.9.1 local gate: release ARM64 build/signature, 28 standalone core cases, three migrated suites, new native gallery/empty-click/tab acceptance, retained builder/UFF acceptance and smooth interaction/measurement/GIF-placement acceptance all passed. Installed both /Applications/ChemViewer.app and ~/Applications/ChemViewer.app. Popup thumbnails use one shared renderer with a bounded image cache rather than a Metal view per card.
+
+The ChemRefine tab retains its WKWebView for the current server session across tab changes. The native acceptance test switches to Image and back, verifies the same web view and JavaScript state survive, and checks the real editor still renders. This preserves unsaved workflow form edits while viewing/building structures.

@@ -12,6 +12,14 @@ final class ChemistryRuntime: ObservableObject {
     @Published var guiURL: URL?
     @Published var workflowDirectory: URL?
     @Published var showingWorkflow = false
+    private var workflowBrowser: WKWebView?
+    private var workflowBrowserURL: URL?
+    func webView(for url: URL) -> WKWebView {
+        if workflowBrowserURL == url, let workflowBrowser { return workflowBrowser }
+        let view = WKWebView(); view.load(URLRequest(url: url))
+        workflowBrowser = view; workflowBrowserURL = url
+        return view
+    }
     private var process: Process?
     private var guiProcess: Process?
     private var previousWorkflowServers: [Process] = []
@@ -184,6 +192,6 @@ struct LocalWorkflowView: View {
 }
 private struct WorkflowWebView: NSViewRepresentable {
     let url: URL
-    func makeNSView(context: Context) -> WKWebView { let view = WKWebView(); view.load(URLRequest(url: url)); return view }
+    func makeNSView(context: Context) -> WKWebView { ChemistryRuntime.shared.webView(for: url) }
     func updateNSView(_ view: WKWebView, context: Context) {}
 }
