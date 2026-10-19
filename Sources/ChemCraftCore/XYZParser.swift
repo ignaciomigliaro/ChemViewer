@@ -2,9 +2,10 @@ import Foundation
 
 public enum XYZParser {
     public static func parse(text: String, title: String = "Untitled.xyz") throws -> ParsedDocument {
-        let lines = text.components(separatedBy: .newlines)
+        let lines = text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n").components(separatedBy: "\n")
         var cursor = 0
         var frames: [MoleculeFrame] = []
+        var energies: [EnergyRecord] = []
 
         while cursor < lines.count {
             while cursor < lines.count && lines[cursor].trimmingCharacters(in: .whitespaces).isEmpty {
@@ -18,6 +19,7 @@ public enum XYZParser {
             guard cursor < lines.count else {
                 throw ParseError.malformed("missing XYZ comment line")
             }
+            let commentLine = cursor + 1
             let comment = lines[cursor]
             cursor += 1
             var atoms: [Atom] = []
@@ -32,7 +34,7 @@ public enum XYZParser {
                 guard fields.count >= 4,
                       let x = Float(fields[1]),
                       let y = Float(fields[2]),
-                      let z = Float(fields[3]) else {
+                      let z = Float(fields[3]), x.isFinite, y.isFinite, z.isFinite else {
                     throw ParseError.malformed("invalid atom row at line \(cursor)")
                 }
                 atoms.append(Atom(
@@ -41,10 +43,12 @@ public enum XYZParser {
                     position: Vector3(x, y, z)
                 ))
             }
-            frames.append(MoleculeFrame(id: frames.count, atoms: atoms, comment: comment))
+            let energy = XYZCommentEnergy.parse(comment, frameIndex: frames.count, sourceLine: commentLine)
+            if let energy { energies.append(energy) }
+            frames.append(MoleculeFrame(id: frames.count, atoms: atoms, comment: comment, energyHartree: energy?.hartree()))
         }
 
         guard !frames.isEmpty else { throw ParseError.noGeometry }
-        return ParsedDocument(title: title, sourceFormat: "XYZ", frames: frames)
+        return ParsedDocument(title: title, sourceFormat: "XYZ", frames: frames, energyRecords: energies)
     }
 }

@@ -3,6 +3,11 @@ import Foundation
 public enum GeometryEditError: LocalizedError, Equatable {
     case atomIndexOutOfRange(Int)
     case invalidDistance(Float)
+    case invalidAngle(Float)
+    case invalidTransform
+    case ringBondCannotSplit
+    case missingBoundaryBond
+    case repeatedAtoms
     case coincidentAtoms
 
     public var errorDescription: String? {
@@ -11,6 +16,11 @@ public enum GeometryEditError: LocalizedError, Equatable {
             return "Atom index \(index) is outside this geometry."
         case .invalidDistance(let distance):
             return "Bond length must be positive; received \(distance)."
+        case .invalidAngle(let angle): return "Angle must be finite and between 0 and 180 degrees; received \(angle)."
+        case .invalidTransform: return "Use finite coordinates, a nonzero rotation axis and a finite rotation angle."
+        case .ringBondCannotSplit: return "This bond belongs to a ring and does not separate a fragment. Choose another boundary bond."
+        case .missingBoundaryBond: return "The selected atoms do not define an inferred bond."
+        case .repeatedAtoms: return "Select distinct atoms."
         case .coincidentAtoms:
             return "A bond direction cannot be inferred from coincident atoms."
         }
@@ -52,7 +62,7 @@ public enum GeometryEditor {
         movingAtomIndex: Int,
         to targetLength: Float
     ) throws -> MoleculeFrame {
-        guard targetLength > 0 else { throw GeometryEditError.invalidDistance(targetLength) }
+        guard targetLength.isFinite && targetLength > 0 else { throw GeometryEditError.invalidDistance(targetLength) }
         guard frame.atoms.indices.contains(fixedAtomIndex) else {
             throw GeometryEditError.atomIndexOutOfRange(fixedAtomIndex)
         }
@@ -71,6 +81,89 @@ public enum GeometryEditor {
             atomIndex: movingAtomIndex,
             with: fixed + direction * (targetLength / currentLength)
         )
+    }
+
+    public enum DistanceMovement: String, CaseIterable, Sendable {
+        case secondAtom = "Move second atom"
+        case bothAtoms = "Move both equally"
+    }
+
+    public static func settingDistance(in frame: MoleculeFrame, first: Int, second: Int, to target: Float, movement: DistanceMovement) throws -> MoleculeFrame {
+        guard first != second else { throw GeometryEditError.repeatedAtoms }
+        let moved = try settingBondLength(in: frame, fixedAtomIndex: first, movingAtomIndex: second, to: target)
+        guard movement == .bothAtoms else { return moved }
+        let delta = (moved.atoms[second].position - frame.atoms[second].position) * 0.5
+        var result = frame
+        result.atoms[first].position = frame.atoms[first].position - delta
+        result.atoms[second].position = frame.atoms[second].position + delta
+        return result
+    }
+
+    public enum AngleMovement: String, CaseIterable, Sendable {
+        case thirdAtom = "Move C only"
+        case bothEnds = "Move A and C equally"
+    }
+
+    /// A-B-C: A and B stay fixed; C rotates in the original plane about B.
+    /// Both adjacent distances are preserved. Collinear input uses a deterministic plane.
+    public static func settingAngle(in frame: MoleculeFrame, first: Int, vertex: Int, third: Int, toDegrees target: Float, movement: AngleMovement = .thirdAtom) throws -> MoleculeFrame {
+        guard Set([first, vertex, third]).count == 3 else { throw GeometryEditError.repeatedAtoms }
+        guard target.isFinite && target >= 0 && target <= 180 else { throw GeometryEditError.invalidAngle(target) }
+        let a = try position(in: frame, atomIndex: first), b = try position(in: frame, atomIndex: vertex), c = try position(in: frame, atomIndex: third)
+        let left = a - b, right = c - b
+        guard left.length > 1e-7 && right.length > 1e-7 else { throw GeometryEditError.coincidentAtoms }
+        let u = left * (1 / left.length)
+        var perpendicular = right - u * dot(right, u)
+        if perpendicular.length < 1e-7 {
+            let reference = abs(u.z) < 0.9 ? Vector3(0, 0, 1) : Vector3(0, 1, 0)
+            perpendicular = reference - u * dot(reference, u)
+        }
+        let v = perpendicular * (1 / perpendicular.length)
+        if movement == .bothEnds {
+            let current = try angleDegrees(in: frame, firstAtomIndex: first, vertexAtomIndex: vertex, thirdAtomIndex: third)
+            let axis = cross(u, v)
+            let halfChange = (target - current) / 2
+            let firstMoved = try rotating(in: frame, atomIndices: [first], around: b, axis: axis, degrees: -halfChange)
+            return try rotating(in: firstMoved, atomIndices: [third], around: b, axis: axis, degrees: halfChange)
+        }
+        let radians = target * .pi / 180
+        return try replacingPosition(in: frame, atomIndex: third, with: b + (u * cos(radians) + v * sin(radians)) * right.length)
+    }
+
+    public static func connectedAtoms(in frame: MoleculeFrame, seed: Int, excluding bond: Bond? = nil) throws -> [Int] {
+        _ = try position(in: frame, atomIndex: seed)
+        var neighbors = Array(repeating: [Int](), count: frame.atoms.count)
+        for edge in BondBuilder.inferBonds(atoms: frame.atoms) {
+            if let bond, (edge.first == bond.first && edge.second == bond.second) || (edge.first == bond.second && edge.second == bond.first) { continue }
+            neighbors[edge.first].append(edge.second); neighbors[edge.second].append(edge.first)
+        }
+        var seen: Set<Int> = [seed], queue = [seed], cursor = 0
+        while cursor < queue.count {
+            for next in neighbors[queue[cursor]] where seen.insert(next).inserted { queue.append(next) }
+            cursor += 1
+        }
+        return seen.sorted()
+    }
+
+    public static func fragment(in frame: MoleculeFrame, fixed: Int, moving: Int) throws -> [Int] {
+        _ = try position(in: frame, atomIndex: fixed)
+        _ = try position(in: frame, atomIndex: moving)
+        guard fixed != moving else { throw GeometryEditError.repeatedAtoms }
+        guard let boundary = BondBuilder.inferBonds(atoms: frame.atoms).first(where: { ($0.first == fixed && $0.second == moving) || ($0.first == moving && $0.second == fixed) }) else { throw GeometryEditError.missingBoundaryBond }
+        let group = try connectedAtoms(in: frame, seed: moving, excluding: boundary)
+        guard !group.contains(fixed) else { throw GeometryEditError.ringBondCannotSplit }
+        return group
+    }
+
+    public static func rotating(in frame: MoleculeFrame, atomIndices: [Int], around pivot: Vector3, axis: Vector3, degrees: Float) throws -> MoleculeFrame {
+        guard [pivot.x, pivot.y, pivot.z, axis.x, axis.y, axis.z, degrees].allSatisfy({ $0.isFinite }), axis.length > 1e-7 else { throw GeometryEditError.invalidTransform }
+        let u = axis * (1 / axis.length), angle = degrees * .pi / 180
+        var result = frame
+        for index in Set(atomIndices) {
+            let p = try position(in: frame, atomIndex: index) - pivot
+            result.atoms[index].position = pivot + p * cos(angle) + cross(u, p) * sin(angle) + u * (dot(u, p) * (1 - cos(angle)))
+        }
+        return result
     }
 
     public static func distance(

@@ -1,3 +1,4 @@
+import AppKit
 import ChemCraftCore
 import SwiftUI
 import UniformTypeIdentifiers
@@ -5,69 +6,50 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
 
+    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs"]
+
     var body: some View {
-        HSplitView {
-            sidebar
-                .frame(minWidth: 230, idealWidth: 270, maxWidth: 360)
-            mainPanel
-        }
-        .toolbar {
-            ToolbarItemGroup {
-                Button {
-                    workspace.isImporterPresented = true
-                } label: {
-                    Label("Open", systemImage: "folder")
+        VStack(spacing: 0) {
+            ClassicMenuBar()
+            HStack(spacing: 5) {
+                ForEach(tabs, id: \.self) { tab in
+                    Button { workspace.activeTab = tab } label: {
+                        Text(tab).font(.system(size: 17, weight: workspace.activeTab == tab ? .semibold : .regular))
+                            .frame(width: tab == "Image/Abs" ? 115 : 100, height: 31)
+                            .background(workspace.activeTab == tab ? Color.white : Color.clear)
+                            .overlay(Rectangle().stroke(workspace.activeTab == tab ? Color.accentColor : .clear, lineWidth: 1))
+                    }.buttonStyle(.plain)
                 }
-                if workspace.selectedMode != nil {
-                    Button {
-                        workspace.isVibrating.toggle()
-                    } label: {
-                        Label(
-                            workspace.isVibrating ? "Pause vibration" : "Animate vibration",
-                            systemImage: workspace.isVibrating ? "pause.fill" : "play.fill"
-                        )
-                    }
-                    Toggle(isOn: $workspace.showDisplacementVectors) {
-                        Label("Mode vectors", systemImage: "arrow.up.right")
-                    }
+                Spacer()
+            }.padding(.horizontal, 5).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))
+            Divider()
+            ScrollView(.horizontal, showsIndicators: false) { classicToolbar }
+            Divider()
+            if workspace.isDraggingEnabled { ManipulationToolbar() }
+            Divider()
+            HSplitView {
+                if workspace.showExplorer {
+                    sidebar.frame(minWidth: 220, idealWidth: 255, maxWidth: 340)
                 }
-                if workspace.document != nil {
-                    Button {
-                        workspace.isExporterPresented = true
-                    } label: {
-                        Label("Export XYZ", systemImage: "square.and.arrow.down")
-                    }
-                    Button {
-                        workspace.isCoordinateEditorPresented = true
-                    } label: {
-                        Label("Coordinates", systemImage: "tablecells")
-                    }
-                    Button {
-                        workspace.undoGeometry()
-                    } label: {
-                        Label("Undo geometry", systemImage: "arrow.uturn.backward")
-                    }
-                    .disabled(!workspace.canUndoGeometry)
-                }
-                if let document = workspace.document, document.frames.count > 1 {
-                    Button {
-                        workspace.toggleTrajectoryPlayback()
-                    } label: {
-                        Label(
-                            workspace.isPlayingTrajectory ? "Pause trajectory" : "Play trajectory",
-                            systemImage: workspace.isPlayingTrajectory ? "pause.fill" : "play.fill"
-                        )
-                    }
-                }
-                if let document = workspace.document,
-                   document.vibrationalModes.contains(where: { $0.infraredIntensity != nil }) {
-                    Button {
-                        workspace.isSpectrumPresented = true
-                    } label: {
-                        Label("IR spectrum", systemImage: "chart.xyaxis.line")
-                    }
-                }
+                tabContent
+                if workspace.isBuilderVisible { BuilderPanel() }
             }
+        }
+        .preferredColorScheme(.light)
+        .background(GeometryNavigationKeys(enabled: !["Source", "Coord"].contains(workspace.activeTab), step: workspace.stepFrame,
+            clear: workspace.clearSelection,
+            selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
+            .frame(width: 0, height: 0).allowsHitTesting(false))
+        .task {
+            if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--neb-smoke-test") { await NEBSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--merge-smoke-test") { await MergeSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--animation-smoke-test") { await AnimationSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--smooth-smoke-test") { await SmoothInteractionSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--render-benchmark") { await RenderBenchmark.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--manipulation-smoke-test") { await ManipulationSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--energy-smoke-test") { await EnergyWorkflowSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--smoke-test") { await AppSmokeTest.run(workspace: workspace) }
         }
         .fileImporter(
             isPresented: $workspace.isImporterPresented,
@@ -102,6 +84,10 @@ struct ContentView: View {
         } message: {
             Text(workspace.errorMessage ?? "Unknown error")
         }
+        .sheet(isPresented: $workspace.isAnimationExportPresented) { AnimationExportView() }
+        .sheet(isPresented: $workspace.isEnergyLandscapePresented) {
+            EnergyLandscapeView()
+        }
         .sheet(isPresented: $workspace.isSpectrumPresented) {
             if let modes = workspace.document?.vibrationalModes {
                 SpectrumView(modes: modes)
@@ -117,6 +103,77 @@ struct ContentView: View {
         }
     }
 
+    private func viewportAction(_ action: String) {
+        NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: action)
+    }
+
+    private func tool(_ title: String, _ icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) { Image(systemName: icon).frame(width: 23, height: 23) }
+            .buttonStyle(ClassicButtonStyle()).controlSize(.small).help(title).accessibilityLabel(title)
+    }
+
+    private var classicToolbar: some View {
+        HStack(spacing: 5) {
+            tool("Open chemistry file", "folder") { workspace.isImporterPresented = true }
+            tool("Export PNG image", "camera") {
+                workspace.activeTab = "Image"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { viewportAction("export") }
+            }.disabled(workspace.currentFrame == nil)
+            Divider().frame(height: 24)
+            tool("Build molecule", "plus") { workspace.isBuilderVisible.toggle() }
+            tool("Toggle dragging", "hand.point.up.fill") { workspace.isDraggingEnabled.toggle() }
+            tool("Select connected molecule", "globe") { workspace.selectConnectedGroup() }
+            Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Toggle hydrogen visibility")
+            ForEach([(AtomCaption.numbers, "1"), (.elements, "C1"), (.elementNumbers, "A"), (.none, "●")], id: \.0) { caption, title in
+                Button(title) { workspace.atomCaption = caption }.buttonStyle(ClassicButtonStyle()).help(caption.rawValue)
+            }
+            tool("Show result explorer", "sidebar.left") { workspace.showExplorer.toggle() }
+            tool("Fit and center molecule", "arrow.up.left.and.arrow.down.right") { viewportAction("reset") }
+            tool("Undo coordinate edit", "arrow.uturn.backward") { workspace.undoGeometry() }
+                .disabled(!workspace.canUndoGeometry)
+            tool("Redo coordinate edit", "arrow.uturn.forward") { workspace.redoGeometry() }.disabled(!workspace.canRedoGeometry)
+            tool("Export XYZ coordinates", "square.and.arrow.down") { workspace.requestXYZExport() }
+                .disabled(workspace.currentFrame == nil)
+            Divider().frame(height: 24)
+            tool(workspace.isVibrating ? "Pause frequency" : "Animate frequency", workspace.isVibrating ? "pause.fill" : "play.fill") { workspace.isVibrating.toggle() }
+                .disabled(workspace.selectedMode == nil)
+            Toggle("Vectors", isOn: $workspace.showDisplacementVectors).toggleStyle(.checkbox)
+                .disabled(workspace.selectedMode == nil)
+            tool("Play or pause geometries", "film") { workspace.toggleTrajectoryPlayback() }
+                .disabled((workspace.document?.frames.count ?? 0) < 2)
+            tool("Export trajectory or frequency GIF", "photo.on.rectangle.angled") { workspace.presentAnimationExport() }
+                .disabled(workspace.currentFrame == nil)
+            tool("Energy landscape", "chart.xyaxis.line") { workspace.isEnergyLandscapePresented = true }
+                .disabled((workspace.document?.frames.count ?? 0) < 2 && workspace.document?.nebProfile == nil)
+            tool("IR spectrum", "waveform.path") { workspace.isSpectrumPresented = true }
+                .disabled(!(workspace.document?.vibrationalModes.contains { $0.infraredIntensity != nil } ?? false))
+            Picker("Display", selection: $workspace.renderingStyle) {
+                ForEach(MolecularStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.labelsHidden().frame(width: 135)
+            Spacer()
+            Text("ChemViewer").font(.caption).foregroundStyle(.secondary)
+        }.padding(.horizontal, 8).padding(.vertical, 5).background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    @ViewBuilder private var tabContent: some View {
+        switch workspace.activeTab {
+        case "Abstract": abstractPanel
+        case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)
+        case "Coord":
+            if let frame = workspace.currentFrame {
+                CoordinateEditorView(frame: frame, embedded: true) { workspace.replaceCurrentAtoms($0) }
+                    .id("\(workspace.frameIndex)-\(workspace.geometryRevision)")
+            } else { Text("Open a structure to edit coordinates.").frame(maxWidth: .infinity, maxHeight: .infinity) }
+        case "Image/Abs":
+            HSplitView { mainPanel; abstractPanel.frame(minWidth: 280, idealWidth: 340) }
+        default: mainPanel
+        }
+    }
+
+    private var abstractPanel: some View {
+        CalculationAbstractView(showStructure: workspace.activeTab == "Abstract")
+    }
+
     @ViewBuilder
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -126,6 +183,7 @@ struct ContentView: View {
                     .lineLimit(2)
                     .padding()
                 Divider()
+                ScrollViewReader { proxy in
                 List {
                     Section("Geometries") {
                         ForEach(Array(document.frames.enumerated()), id: \.offset) { index, frame in
@@ -144,13 +202,15 @@ struct ContentView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .id("geometry-\(index)")
+                            .listRowBackground(workspace.frameIndex == index ? Color.accentColor.opacity(0.12) : Color.clear)
                         }
                     }
-                    if !document.vibrationalModes.isEmpty {
+                    if !workspace.availableModes.isEmpty {
                         Section("Frequencies (cm⁻¹)") {
-                            ForEach(document.vibrationalModes) { mode in
+                            ForEach(workspace.availableModes) { mode in
                                 Button {
-                                    workspace.selectedModeIndex = mode.index
+                                    workspace.selectMode(mode.index)
                                 } label: {
                                     HStack {
                                         Image(systemName: workspace.selectedModeIndex == mode.index ? "waveform.circle.fill" : "waveform.circle")
@@ -166,6 +226,18 @@ struct ContentView: View {
                         }
                     }
                 }
+                .onAppear { proxy.scrollTo("geometry-\(workspace.frameIndex)", anchor: .center) }
+                .onChange(of: workspace.frameIndex) { index in proxy.scrollTo("geometry-\(index)", anchor: .center) }
+                }
+                HStack {
+                    Button { workspace.stepFrame(-1) } label: { Image(systemName: "chevron.up") }
+                        .disabled(workspace.frameIndex == 0)
+                    Text("\(workspace.frameIndex + 1) / \(document.frames.count)").monospacedDigit()
+                    Button { workspace.stepFrame(1) } label: { Image(systemName: "chevron.down") }
+                        .disabled(workspace.frameIndex + 1 >= document.frames.count)
+                    Spacer()
+                    Text("Arrow keys").font(.caption).foregroundStyle(.secondary)
+                }.padding(8)
                 if !document.warnings.isEmpty {
                     Divider()
                     ForEach(document.warnings, id: \.self) { warning in
@@ -201,16 +273,52 @@ struct ContentView: View {
         } else if let document = workspace.document,
                   document.frames.indices.contains(workspace.frameIndex) {
             VStack(spacing: 0) {
+                HStack(spacing: 0) {
                 MoleculeMetalView(
                     frame: document.frames[workspace.frameIndex],
                     mode: workspace.selectedMode,
                     isAnimating: workspace.isVibrating,
                     amplitude: workspace.vibrationAmplitude,
                     showDisplacementVectors: workspace.showDisplacementVectors,
-                    selectedAtomIndices: $workspace.selectedAtomIndices
+                    style: workspace.renderingStyle,
+                    showHydrogens: workspace.showHydrogens, atomCaption: workspace.atomCaption, vibrationSpeed: workspace.vibrationSpeed,
+                    selectedAtomIndices: $workspace.selectedAtomIndices,
+                    showMeasurementOverlay: workspace.showMeasurementOverlay,
+                    draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
+                    onClearSelection: workspace.clearSelection,
+                    onManipulationSelection: { _ = workspace.selectManipulationSeed($0) },
+                    onBeginAtomDrag: workspace.beginAtomDrag,
+                    onDragAtomIndices: { workspace.manipulationIndices },
+                    onPreviewAtomDrag: workspace.previewAtomDrag,
+                    onFinishAtomDrag: workspace.finishAtomDrag,
+                    onRenderingFailure: { workspace.errorMessage = $0 }
                 )
                 Divider()
-                statusBar(document)
+                VStack(spacing: 7) {
+                    tool("Rotate left", "arrow.counterclockwise") { viewportAction("left") }
+                    tool("Rotate right", "arrow.clockwise") { viewportAction("right") }
+                    tool("Rotate up", "arrow.up") { viewportAction("up") }
+                    tool("Rotate down", "arrow.down") { viewportAction("down") }
+                    Divider()
+                    tool("Roll left", "rotate.left") { viewportAction("rollLeft") }
+                    tool("Roll right", "rotate.right") { viewportAction("rollRight") }
+                    tool("Pan up", "arrow.up.to.line") { viewportAction("panUp") }
+                    tool("Pan down", "arrow.down.to.line") { viewportAction("panDown") }
+                    tool("Zoom in", "plus.magnifyingglass") { viewportAction("in") }
+                    tool("Zoom out", "minus.magnifyingglass") { viewportAction("out") }
+                    tool("Fit and center", "scope") { viewportAction("reset") }
+                    Spacer()
+                }.padding(5).frame(width: 37).background(Color(nsColor: .windowBackgroundColor))
+                }
+                Divider()
+                // Reserve a stable inspector area: selecting atoms must not resize the camera viewport.
+                GeometryReader { area in
+                    ScrollView([.horizontal, .vertical]) {
+                        SelectionInspector().frame(width: max(560, area.size.width), alignment: .leading)
+                    }
+                }.frame(height: 140)
+                Divider()
+                statusBar(document).frame(height: 30)
             }
         } else {
             VStack(spacing: 16) {
@@ -219,8 +327,9 @@ struct ContentView: View {
                     .foregroundStyle(.secondary)
                 Text("ChemViewer")
                     .font(.largeTitle)
-                Text("Native Apple Silicon molecular visualization prototype")
+                Text("Molecular structures and ORCA calculations")
                     .foregroundStyle(.secondary)
+                Button("New molecule / Build fragments") { workspace.newMolecule() }.buttonStyle(.bordered)
                 Button("Open chemistry file…") { workspace.isImporterPresented = true }
                     .buttonStyle(.borderedProminent)
             }
@@ -229,7 +338,11 @@ struct ContentView: View {
     }
 
     private func statusBar(_ document: ParsedDocument) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 8) {
+            Button("Set") { workspace.isBuilderVisible = true }.buttonStyle(ClassicButtonStyle())
+            Button("Show") { workspace.showExplorer.toggle() }.buttonStyle(ClassicButtonStyle())
+            Button("↔") { workspace.translateManipulation(axis: Vector3(1, 0, 0), sign: -1) }.buttonStyle(ClassicButtonStyle()).disabled(!workspace.isDraggingEnabled)
+            Button("→") { workspace.translateManipulation(axis: Vector3(1, 0, 0), sign: 1) }.buttonStyle(ClassicButtonStyle()).disabled(!workspace.isDraggingEnabled)
             Text(document.sourceFormat)
             Text("Frame \(workspace.frameIndex + 1)/\(document.frames.count)")
             Text("\(document.frames[workspace.frameIndex].atoms.count) atoms")
@@ -251,7 +364,9 @@ struct ContentView: View {
                 .frame(width: 140)
             }
             Spacer()
-            Text("Drag or right-drag to rotate • Option-drag to pan • scroll to zoom")
+            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • right-click clears" : "Drag to rotate • Option-drag to pan • right-click clears • scroll to zoom")
+                .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
+                .help("Drag to rotate • Option-drag to pan • right-click clears • scroll to zoom")
                 .foregroundStyle(.secondary)
         }
         .font(.caption)
@@ -287,10 +402,10 @@ struct ContentView: View {
                 )
                 return "\(atoms)  dihedral = \(value.formatted(.number.precision(.fractionLength(3))))°"
             default:
-                return "\(indices.count) selected: \(atoms)"
+                return indices.count > 4 ? "\(indices.count) atoms selected" : "\(indices.count) selected: \(atoms)"
             }
         } catch {
-            return "\(indices.count) selected: \(atoms)"
+            return indices.count > 4 ? "\(indices.count) atoms selected" : "\(indices.count) selected: \(atoms)"
         }
     }
 }
@@ -316,5 +431,54 @@ struct XYZExportDocument: FileDocument {
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: Data(text.utf8))
+    }
+}
+
+/// AppKit text storage keeps large calculation source files selectable without
+/// constructing a SwiftUI view for every output line.
+struct SourceTextView: NSViewRepresentable {
+    let text: String
+    var focusLine: Int? = nil
+    final class Coordinator { var focusedLine: Int? }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 800, height: 600))
+        scroll.hasVerticalScroller = true; scroll.hasHorizontalScroller = true
+        let view = NSTextView(frame: scroll.bounds)
+        view.isRichText = false; view.usesFindPanel = true
+        view.minSize = .zero
+        view.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        view.isEditable = false; view.isSelectable = true
+        view.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        view.textContainerInset = NSSize(width: 12, height: 12)
+        view.autoresizingMask = [.width]; view.isVerticallyResizable = true
+        scroll.documentView = view
+        return scroll
+    }
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let view = scroll.documentView as? NSTextView else { return }
+        let source = text as NSString
+        var focusStart = 0
+        if let focusLine {
+            for _ in 1..<max(1, focusLine) {
+                guard focusStart < source.length else { break }
+                focusStart = NSMaxRange(source.lineRange(for: NSRange(location: focusStart, length: 0)))
+            }
+        }
+        let limit = 2_000_000
+        var offset = source.length > limit && focusStart > limit ? max(0, focusStart - limit / 2) : 0
+        if offset > 0 { offset = source.lineRange(for: NSRange(location: offset, length: 0)).location }
+        let length = min(limit, source.length - offset)
+        let notice = source.length > limit ? "[Source preview excerpt; original text retained. Starts at UTF-16 offset \(offset).]\n" : ""
+        let displayed = notice + source.substring(with: NSRange(location: offset, length: length))
+        if view.string != displayed { view.string = displayed; view.sizeToFit(); context.coordinator.focusedLine = nil }
+        if let focusLine, focusLine != context.coordinator.focusedLine {
+            context.coordinator.focusedLine = focusLine
+            guard focusStart < source.length, focusStart >= offset, focusStart < offset + length else { return }
+            let line = source.lineRange(for: NSRange(location: focusStart, length: 0))
+            let range = NSRange(location: (notice as NSString).length + line.location - offset, length: min(line.length, offset + length - line.location))
+            view.setSelectedRange(range)
+            DispatchQueue.main.async { view.scrollRangeToVisible(range) }
+        }
     }
 }

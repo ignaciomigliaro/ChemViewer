@@ -22,7 +22,11 @@ jobs:
           swift --version
           xcodebuild -version
       - name: Build and test ChemViewer
-        run: bash scripts/build-macos.sh
+        run: bash scripts/build-macos.sh --require-xctest
+      - name: Validate Matplotlib figures and energy data
+        run: |
+          bash scripts/setup-plotting.sh
+          "$HOME/Library/Application Support/ChemViewer/plotting-venv/bin/python3" -m unittest python_tests.test_energy_plot -v
       - name: Verify Apple Silicon bundle
         run: |
           file dist/ChemViewer.app/Contents/MacOS/ChemViewer

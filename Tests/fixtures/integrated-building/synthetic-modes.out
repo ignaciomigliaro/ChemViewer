@@ -1,0 +1,37 @@
+MoleculeView synthetic ORCA-style parser fixture; not a calculation result.
+JOB NUMBER 1
+! synthetic-test
+Total Charge 0
+Multiplicity 1
+CARTESIAN COORDINATES (ANGSTROEM)
+---------------------------------
+O 0.000000 0.000000 0.000000
+H 0.758000 0.000000 0.504000
+H -0.758000 0.000000 0.504000
+
+FINAL SINGLE POINT ENERGY -75.000000
+THE OPTIMIZATION HAS CONVERGED
+VIBRATIONAL FREQUENCIES
+-----------------------
+6: 1600.00 cm**-1
+7: 3600.00 cm**-1
+8: -250.00 cm**-1 ***imaginary mode***
+NORMAL MODES
+--------------
+6 7 8
+0 0.000000 0.000000 0.200000
+1 0.000000 0.000000 0.000000
+2 -0.100000 -0.050000 0.000000
+3 0.200000 0.300000 -0.100000
+4 0.000000 0.000000 0.000000
+5 0.300000 0.200000 0.000000
+6 -0.200000 -0.300000 -0.100000
+7 0.000000 0.000000 0.000000
+8 0.300000 0.200000 0.000000
+IR SPECTRUM
+Temperature 298.15 K
+Pressure 1.00 atm
+Zero point energy 0.021000 Eh
+Total Enthalpy -74.970000 Eh
+Final Gibbs free energy -74.990000 Eh
+****ORCA TERMINATED NORMALLY****

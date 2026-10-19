@@ -1,13 +1,16 @@
+import AppKit
 import ChemCraftCore
 import SwiftUI
 
 struct CoordinateEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var atoms: [Atom]
+    private let embedded: Bool
     private let frameComment: String
     private let onApply: ([Atom]) -> Void
 
-    init(frame: MoleculeFrame, onApply: @escaping ([Atom]) -> Void) {
+    init(frame: MoleculeFrame, embedded: Bool = false, onApply: @escaping ([Atom]) -> Void) {
+        self.embedded = embedded
         _atoms = State(initialValue: frame.atoms)
         frameComment = frame.comment
         self.onApply = onApply
@@ -50,12 +53,13 @@ struct CoordinateEditorView: View {
                 .padding(4)
             }
             HStack {
+                Button("Copy coordinates") { _ = ClipboardSupport.copy(ClipboardSupport.coordinates(atoms)) }
+                Button("Copy XYZ") { _ = ClipboardSupport.copy(XYZWriter.string(frame: MoleculeFrame(id: 0, atoms: atoms, comment: "Cartesian coordinates"))) }
                 Spacer()
-                Button("Cancel") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
+                if !embedded { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 Button("Apply") {
                     onApply(atoms)
-                    dismiss()
+                    if !embedded { dismiss() }
                 }
                 .keyboardShortcut(.defaultAction)
             }

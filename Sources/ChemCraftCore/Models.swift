@@ -98,6 +98,10 @@ public struct ParsedDocument: Equatable, Sendable {
     public var sourceFormat: String
     public var frames: [MoleculeFrame]
     public var vibrationalModes: [VibrationalMode]
+    public var vibrationalFrameIndex: Int?
+    public var nebProfile: NEBProfile?
+    public var thermochemistry: [ThermochemistryRecord]
+    public var energyRecords: [EnergyRecord]
     public var warnings: [String]
 
     public init(
@@ -105,13 +109,21 @@ public struct ParsedDocument: Equatable, Sendable {
         sourceFormat: String,
         frames: [MoleculeFrame],
         vibrationalModes: [VibrationalMode] = [],
-        warnings: [String] = []
+        vibrationalFrameIndex: Int? = nil,
+        warnings: [String] = [],
+        energyRecords: [EnergyRecord] = [],
+        thermochemistry: [ThermochemistryRecord] = [],
+        nebProfile: NEBProfile? = nil
     ) {
+        self.nebProfile = nebProfile
         self.title = title
         self.sourceFormat = sourceFormat
         self.frames = frames
         self.vibrationalModes = vibrationalModes
+        self.vibrationalFrameIndex = vibrationalFrameIndex
         self.warnings = warnings
+        self.energyRecords = energyRecords
+        self.thermochemistry = thermochemistry
     }
 }
 
@@ -151,15 +163,15 @@ public enum ElementTable {
 
     public static func canonicalSymbol(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let atomicNumber = Int(trimmed), atomicNumber >= 0, atomicNumber < symbols.count {
-            return symbols[atomicNumber]
+        if let atomicNumber = Int(trimmed), atomicNumber >= 0, atomicNumber < IntegratedBuilding.elements.count {
+            return IntegratedBuilding.elements[atomicNumber]
         }
         guard let first = trimmed.first else { return "X" }
         return String(first).uppercased() + trimmed.dropFirst().lowercased()
     }
 
     public static func covalentRadius(for element: String) -> Float {
-        radii[canonicalSymbol(element)] ?? 0.9
+        radii[canonicalSymbol(element)] ?? Float(IntegratedBuilding.editingRadii[canonicalSymbol(element)] ?? 0.9)
     }
 
     public static func color(for element: String) -> (Float, Float, Float, Float) {
@@ -181,21 +193,28 @@ public enum ElementTable {
 
 public enum BondBuilder {
     public static func inferBonds(atoms: [Atom], tolerance: Float = 1.22) -> [Bond] {
-        guard atoms.count > 1 else { return [] }
-        var bonds: [Bond] = []
-        for first in 0..<(atoms.count - 1) {
-            for second in (first + 1)..<atoms.count {
-                let delta = atoms[first].position - atoms[second].position
-                let distance = delta.length
-                let cutoff = tolerance * (
-                    ElementTable.covalentRadius(for: atoms[first].element) +
-                    ElementTable.covalentRadius(for: atoms[second].element)
-                )
-                if distance > 0.1 && distance <= cutoff {
-                    bonds.append(Bond(id: bonds.count, first: first, second: second))
+        guard atoms.count > 1, tolerance.isFinite, tolerance > 0 else { return [] }
+        struct Cell: Hashable { let x: Int; let y: Int; let z: Int }
+        let radii = atoms.map { ElementTable.covalentRadius(for: $0.element) }
+        let width = max(1, 2 * (radii.max() ?? 1.4) * tolerance)
+        var grid: [Cell: [Int]] = [:], pairs: [(Int, Int)] = []
+        var comparisons = 0
+        outer: for (i, atom) in atoms.enumerated() {
+            let p = atom.position
+            let coords = [Double(p.x / width), Double(p.y / width), Double(p.z / width)]
+            guard coords.allSatisfy({ $0.isFinite && abs($0) < Double(Int.max / 2) }) else { continue }
+            let cell = Cell(x: Int(floor(coords[0])), y: Int(floor(coords[1])), z: Int(floor(coords[2])))
+            for dx in -1...1 { for dy in -1...1 { for dz in -1...1 {
+                for j in grid[Cell(x: cell.x + dx, y: cell.y + dy, z: cell.z + dz)] ?? [] {
+                    comparisons += 1
+                    if comparisons > 2_000_000 || pairs.count >= 30_000 { break outer }
+                    let distance = (p - atoms[j].position).length
+                    if distance > 0.1 && distance <= tolerance * (radii[i] + radii[j]) { pairs.append((j, i)) }
                 }
-            }
+            } } }
+            grid[cell, default: []].append(i)
         }
-        return bonds
+        pairs.sort { $0.0 == $1.0 ? $0.1 < $1.1 : $0.0 < $1.0 }
+        return pairs.enumerated().map { Bond(id: $0.offset, first: $0.element.0, second: $0.element.1) }
     }
 }

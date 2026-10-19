@@ -87,3 +87,7 @@ Read these files before changing code:
 When evidence is incomplete, label the result as partial or blocked and state
 the exact missing input or environment. Never report full Chemcraft parity
 until every required feature has passed the documented gate.
+
+## User-authorized version publishing
+
+The user explicitly requested on 2026-10-19 that each completed ChemViewer version be committed and pushed. This authorization persists across sessions. After the version's required checks pass, commit the relevant source, tests, packaging assets and documentation; create an annotated `v<CFBundleShortVersionString>` tag for that exact version; and push the current branch and that tag to the existing origin. Verify the remote branch/tag afterward and report the commit/tag. Do not ask for repeated permission for this release workflow. Never force-push or overwrite existing tags. Exclude personal calculations, vendor binaries/assets, generated build outputs, credentials and local evidence. If pushing fails, preserve the local commit/tag and state the exact blocker. Earlier builds without saved source snapshots must not be reconstructed as fictitious version commits.

@@ -52,3 +52,71 @@ Apple Silicon, scientific outputs match an independent oracle/reference within
 documented tolerances, interactive behavior has a reproducible GUI procedure,
 and limitations are recorded. The present repository does not meet the release
 gate for daily full-parity use.
+
+## Local Mac validation update (2026-10-19)
+
+The table above contains historical Windows-session statuses. ARM64 packaging and strict signature checks now pass on this Mac. Eleven standalone core regression methods and the packaged live-Metal integration check pass; genuine XCTest is still unavailable under Command Line Tools. XYZ/ORCA parsing, Windows line endings, frequency geometry binding, negative-mode data, coordinate undo, selection propagation and animation/pause have automated local evidence. Human-visible rendering/gesture/dialog rows remain pending; no full-parity release is claimed. See `mac-validation-2026-10-19.md`.
+
+## Rendering and interface revision (0.2.0)
+
+Image/Abstract/Source/Coord/Image/Abs are now implemented; summary navigation, source viewing, coordinate Apply/Undo, camera controls and display schemes are exposed. GPU atoms/bonds now have true depth, shaded meshes and antialiasing. Viewport PNG export and order-independent atom overlap passed packaged automated checks. Actual tab screenshots were inspected; physical gesture/dialog acceptance and large-system performance remain pending. Fragment building and the remaining scientific feature matrix are still incomplete. See `rendering-and-ui-2026-10-19.md`.
+
+## 0.3.0 energy/editing update
+
+Implemented: ORCA SCF/final-energy provenance, XYZ comment energies with explicit unit selection, Abstract energy/structure browsing, arrow navigation, unlimited selection, second-only/symmetric distance editing, A–B–C angle editing, per-geometry Undo and Matplotlib energy-profile export. Sixteen core cases, three plotting tests and packaged control/GPU workflow checks pass locally. Full manual gesture/dialog acceptance, multidimensional PES inference and bonded-fragment propagation remain outside this update. Details: `energy-and-editing-2026-10-19.md`.
+
+## 0.4.0 update
+
+Implemented and locally exercised: ORCA enthalpy/Gibbs/ZPE extraction and complete-correction sums, clean numeric Abstract copying, coordinate TSV/XYZ copying, right-click deselection, symmetric angle editing, atom/connected-fragment/whole-geometry dragging, boundary-pair fragment detection, ±X/Y/Z rigid rotation/translation, pivot choice and one-step gesture undo. Nineteen core cases and all three packaged workflow checks pass. Fragment construction/manual bonds and arbitrary ring subgroups remain unfinished. See `thermochemistry-and-manipulation-2026-10-19.md`; historical earlier table statuses are superseded only for these bounded features.
+
+## 0.5.0 update
+
+Optional bond-length/angle/signed-dihedral overlays and PNG annotations are implemented and locally exercised. Four-atom measurement has an explicit panel readout. Mouse grab rotation is corrected, per-event document updates removed, and static GPU-instanced meshes replace CPU triangle regeneration. Nineteen core cases and four packaged workflow checks pass. Local 500-atom CPU submission median 17.05 → 1.17 ms; broad large-system/manual input acceptance remains pending. See `measurements-and-smooth-drag-2026-10-19.md`.
+
+## 0.6.0 update
+
+Paton is the default native appearance; all prior styles remain selectable. Multi-geometry and normal-mode GIF export now share the Metal renderer and preserve the current viewing angle, with fixed full-animation framing, configurable size/rate, looping, ping-pong and cancellation. The Paton implementation adapts xyzrender styling rather than invoking its SVG engine. Programmatic native-Mac export and interaction checks are recorded in [the release notes](paton-and-gif-2026-10-19.md); broad manual acceptance and full parity remain pending.
+
+## 0.6.1 — uniform shading by distance
+
+At the user’s request, depth fog is disabled for both atoms and bonds. The shared native render path now sends zero fog weight, so farther objects retain the same element colors and surface gradient as nearer objects. This applies to the viewport, PNGs and GIFs. Paton palette, outlines and radial shading remain. Verify by rotating a deep structure and comparing near/far atoms of the same element. This supersedes the 0.6.0 depth-fog behavior.
+
+## 0.6.2 — measurement labels and slower GIFs
+
+Select 2 atoms for length, 3 for angle (B is the vertex in A→B→C), or 4 for a signed dihedral, in order. Choose File → Export Animation as GIF… and enable **Include measurement label and guides**. The current ordered selection supplies one measurement per GIF. Its numeric value and projected guides are recomputed from each frame's actual coordinates, including sinusoidal frequency displacements. Labels use Å or degrees, retain the viewer’s angle, and use the same guide/dihedral-plane drawing as the native view. The toggle starts enabled when the viewer’s measurement overlay was enabled. Labels require stable atom ordering and matching element sequences across trajectory frames. If a selected angle/dihedral is undefined in a frame, export reports an error rather than writing a misleading value; temporary output is removed and any existing destination remains intact.
+
+Playback speed offers Normal, Half, Quarter and Eighth; Half is the new dialog default. Frame-rate choices now include 1 and 2 fps. Every frame is retained; GIF delay is `1 / (fps × speed)`, with an approximate loop duration shown. GIF centisecond quantization/player behavior may slightly change actual timing. These choices apply to both trajectories and frequencies. Display speed remains illustrative, not physical vibrational time. Coordinates, amplitude and camera orientation are unchanged.
+
+## 0.7.0 MoleculeView integration
+
+The full reconciliation of the two independent apps' implemented features is in [moleculeview-integration-2026-10-19.md](moleculeview-integration-2026-10-19.md). Fragment templates/import/attachment, topology editing, legacy/new saved projects, redo, bond-axis numeric transforms, captions/H visibility, live speed, Gaussian geometries, earlier compound-job mode association and classic shell are now in ChemViewer, retaining its previous analysis, editing, rendering and GIF features. This unifies the implemented features of both apps; it does not claim complete Chemcraft parity.
+
+## 0.7.1 — left explorer restored by default
+
+The geometry/frequency Result Explorer is visible on the left at startup again, as requested. Its geometry selection, per-frame frequency selection and arrow navigation are retained; View → Result Explorer or the sidebar toolbar button still toggles it. The optional right-hand builder remains available with +/Cmd-B. This supersedes 0.7.0’s initially hidden explorer. Verify by opening a multi-geometry ORCA output and browsing geometries and modes from the left panel.
+
+## 0.7.2 — optional frequency vectors
+
+Frequency displacement vectors default to off. The toolbar Vectors checkbox, native Display → Displacement Vectors menu, and classic in-window Display → Frequency Vectors menu share the same toggle. Select a normal mode and toggle vectors without changing animation or coordinates.
+
+## 0.7.3 — stable view while selecting atoms
+
+A native regression reproduced selection resizing the 3D canvas: the bottom inspector was inserted/removed and had variable height for 1/2/3/4 selections, changing projection and apparent molecule position without a camera reset. The inspector now has a stable 140-point scrollable area, with an empty-selection hint. Its content can scroll horizontally in narrow split/builder layouts without changing the canvas. The status row also has a fixed height. Separately, camera dragging now waits for movement over 3 points; small click jitter does not rotate/pan. Atom manipulation retains its existing 1-point activation threshold. Selection colors and measurement edits remain functional.
+
+The native smooth regression now exercises a real click with subpixel movement, then 1/2/3/4 selections and clearing, and verifies viewport object identity, bounds, camera rotation and all projected atom positions in window coordinates (0.05-point tolerance). This supplements the existing local atom-drag/undo, guide/PNG and mouse-camera direction checks.
+
+## 0.7.4 — draggable measurement labels
+
+Enable Show bond length/angle/dihedral, then drag the white numeric label box to move it away from the structure. The hand cursor identifies the draggable area. Only the label receives those drag events; clicks outside it continue to select atoms or rotate/drag the molecule, and right-click still clears selection. The numeric measurement and its atom guides remain tied to the selected atoms. Reset label restores automatic placement.
+
+Offsets are stored locally per geometry and ordered atom selection, as fractions of viewport width/height. Reselecting the same measurement restores its placement during the current view session. PNG capture uses the live placement; the independent GIF renderer copies the offset map and applies the same normalized offset at its output resolution while recomputing each frame's value. Export still fits all frames once, so absolute pixel placement can differ with aspect ratio/framing. Labels stay inside image bounds. New file/view sessions and atom-count changes clear positions; working project files do not serialize label positions. Dragging a label does not change coordinates, selection, animation or camera and does not add geometry undo entries.
+
+Native regression coverage uses mouse handlers on 2/3/4-atom label boxes, verifies 70×30-point label motion, pass-through away from the box, unchanged numeric values/geometry/camera, retained placement on reselection, PNG exports, offset preservation through both GIF renderer copies, an actual moved-dihedral GIF, reset, and prior smooth camera/selection/drag checks. Scientific core tests remain unchanged. Manual pointer feel and all output sizes still require user acceptance.
+
+## 0.7.5 — macOS application icon
+
+The app now ships an original generated blue/teal molecular icon instead of the generic application placeholder. Packaging/ChemViewerIcon.png is the transparent master; scripts/build-icon.sh creates all ten standard/Retina PNG slots (16–1024 physical pixels) and Packaging/ChemViewer.icns. The macOS build copies the ICNS into Contents/Resources, and CFBundleIconFile references it before code signing. This is app identity artwork, not a chemically interpreted structure. Verify the installed icon in Finder and the Dock after relaunch; macOS may cache an older icon on a running app. No scientific/rendering behavior changes.
+
+## 0.8.0 — detected NEB reaction profiles and optional markers
+
+The energy sheet now auto-selects a complete ORCA NEB/NEB-TS path-summary dataset, separate from Cartesian optimization history. It defaults to a reactant/refined-TS/product diagram; all images and ordinary PES lines are also selectable. Forward/reverse barriers use the explicit refined TS and printed relative energies, not the highest CI or rounded-Hartree subtraction. Structures are taken only from validated optional companion files. All scatter markers can be turned off. PDF/SVG/PNG/CSV/JSON exports include provenance. See docs/neb-reaction-profiles-2026-10-19.md for scientific semantics, implementation, tests and limitations.

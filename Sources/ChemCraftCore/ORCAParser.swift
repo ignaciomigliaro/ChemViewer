@@ -12,24 +12,39 @@ public enum ORCAParser {
     )
 
     public static func parse(text: String, title: String = "ORCA output") throws -> ParsedDocument {
-        let lines = text.components(separatedBy: .newlines)
-        let frameRecords = parseCartesianBlocks(lines)
+        let lines = text.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n").components(separatedBy: "\n")
+        let frameRecords = try parseCartesianBlocks(lines)
         var frames = frameRecords.map(\.frame)
         guard !frames.isEmpty else { throw ParseError.noGeometry }
 
         var energyCount = 0
+        var energies: [EnergyRecord] = []
+        let scfPattern = try NSRegularExpression(pattern: #"^\s*Total Energy\s*:\s*([-+]?\d+(?:\.\d+)?(?:[Ee][-+]?\d+)?)\s+(?:Eh|a\.u\.)"#)
+        var scfHeader: Int?
         for (lineIndex, line) in lines.enumerated() {
-            guard let match = firstMatch(energyPattern, line), let energy = Double(match[1]) else { continue }
-            energyCount += 1
-            if let frameIndex = frameRecords.lastIndex(where: { $0.lineIndex < lineIndex }) {
-                frames[frameIndex].energyHartree = energy
+            if line.contains("TOTAL SCF ENERGY") { scfHeader = lineIndex }
+            let frame = frameRecords.lastIndex(where: { $0.lineIndex < lineIndex })
+            if let start = scfHeader, lineIndex - start < 35, let match = firstMatch(scfPattern, line), let energy = Double(match[1]), energy.isFinite {
+                energies.append(EnergyRecord(value: energy, unit: .hartree, kind: .scf, frameIndex: frame, sourceLine: lineIndex + 1, sourceText: line))
+                if let frame, frames[frame].energyHartree == nil { frames[frame].energyHartree = energy }
+                scfHeader = nil
             }
+            guard let match = firstMatch(energyPattern, line), let energy = Double(match[1]), energy.isFinite else { continue }
+            energyCount += 1
+            energies.append(EnergyRecord(value: energy, unit: .hartree, kind: .singlePoint, frameIndex: frame, sourceLine: lineIndex + 1, sourceText: line))
+            if let frame { frames[frame].energyHartree = energy }
         }
 
-        var modes = parseFrequencies(lines)
-        let coordinateCount = frames.last!.atoms.count * 3
-        let vectors = parseNormalModes(lines, coordinateCount: coordinateCount)
-        let intensities = parseIRSpectrum(lines)
+        let frequencyLine = lines.lastIndex { $0.trimmingCharacters(in: .whitespaces) == "VIBRATIONAL FREQUENCIES" }
+        let modeFrameIndex = frequencyLine.flatMap { line in frameRecords.lastIndex { $0.lineIndex < line } }
+        let frequencySection: [String] = frequencyLine.map { start in
+            let end = frameRecords.first { $0.lineIndex > start }?.lineIndex ?? lines.count
+            return Array(lines[start..<end])
+        } ?? []
+        var modes = parseFrequencies(frequencySection)
+        let coordinateCount = modeFrameIndex.map { frames[$0].atoms.count * 3 } ?? 0
+        let vectors = parseNormalModes(frequencySection, coordinateCount: coordinateCount)
+        let intensities = parseIRSpectrum(frequencySection)
 
         for index in modes.indices {
             let modeNumber = modes[index].index
@@ -49,12 +64,18 @@ public enum ORCAParser {
         if energyCount > 0 && assignedEnergyCount < min(energyCount, frames.count) {
             warnings.append("Some ORCA energies could not be associated with a preceding Cartesian geometry.")
         }
+        let neb = ORCANEBParser.parse(lines: lines)
+        if neb == nil && lines.contains(where: { $0.contains("PATH SUMMARY") }) { warnings.append("NEB path summary is incomplete or unsupported; geometry optimization history remains available.") }
         return ParsedDocument(
             title: title,
             sourceFormat: "ORCA",
             frames: frames,
             vibrationalModes: modes,
-            warnings: warnings
+            vibrationalFrameIndex: modes.isEmpty ? nil : modeFrameIndex,
+            warnings: warnings,
+            energyRecords: energies,
+            thermochemistry: try ORCAThermochemistryParser.parse(lines: lines, geometryHeaders: frameRecords.map(\.lineIndex)),
+            nebProfile: neb
         )
     }
 
@@ -63,7 +84,7 @@ public enum ORCAParser {
         var frame: MoleculeFrame
     }
 
-    private static func parseCartesianBlocks(_ lines: [String]) -> [FrameRecord] {
+    private static func parseCartesianBlocks(_ lines: [String]) throws -> [FrameRecord] {
         var frames: [FrameRecord] = []
         var lineIndex = 0
         while lineIndex < lines.count {
@@ -91,6 +112,7 @@ public enum ORCAParser {
                       let x = Float(fields[1]),
                       let y = Float(fields[2]),
                       let z = Float(fields[3]) else { break }
+                guard x.isFinite, y.isFinite, z.isFinite else { throw ParseError.malformed("non-finite coordinate at line \(lineIndex + 1)") }
                 atoms.append(Atom(
                     id: atoms.count,
                     element: String(fields[0]),
@@ -131,28 +153,29 @@ public enum ORCAParser {
             return value == "IR SPECTRUM" || value == "RAMAN SPECTRUM"
         }) ?? lines.endIndex
 
-        var valuesByMode: [Int: [Float]] = [:]
+        var valuesByMode: [Int: [Int: Float]] = [:]
         var headers: [Int] = []
+        var invalid: Set<Int> = []
         for rawLine in lines[(start + 1)..<end] {
             let tokens = rawLine.split(whereSeparator: \.isWhitespace).map(String.init)
             if !tokens.isEmpty, tokens.allSatisfy({ Int($0) != nil }) {
                 headers = tokens.compactMap(Int.init)
-                for mode in headers where valuesByMode[mode] == nil {
-                    valuesByMode[mode] = Array(repeating: 0, count: coordinateCount)
-                }
+                if Set(headers).count != headers.count { invalid.formUnion(headers) }
                 continue
             }
-            guard !headers.isEmpty,
-                  tokens.count == headers.count + 1,
-                  let coordinate = Int(tokens[0]),
-                  coordinate >= 0,
-                  coordinate < coordinateCount else { continue }
+            guard !headers.isEmpty, let first = tokens.first, let coordinate = Int(first), coordinate >= 0, coordinate < coordinateCount else { continue }
+            guard tokens.count == headers.count + 1 else { invalid.formUnion(headers); continue }
             for (offset, mode) in headers.enumerated() {
-                guard let value = Float(tokens[offset + 1]) else { continue }
-                valuesByMode[mode]?[coordinate] = value
+                let token = tokens[offset + 1].replacingOccurrences(of: "D", with: "E").replacingOccurrences(of: "d", with: "e")
+                guard let value = Float(token), value.isFinite, valuesByMode[mode]?[coordinate] == nil else { invalid.insert(mode); continue }
+                valuesByMode[mode, default: [:]][coordinate] = value
             }
         }
-        return valuesByMode.filter { _, values in values.contains(where: { $0 != 0 }) }
+        var complete: [Int: [Float]] = [:]
+        for (mode, rows) in valuesByMode where !invalid.contains(mode) && rows.count == coordinateCount {
+            complete[mode] = (0..<coordinateCount).map { rows[$0]! }
+        }
+        return complete
     }
 
     private static func parseIRSpectrum(_ lines: [String]) -> [Int: Double] {

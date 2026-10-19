@@ -14,12 +14,16 @@ public enum ParserRegistry {
         if ext == "xyz" {
             return try XYZParser.parse(text: text, title: fileName)
         }
-        if text.contains("O   R   C   A") || text.contains("VIBRATIONAL FREQUENCIES") || text.contains("FINAL SINGLE POINT ENERGY") {
+        if text.contains("CARTESIAN COORDINATES (ANGSTROEM)") || text.contains("O   R   C   A") || text.contains("VIBRATIONAL FREQUENCIES") || text.contains("FINAL SINGLE POINT ENERGY") {
             return try ORCAParser.parse(text: text, title: fileName)
         }
         if let first = text.split(whereSeparator: \.isNewline).first,
            Int(first.trimmingCharacters(in: .whitespaces)) != nil {
             return try XYZParser.parse(text: text, title: fileName)
+        }
+        if text.contains("Standard orientation:") || text.contains("Input orientation:") {
+            let analysis = try BuildingProject.analysis(text)
+            return ParsedDocument(title: fileName, sourceFormat: "Gaussian", frames: analysis.frames)
         }
         throw ParseError.unsupportedFormat
     }

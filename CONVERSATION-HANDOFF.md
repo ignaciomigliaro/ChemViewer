@@ -217,3 +217,103 @@ runtime defects, and collect read-only diagnostics for the official ARM and
 Intel ChemCraft builds. Preserve the clean-room and licensing boundaries and
 update the evidence and parity documents with verified results.
 ```
+
+## Mac continuation — 2026-10-19
+
+User's active project is `/Users/nacho/Documents/software/ChemViewer` (the SwiftUI/Metal project), not the older Downloads/MoleculeView prototype. Full Xcode is absent; Command Line Tools Swift 6.3.3 builds the app successfully. `scripts/build-macos.sh` now runs an explicit standalone adaptation of the checked-in core regression assertions when XCTest is absent; CI requires actual XCTest. Eleven core methods pass. The locally signed ARM64 `dist/ChemViewer.app` passed its `--smoke-test` with real Metal pipelines and completed GPU frames, XYZ open/export, coordinate undo, selection, negative-mode animation and pause.
+
+Fixed confirmed CRLF parsing truncation and hardened frequency geometry association, incomplete vectors, nonfinite coordinates, stale async loads and cross-frame undo. Native real-water ORCA values match the independent Python oracle. Read `docs/mac-validation-2026-10-19.md` before updating statuses. Manual GUI acceptance and broader Chemcraft parity remain incomplete. Logs are in Downloads/chemviewer-validation.
+
+## Latest: native Mac visual/UI update, 0.2.0
+
+User requested xyzrender-like molecules and the reference Chemcraft GUI/workflows. Replaced point/line rendering with depth-tested MSAA sphere/cylinder meshes; added publication/soft/large-sphere/stick display schemes, viewport PNG export, frozen mode phase and narrow-pane fitting. Implemented Image/Abstract/Source/Coord/Image/Abs, summary navigation, source text, embedded coordinate edits, camera rail and native menus. All 11 standalone core cases and the expanded packaged live-GPU smoke check passed. Real window screenshots were inspected under Downloads/chemviewer-validation. Full parity and fragment construction are still unfinished. Read `docs/rendering-and-ui-2026-10-19.md` before continuing. Preserve all earlier uncommitted parser/build fixes.
+
+## Latest: 0.3.0 energy and editing workflows
+
+Implemented source-linked ORCA SCF/final-energy records, explicit/unitless XYZ energy handling, Abstract energy/structure views, and Matplotlib energy profiles (PDF/SVG/600-dpi PNG/CSV/JSON/script export, internal-coordinate axes and thumbnails). Unlimited left-click atom toggling, arrow geometry navigation with explorer scrolling/text-focus protection, two distance movement modes and three-atom angle editing are connected to native controls. Edits invalidate energy and energy-bearing comments; per-frame Undo survives navigation and restores metadata. Python Matplotlib 3.9.4 is installed in Application Support/ChemViewer/plotting-venv; setup script supplied. Sixteen standalone core cases, three Matplotlib tests, and both packaged live-window workflow checks pass locally. Full XCTest unavailable; no full-parity claim. Read `docs/energy-and-editing-2026-10-19.md`; evidence under Downloads/chemviewer-energy-work. Preserve previous uncommitted fixes.
+
+## Latest: 0.4.0 thermochemistry and manipulation
+
+User clarified angle editing: B remains the vertex, move C only or A/C equally. Implemented that picker, right-click deselection, clean Abstract with numeric copy/H/G/full-correction sums and optional source details, coordinate TSV/XYZ clipboard actions, and four reference-style drag buttons. Actual atom/connected-fragment/whole-geometry drags, boundary-pair fragment identification, ±world-axis rotation/translation and selectable pivot are connected; one undo per gesture. ORCA thermochemistry preserves section/frame/temperature and derives full H−E rather than mistaking kBT for the full correction. Nineteen core cases, actual installed ORCA thermochemistry values, and all three packaged GUI/GPU workflow checks passed. Initial general-clipboard test replaced clipboard contents before defer could restore; disclosed to user and replaced with private named pasteboard tests. Read `docs/thermochemistry-and-manipulation-2026-10-19.md`. Prior changes remain uncommitted; preserve them.
+
+## Latest: 0.5.0 measurements and interaction performance
+
+Added optional 2/3/4-atom distance/angle/signed-dihedral overlays, PNG annotation export, and dihedral panel readout. User clarified inversion meant mouse view rotation; corrected horizontal grab yaw and camera rail directions, preserving Cartesian geometry rotation math. Drag previews are now local to the Metal view with one mouse-up document commit; no per-move UI publications. Sphere/cylinder meshes are built once and GPU-instanced; coordinator caches bonds. Local 500-atom CPU draw median improved 17.05 → 1.17 ms (earlier optimized run 0.73 ms). New packaged check passed 120 preview events with zero geometry publications, pointer tracking, overlays/PNG and horizontal/vertical grab rotation. Nineteen core cases and all four packaged workflows passed. See `docs/measurements-and-smooth-drag-2026-10-19.md`; logs/screenshots under Downloads/chemviewer-smooth-work. Keep all earlier uncommitted work.
+
+## 2026-10-19 — ChemViewer 0.6.0 Paton/GIF continuation
+
+Default appearance is xyzrender · Paton, a native MIT-attributed Metal adaptation with upstream palette, HLS gradients, common radii, thin outlines, single black bonds and fog. Prior styles remain in the toolbar/Display menu. File → Export Animation as GIF… and the toolbar export trajectory/frequency GIFs with current active-window yaw/pitch, fixed all-frame fit (zoom/pan intentionally refitted), size/fps/loop/ping-pong/progress/cancel. `AnimationExportView.swift`, `MolecularAppearance.swift` and shared offscreen renderer are new. No external GIF dependency is required. Read docs/paton-and-gif-2026-10-19.md for implementation, scientific semantics, checks and limits. Source remains uncommitted; preserve earlier work.
+
+0.6.0 final validation: 19 standalone core cases and all five packaged workflows passed. Final shader build repeated animation/base/smooth successfully; independent Pillow reopened both GIFs. Installed and signature-verified at ~/Applications/ChemViewer.app, opened with Downloads/chemviewer-animation-work/trajectory.xyz. Tests use private pasteboards; no clipboard changes. Screenshot capture failed for the GIF sheet despite successful sheet presentation; do not claim human visual acceptance. Details and evidence filenames are in the Paton/GIF release document.
+
+## 0.6.1 — uniform shading by distance
+
+At the user’s request, depth fog is disabled for both atoms and bonds. The shared native render path now sends zero fog weight, so farther objects retain the same element colors and surface gradient as nearer objects. This applies to the viewport, PNGs and GIFs. Paton palette, outlines and radial shading remain. Verify by rotating a deep structure and comparing near/far atoms of the same element. This supersedes the 0.6.0 depth-fog behavior.
+
+0.6.1 validation: 19 standalone core cases and packaged animation/style/GIF workflow passed. Signed arm64 build installed at ~/Applications/ChemViewer.app. Existing running windows retain their prior binary until relaunched.
+
+## 0.6.2 — measurement labels and slower GIFs
+
+Select 2 atoms for length, 3 for angle (B is the vertex in A→B→C), or 4 for a signed dihedral, in order. Choose File → Export Animation as GIF… and enable **Include measurement label and guides**. The current ordered selection supplies one measurement per GIF. Its numeric value and projected guides are recomputed from each frame's actual coordinates, including sinusoidal frequency displacements. Labels use Å or degrees, retain the viewer’s angle, and use the same guide/dihedral-plane drawing as the native view. The toggle starts enabled when the viewer’s measurement overlay was enabled. Labels require stable atom ordering and matching element sequences across trajectory frames. If a selected angle/dihedral is undefined in a frame, export reports an error rather than writing a misleading value; temporary output is removed and any existing destination remains intact.
+
+Playback speed offers Normal, Half, Quarter and Eighth; Half is the new dialog default. Frame-rate choices now include 1 and 2 fps. Every frame is retained; GIF delay is `1 / (fps × speed)`, with an approximate loop duration shown. GIF centisecond quantization/player behavior may slightly change actual timing. These choices apply to both trajectories and frequencies. Display speed remains illustrative, not physical vibrational time. Coordinates, amplitude and camera orientation are unchanged.
+
+0.6.2 final local results: 19 standalone core cases, expanded packaged annotation/GIF checks and base viewer smoke checks passed. Independent Pillow decoded all 12 frames at 100 ms normally versus 400 ms at quarter speed (1.2 s versus 4.8 s). Angle/dihedral PNGs were visually inspected for guide alignment. Native selection, camera, cancellation and scientific frame data remain covered. Signed arm64 app installed at ~/Applications/ChemViewer.app. Relaunch to load 0.6.2. Human dialog/playback acceptance remains pending.
+
+## 2026-10-19 — unified ChemViewer 0.7.0
+
+User requested MoleculeView's GUI and missing implemented tools merged into ChemViewer, retaining Paton and all recent features, then retiring the old app. See docs/moleculeview-integration-2026-10-19.md for the full reconciliation. New core IntegratedBuilding/BuildingProject encapsulate original project-owned parsing/building/state logic. New GUI BuilderPanel/ClassicControls and expanded WorkspaceStore integrate fragments, topology edits, 100-entry per-frame undo/redo/group snapshots, legacy projects, explicit ORCA geometry export, captions/H visibility, live speed, camera roll/pan and per-frame modes/facts. Main app defaults to classic white workspace, explorer/builder initially hidden; Cmd-B/+ opens builder, View toggles explorer. No proprietary code was copied. Prior uncommitted work is preserved; no push/commit performed.
+
+## 0.7.0 final verification and retirement outcome
+
+23 core assertion methods passed using the explicit standalone runner; all three migrated original parser/editing/state suites passed. All six packaged native workflows passed: merge, base, energy, manipulation, smooth interaction and annotated/slow GIF export. The installed signed arm64 app independently passed the merge check after retirement of the old source folder. `swift test` was attempted before/after; both remain unavailable because this host lacks XCTest/full Xcode (this is not reported as XCTest passing). `git diff --check` passes. No commit/push was performed.
+
+Installed: `/Users/nacho/Applications/ChemViewer.app`, version 0.7.0 (build 9). Active source: `/Users/nacho/Documents/software/ChemViewer`. Old `/Users/nacho/Downloads/MoleculeView` and both app copies were moved together to `/Users/nacho/.Trash/MoleculeView-retired-2026-10-19`; no MoleculeView.app remains in the searched active Downloads/Applications locations. No old app was running and its historical worker had finished. Recoverable source-only tar and verified complete Git bundle are in `/Users/nacho/Downloads/chemviewer-migration-backups`, with SHA256 manifest. User calculation inputs and Chemcraft installations were left untouched.
+
+Native evidence/logs are in `/Users/nacho/Downloads/chemviewer-merge-work`. Actual window-server screenshot capture was unavailable (`could not create image from window`). `merged-layout-offscreen.png` caches the real SwiftUI controls but cannot capture the Metal layer (it appears black); `merged-molecule.png` is the separate real GPU output and renders white correctly. These were inspected separately and are not described as a desktop screenshot. Full human GUI ergonomics and broad real-calculation coverage remain pending.
+
+## 0.7.1 — left explorer restored by default
+
+The geometry/frequency Result Explorer is visible on the left at startup again, as requested. Its geometry selection, per-frame frequency selection and arrow navigation are retained; View → Result Explorer or the sidebar toolbar button still toggles it. The optional right-hand builder remains available with +/Cmd-B. This supersedes 0.7.0’s initially hidden explorer. Verify by opening a multi-geometry ORCA output and browsing geometries and modes from the left panel.
+
+0.7.1 validation: 23 standalone core cases, three migrated suites and packaged energy/navigation workflow passed. Signed arm64 app installed at ~/Applications/ChemViewer.app; relaunch existing windows to load the restored default.
+
+## 0.7.2 — optional frequency vectors
+
+Frequency displacement vectors default to off. The toolbar Vectors checkbox, native Display → Displacement Vectors menu, and classic in-window Display → Frequency Vectors menu share the same toggle. Select a normal mode and toggle vectors without changing animation or coordinates.
+
+## 0.7.3 — stable view while selecting atoms
+
+A native regression reproduced selection resizing the 3D canvas: the bottom inspector was inserted/removed and had variable height for 1/2/3/4 selections, changing projection and apparent molecule position without a camera reset. The inspector now has a stable 140-point scrollable area, with an empty-selection hint. Its content can scroll horizontally in narrow split/builder layouts without changing the canvas. The status row also has a fixed height. Separately, camera dragging now waits for movement over 3 points; small click jitter does not rotate/pan. Atom manipulation retains its existing 1-point activation threshold. Selection colors and measurement edits remain functional.
+
+The native smooth regression now exercises a real click with subpixel movement, then 1/2/3/4 selections and clearing, and verifies viewport object identity, bounds, camera rotation and all projected atom positions in window coordinates (0.05-point tolerance). This supplements the existing local atom-drag/undo, guide/PNG and mouse-camera direction checks.
+
+0.7.3 validation: before-fix native regression failed with “Selection resized the 3D canvas”. After the fix, the extended smooth/selection, energy/editing and manipulation workflows passed; 23 standalone core cases and three migrated suites also passed. Signed arm64 app installed at ~/Applications/ChemViewer.app. Evidence: Downloads/chemviewer-selection-work. Physical human input feel remains for user confirmation; the programmatic mouse/jitter and screen-projection checks passed.
+
+## 0.7.4 — draggable measurement labels
+
+Enable Show bond length/angle/dihedral, then drag the white numeric label box to move it away from the structure. The hand cursor identifies the draggable area. Only the label receives those drag events; clicks outside it continue to select atoms or rotate/drag the molecule, and right-click still clears selection. The numeric measurement and its atom guides remain tied to the selected atoms. Reset label restores automatic placement.
+
+Offsets are stored locally per geometry and ordered atom selection, as fractions of viewport width/height. Reselecting the same measurement restores its placement during the current view session. PNG capture uses the live placement; the independent GIF renderer copies the offset map and applies the same normalized offset at its output resolution while recomputing each frame's value. Export still fits all frames once, so absolute pixel placement can differ with aspect ratio/framing. Labels stay inside image bounds. New file/view sessions and atom-count changes clear positions; working project files do not serialize label positions. Dragging a label does not change coordinates, selection, animation or camera and does not add geometry undo entries.
+
+Native regression coverage uses mouse handlers on 2/3/4-atom label boxes, verifies 70×30-point label motion, pass-through away from the box, unchanged numeric values/geometry/camera, retained placement on reselection, PNG exports, offset preservation through both GIF renderer copies, an actual moved-dihedral GIF, reset, and prior smooth camera/selection/drag checks. Scientific core tests remain unchanged. Manual pointer feel and all output sizes still require user acceptance.
+
+0.7.4 final validation: 23 standalone core cases and three migrated suites passed. Expanded native smooth/label-drag, annotation/GIF and manipulation workflows passed. Moved-label PNGs were visually inspected; actual moved-dihedral GIF exported and reopened. Signed arm64 app installed at ~/Applications/ChemViewer.app. Evidence: Downloads/chemviewer-label-placement-work. Relaunch existing windows to use the update. The user’s TS.inp and calculation files were not edited.
+
+## 0.7.5 — macOS application icon
+
+The app now ships an original generated blue/teal molecular icon instead of the generic application placeholder. Packaging/ChemViewerIcon.png is the transparent master; scripts/build-icon.sh creates all ten standard/Retina PNG slots (16–1024 physical pixels) and Packaging/ChemViewer.icns. The macOS build copies the ICNS into Contents/Resources, and CFBundleIconFile references it before code signing. This is app identity artwork, not a chemically interpreted structure. Verify the installed icon in Finder and the Dock after relaunch; macOS may cache an older icon on a running app. No scientific/rendering behavior changes.
+
+0.7.5 validation: packaged build passed 23 standalone core cases and the three integrated suites; all ten icon slots were extracted and verified, bundle icon reference matches the ICNS, installed signature passes, and NSWorkspace resolved the installed app to the new icon (visually inspected at Downloads/chemviewer-icon-work/macOS-resolved-icon.png). Installed version 0.7.5 build 14; LaunchServices registration refreshed.
+
+## 0.8.0 — detected NEB reaction profiles and optional markers
+
+The energy sheet now auto-selects a complete ORCA NEB/NEB-TS path-summary dataset, separate from Cartesian optimization history. It defaults to a reactant/refined-TS/product diagram; all images and ordinary PES lines are also selectable. Forward/reverse barriers use the explicit refined TS and printed relative energies, not the highest CI or rounded-Hartree subtraction. Structures are taken only from validated optional companion files. All scatter markers can be turned off. PDF/SVG/PNG/CSV/JSON exports include provenance. See docs/neb-reaction-profiles-2026-10-19.md for scientific semantics, implementation, tests and limitations.
+
+0.8.0 final results: 25 standalone core cases, the three migrated parser/editing/project suites, and all six Matplotlib plotting tests passed. The final packaged native NEB check passed on the original user TS.out (11 rows; forward/reverse/reaction 86.35/2.66/83.69 kcal/mol; all three matched endpoint/TS structures; auto defaults, reaction/full-band renders, optimization toggle and sheet). Existing packaged energy/editing/navigation/Matplotlib workflow passed. Direct swift test remains blocked by absent XCTest/full Xcode; no XCTest pass is claimed. The reaction diagram was visually inspected; final version labels use two decimals. The initial companion String file reader blocked on this Mac; switching to the existing bounded Data(mappedIfSafe) read path resolved it, and the original-file native check passed repeatedly afterward.
+
+Signed arm64 ChemViewer 0.8.0 build 15 is installed at ~/Applications/ChemViewer.app, preserving its icon. Read-only input TS.out and companion files were not modified or committed. Generated reaction diagram and full-band PDF/SVG/600-dpi PNG/data/script bundles are in Downloads/chemviewer-neb-work/TS-reaction-diagram and TS-full-neb-path. Logs are beside them. Source remains uncommitted; no GitHub push performed.
+
+## Version-control policy — 2026-10-19
+
+User explicitly authorized committing and pushing every completed version going forward. AGENTS.md records the persistent release workflow: validated source/tests/assets/docs commit, annotated version tag, push branch/tag, verify remote, no force pushes or tag replacement. The current cumulative source is being published as v0.8.0; earlier locally installed builds were not separately checkpointed and are not represented as invented historical source commits. Prior statements that these changes remain uncommitted describe earlier work and are superseded by this release checkpoint. Personal calculation files and generated local evidence remain outside the repository.

@@ -46,3 +46,71 @@ GitHub Actions on `macos-15` can compile and execute Swift unit tests natively
 on Apple Silicon and produce an ad-hoc-signed artifact. It cannot validate
 human-visible Metal output or normal macOS interaction; those rows remain
 pending until observed on the physical Mac.
+
+## Automated local evidence (2026-10-19)
+
+The packaged `--smoke-test` passed in a real local SwiftUI window with live Metal frame completion. This supplies partial automated evidence for CV-GUI-001/002/003/005/007/011/012: programmatic file opening, actual shader/pipeline loading, selection propagation, coordinate undo and negative-mode animation/pause were exercised. It does not mark native dialog clicking, Finder routing, visual/vector agreement, Retina appearance, or gestures passed. Native parsing separately passed the CV-GUI-009 numeric reference; GUI labels still need inspection. See `mac-validation-2026-10-19.md`.
+
+## 0.2.0 visual checks
+
+The five tabs were activated in a real packaged window and their screenshots inspected. CV-GUI-003 now also has GPU evidence for depth-order independence, shader loading and PNG capture; CV-GUI-015 has a successful current-resolution PNG path (save-dialog interaction and configurable export size remain pending). Check Cmd+1…5, coordinate Apply/Undo, split-pane fitting, all display styles, camera rail, and File → Export Image as PNG manually. Full pointer/gesture acceptance remains open. Details: `rendering-and-ui-2026-10-19.md`.
+
+## 0.3.0 added acceptance procedures
+
+On multi-XYZ, verify Abstract energy rows, selected structure, arrow browsing and explorer scrolling. Choose the unit for unlabelled comment energies. Left-click at least five atoms without modifiers, toggle one off, and Clear. Select two atoms, apply each distance mode and verify the fixed atom/midpoint; Undo. Select three atoms and edit A–B–C angle; verify B is the vertex and both adjacent distances are unchanged. Navigate away/back and Undo. Plot energy versus geometry index, selected distance and selected angle; change units/reference, update, and export all files. On ORCA, follow SCF and final-energy source links to exact highlighted lines. Local packaged routing/rendering checks and synthetic screenshots passed; manual hardware/dialog acceptance remains pending. Details: `energy-and-editing-2026-10-19.md`.
+
+## 0.4.0 added procedures
+
+Right-click must clear all atoms without rotating. Select A/B/C and test C-only versus symmetric A/C angle edits about B. Enable hand/Atom and drag one atom, then Undo once; only that atom changes. Select a bonded A/B pair, choose Fragment, check B-side highlighting, drag/rotate with attachment pivot and verify outside atoms stay fixed. Test each ±axis button and whole-geometry dragging. In Abstract copy numeric E/H/G and sums, verify the chosen electronic base, and expand details only when needed. In Coord copy pending edits as TSV and XYZ. Automated mouse-handler/clipboard/visual checks passed with synthetic fixtures; full human pointer/trackpad/button acceptance remains pending. See `thermochemistry-and-manipulation-2026-10-19.md`.
+
+## 0.5.0 added procedures
+
+Select 2/3/4 atoms and toggle the corresponding measurement overlay; inspect the guide, label, signed dihedral and annotated PNG. Clear selection and confirm guides disappear. Drag each manipulation scope and confirm the molecule tracks the pointer continuously, final coordinates match the preview and one Undo restores it. With dragging disabled, pull a front atom right/up and confirm the view follows right/up; coordinates must remain unchanged. Packaged pointer-handler, overlay, GPU and PNG checks pass locally; manual trackpad feel and broad large-molecule testing remain pending. Details: `measurements-and-smooth-drag-2026-10-19.md`.
+
+## 0.6.0 added procedures
+
+Confirm a fresh app defaults to xyzrender · Paton and change all five styles. Open multi-XYZ, rotate to a recognizable non-default angle, export a looping GIF with and without forward/backward playback; inspect playback externally and confirm its angle matches. Repeat for an ORCA frequency at a visibly nonzero amplitude. Check dimensions/speed, cancellation, replacing an existing GIF, and no changes to the viewer camera/geometry. Test entry from each tab. Export fits the full animation once and does not preserve zoom/pan; this is intentional and must be clear in the sheet. Programmatic checks do not replace these human acceptance steps. See paton-and-gif-2026-10-19.md.
+
+## 0.6.1 — uniform shading by distance
+
+At the user’s request, depth fog is disabled for both atoms and bonds. The shared native render path now sends zero fog weight, so farther objects retain the same element colors and surface gradient as nearer objects. This applies to the viewport, PNGs and GIFs. Paton palette, outlines and radial shading remain. Verify by rotating a deep structure and comparing near/far atoms of the same element. This supersedes the 0.6.0 depth-fog behavior.
+
+## 0.6.2 — measurement labels and slower GIFs
+
+Select 2 atoms for length, 3 for angle (B is the vertex in A→B→C), or 4 for a signed dihedral, in order. Choose File → Export Animation as GIF… and enable **Include measurement label and guides**. The current ordered selection supplies one measurement per GIF. Its numeric value and projected guides are recomputed from each frame's actual coordinates, including sinusoidal frequency displacements. Labels use Å or degrees, retain the viewer’s angle, and use the same guide/dihedral-plane drawing as the native view. The toggle starts enabled when the viewer’s measurement overlay was enabled. Labels require stable atom ordering and matching element sequences across trajectory frames. If a selected angle/dihedral is undefined in a frame, export reports an error rather than writing a misleading value; temporary output is removed and any existing destination remains intact.
+
+Playback speed offers Normal, Half, Quarter and Eighth; Half is the new dialog default. Frame-rate choices now include 1 and 2 fps. Every frame is retained; GIF delay is `1 / (fps × speed)`, with an approximate loop duration shown. GIF centisecond quantization/player behavior may slightly change actual timing. These choices apply to both trajectories and frequencies. Display speed remains illustrative, not physical vibrational time. Coordinates, amplitude and camera orientation are unchanged.
+
+## 0.7.0 merged-app procedures
+
+Inspect the in-window File/Edit/View/Display/Tools/Compute/Help strip, classic tabs/toolbar/footer and white canvas. Open +/Cmd-B, build methane and attach methyl to a terminal H; confirm 8-atom ethane, selected inserted fragment and 1.52 Å C–C distance. Undo/Redo and inspect restored groups and selection. Import an XYZ fragment with X site; attach/remove dummies, duplicate/delete/insert/replace, numeric ordered selection and connected/imported-group selection. Set a bonded pair as axis, select a fragment and rotate/translate; verify outside atoms remain fixed. Save/reopen .cvproject and legacy .mvproject and check atoms/groups/selection/charge/multiplicity. Export XYZ/ORCA and reject unresolved dummy sites. Test H hiding and all captions in viewer/PNG/GIF, camera roll/pan and GIF angle. Open Gaussian geometry, compound-job ORCA modes/facts and verify source jumps. Repeat all earlier energy, plotting, drag, measurement and GIF workflows. Human ergonomic/trackpad and broad file coverage remain pending regardless of native programmatic checks.
+
+## 0.7.1 — left explorer restored by default
+
+The geometry/frequency Result Explorer is visible on the left at startup again, as requested. Its geometry selection, per-frame frequency selection and arrow navigation are retained; View → Result Explorer or the sidebar toolbar button still toggles it. The optional right-hand builder remains available with +/Cmd-B. This supersedes 0.7.0’s initially hidden explorer. Verify by opening a multi-geometry ORCA output and browsing geometries and modes from the left panel.
+
+## 0.7.2 — optional frequency vectors
+
+Frequency displacement vectors default to off. The toolbar Vectors checkbox, native Display → Displacement Vectors menu, and classic in-window Display → Frequency Vectors menu share the same toggle. Select a normal mode and toggle vectors without changing animation or coordinates.
+
+## 0.7.3 — stable view while selecting atoms
+
+A native regression reproduced selection resizing the 3D canvas: the bottom inspector was inserted/removed and had variable height for 1/2/3/4 selections, changing projection and apparent molecule position without a camera reset. The inspector now has a stable 140-point scrollable area, with an empty-selection hint. Its content can scroll horizontally in narrow split/builder layouts without changing the canvas. The status row also has a fixed height. Separately, camera dragging now waits for movement over 3 points; small click jitter does not rotate/pan. Atom manipulation retains its existing 1-point activation threshold. Selection colors and measurement edits remain functional.
+
+The native smooth regression now exercises a real click with subpixel movement, then 1/2/3/4 selections and clearing, and verifies viewport object identity, bounds, camera rotation and all projected atom positions in window coordinates (0.05-point tolerance). This supplements the existing local atom-drag/undo, guide/PNG and mouse-camera direction checks.
+
+## 0.7.4 — draggable measurement labels
+
+Enable Show bond length/angle/dihedral, then drag the white numeric label box to move it away from the structure. The hand cursor identifies the draggable area. Only the label receives those drag events; clicks outside it continue to select atoms or rotate/drag the molecule, and right-click still clears selection. The numeric measurement and its atom guides remain tied to the selected atoms. Reset label restores automatic placement.
+
+Offsets are stored locally per geometry and ordered atom selection, as fractions of viewport width/height. Reselecting the same measurement restores its placement during the current view session. PNG capture uses the live placement; the independent GIF renderer copies the offset map and applies the same normalized offset at its output resolution while recomputing each frame's value. Export still fits all frames once, so absolute pixel placement can differ with aspect ratio/framing. Labels stay inside image bounds. New file/view sessions and atom-count changes clear positions; working project files do not serialize label positions. Dragging a label does not change coordinates, selection, animation or camera and does not add geometry undo entries.
+
+Native regression coverage uses mouse handlers on 2/3/4-atom label boxes, verifies 70×30-point label motion, pass-through away from the box, unchanged numeric values/geometry/camera, retained placement on reselection, PNG exports, offset preservation through both GIF renderer copies, an actual moved-dihedral GIF, reset, and prior smooth camera/selection/drag checks. Scientific core tests remain unchanged. Manual pointer feel and all output sizes still require user acceptance.
+
+## 0.7.5 — macOS application icon
+
+The app now ships an original generated blue/teal molecular icon instead of the generic application placeholder. Packaging/ChemViewerIcon.png is the transparent master; scripts/build-icon.sh creates all ten standard/Retina PNG slots (16–1024 physical pixels) and Packaging/ChemViewer.icns. The macOS build copies the ICNS into Contents/Resources, and CFBundleIconFile references it before code signing. This is app identity artwork, not a chemically interpreted structure. Verify the installed icon in Finder and the Dock after relaunch; macOS may cache an older icon on a running app. No scientific/rendering behavior changes.
+
+## 0.8.0 — detected NEB reaction profiles and optional markers
+
+The energy sheet now auto-selects a complete ORCA NEB/NEB-TS path-summary dataset, separate from Cartesian optimization history. It defaults to a reactant/refined-TS/product diagram; all images and ordinary PES lines are also selectable. Forward/reverse barriers use the explicit refined TS and printed relative energies, not the highest CI or rounded-Hartree subtraction. Structures are taken only from validated optional companion files. All scatter markers can be turned off. PDF/SVG/PNG/CSV/JSON exports include provenance. See docs/neb-reaction-profiles-2026-10-19.md for scientific semantics, implementation, tests and limitations.
