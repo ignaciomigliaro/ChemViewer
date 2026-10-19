@@ -26,6 +26,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     var showMeasurementOverlay = false
     var draggingEnabled = false
     var dragAxis: DragAxis = .screen
+    var onBuilderClick: (Int) -> Bool = { _ in false }
     var onClearSelection: () -> Void = {}
     var onManipulationSelection: (Int) -> Void = { _ in }
     var onBeginAtomDrag: (Int) -> Bool = { _ in false }
@@ -41,6 +42,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     func makeNSView(context: Context) -> MolecularMTKView {
         let view = MolecularMTKView()
         view.onAtomClick = { index, extendSelection in
+            if context.coordinator.parent.onBuilderClick(index) { return }
             if context.coordinator.parent.draggingEnabled { context.coordinator.parent.onManipulationSelection(index) }
             else { context.coordinator.selectAtom(index, extendSelection: extendSelection) }
         }

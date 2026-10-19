@@ -42,6 +42,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--builder-chemistry-smoke-test") { await BuilderChemistrySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--neb-smoke-test") { await NEBSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--merge-smoke-test") { await MergeSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--animation-smoke-test") { await AnimationSmokeTest.run(workspace: workspace) }
@@ -285,6 +286,7 @@ struct ContentView: View {
                     selectedAtomIndices: $workspace.selectedAtomIndices,
                     showMeasurementOverlay: workspace.showMeasurementOverlay,
                     draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
+                    onBuilderClick: workspace.placeBuilderItem,
                     onClearSelection: workspace.clearSelection,
                     onManipulationSelection: { _ = workspace.selectManipulationSeed($0) },
                     onBeginAtomDrag: workspace.beginAtomDrag,

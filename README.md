@@ -168,3 +168,7 @@ ORCA NEB-TS outputs now open the energy sheet with a reaction-profile option sel
 Versioned releases are checkpointed in Git and pushed to origin after validation, using annotated `vX.Y.Z` tags. The initial cumulative checkpoint for the locally developed 0.3–0.8 features is `v0.8.0`; earlier local builds were not independently tagged.
 
 GIF export defaults to a transparent background (switch it off for white). Atom-number and element captions no longer have white rectangles. GIF transparency is binary; fractional edge opacity cannot be retained.
+
+## Expanded builder and local workflows (0.9.0)
+
+Command-B opens the searchable 258-entry fragment/metal-center library. Choose a fragment, then click a host atom; right-click finishes. Add any element, reuse/save selected fragments, remove unused X sites, and run cancellable UFF cleanup with fixed atoms and undo. **ChemRefine workflow…** opens the real local workflow editor seeded from the current geometry; configure installed engines there. The chemistry runtime is already installed on this Mac. See [usage and validation](docs/building-and-local-workflows.md).

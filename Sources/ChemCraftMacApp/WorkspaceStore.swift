@@ -6,6 +6,23 @@ import Foundation
 @MainActor
 final class WorkspaceStore: ObservableObject {
     @Published var isBuilderVisible = false
+    @Published var pendingAttachment: [Atom]?
+    var pendingAttachmentLeaving = 0
+    @Published var pendingElement: String?
+    @Published var buildingHint = ""
+    func placeBuilderItem(at index: Int) -> Bool {
+        guard pendingAttachment != nil || pendingElement != nil else { return false }
+        do {
+            let project = try buildingProject()
+            if let element = pendingElement {
+                applyBuildingProject(try project.attachingAtom(element, hostAtom: index))
+            } else if let fragment = pendingAttachment {
+                applyBuildingProject(try project.attachingAtAtom(fragment, hostAtom: index, fragmentLeaving: pendingAttachmentLeaving))
+            }
+            buildingHint = "Attached. Click another site to add again; right-click to finish."
+        } catch { errorMessage = error.localizedDescription }
+        return true
+    }
     @Published var showExplorer = true
     @Published var showHydrogens = true
     @Published var atomCaption: AtomCaption = .none
@@ -299,7 +316,7 @@ enum DragAxis: String, CaseIterable { case screen = "Screen plane", x = "X", y =
 enum RotationPivot: String, CaseIterable { case center = "Group center", anchor = "Attachment / first atom", origin = "World origin" }
 
 extension WorkspaceStore {
-    func clearSelection() { finishAtomDrag(); selectedAtomIndices = []; fragmentBoundary = nil }
+    func clearSelection() { finishAtomDrag(); selectedAtomIndices = []; fragmentBoundary = nil; pendingAttachment = nil; pendingElement = nil; buildingHint = "" }
 
     func chooseDragScope(_ scope: DragScope) {
         finishAtomDrag()
@@ -437,7 +454,7 @@ extension WorkspaceStore {
     }
     func attachBuildingFragment(_ atoms: [Atom], leaving: Int) {
         guard selectedAtomIndices.count == 1, let host = selectedAtomIndices.first else { errorMessage = "Select one host hydrogen or X dummy atom."; return }
-        do { applyBuildingProject(try buildingProject().attaching(atoms, hostLeaving: host, fragmentLeaving: leaving)) }
+        do { applyBuildingProject(try buildingProject().attachingAtAtom(atoms, hostAtom: host, fragmentLeaving: leaving)) }
         catch { errorMessage = error.localizedDescription }
     }
     func duplicateSelectedAtoms() {

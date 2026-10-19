@@ -34,6 +34,66 @@ public struct BuildingProject: Codable {
         let result = try IntegratedBuilding.attachFragment(host: state.atoms, hostLeaving: hostLeaving, fragment: Self.convert(fragment), fragmentLeaving: fragmentLeaving, bondLength: bondLength)
         return try Self(state.attaching(result, hostLeaving: hostLeaving))
     }
+    /// A heavy-atom click adds a new substituent along the least crowded sampled direction.
+    /// Selecting a terminal H/X instead replaces that site using the existing alignment.
+    public func attachingAtAtom(_ fragment: [Atom], hostAtom: Int, fragmentLeaving: Int) throws -> Self {
+        guard atoms.indices.contains(hostAtom) else { throw ParseError.malformed("Select a host atom.") }
+        if ["H", "X"].contains(atoms[hostAtom].element) {
+            return try attaching(fragment, hostLeaving: hostAtom, fragmentLeaving: fragmentLeaving)
+        }
+        let origin = atoms[hostAtom].position
+        // Prefer an existing terminal H/X on the clicked anchor, avoiding a
+        // fifth bond when adding a substituent to a saturated carbon.
+        let leavingSites = atoms.indices.filter { candidate in
+            guard ["H", "X"].contains(atoms[candidate].element) else { return false }
+            let limit: Float = atoms[candidate].element == "X" ? 2.6 : 1.8
+            guard (atoms[candidate].position - origin).length < limit else { return false }
+            let nearest = atoms.indices.filter { !["H", "X"].contains(atoms[$0].element) }.min {
+                (atoms[$0].position - atoms[candidate].position).length < (atoms[$1].position - atoms[candidate].position).length
+            }
+            return nearest == hostAtom
+        }
+        if let site = leavingSites.first {
+            return try attaching(fragment, hostLeaving: site, fragmentLeaving: fragmentLeaving)
+        }
+        let neighbors = atoms.indices.filter { $0 != hostAtom && (atoms[$0].position - origin).length < 3.2 }
+        var best = Vector3(1, 0, 0)
+        var bestScore: Float = -.infinity
+        for k in 0..<96 {
+            let z = 1 - 2 * (Float(k) + 0.5) / 96
+            let phi = Float(k) * 2.39996323
+            let radius = sqrt(max(0, 1 - z * z))
+            let direction = Vector3(radius * cos(phi), radius * sin(phi), z)
+            let score = neighbors.map { index -> Float in
+                let delta = atoms[index].position - origin
+                let normalized = delta * (1 / max(delta.length, 1e-6))
+                return 1 - (direction.x * normalized.x + direction.y * normalized.y + direction.z * normalized.z)
+            }.min() ?? 2
+            if score > bestScore { bestScore = score; best = direction }
+        }
+        let dummy = Atom(id: atoms.count, element: "X", position: origin + best)
+        let extended = try appending([dummy])
+        return try extended.attaching(fragment, hostLeaving: atoms.count, fragmentLeaving: fragmentLeaving)
+    }
+    public func attachingAtom(_ element: String, hostAtom: Int) throws -> Self {
+        guard Self.elements.contains(element), element != "X" else { throw ParseError.malformed("Choose a chemical element.") }
+        // An incoming dummy has an explicit nearest heavy anchor. Hydrogen is added
+        // directly along a temporary carbon scaffold and then substituted.
+        let anchor = element == "H" ? "C" : element
+        let fragment = [Atom(id: 0, element: anchor, position: .zero), Atom(id: 1, element: "X", position: Vector3(1, 0, 0))]
+        let attached = try attachingAtAtom(fragment, hostAtom: hostAtom, fragmentLeaving: 1)
+        if element != "H" { return attached }
+        var next = attached.state
+        let inserted = next.atoms.count - 1
+        let originalHost = atoms[hostAtom]
+        let anchorIndex = ["H", "X"].contains(originalHost.element) ? atoms.indices.filter { !["H", "X"].contains(atoms[$0].element) }.min { (atoms[$0].position - originalHost.position).length < (atoms[$1].position - originalHost.position).length } ?? hostAtom : hostAtom
+        let base = atoms[anchorIndex].position
+        let end = Self.convert(next.atoms)[inserted].position
+        let delta = end - base
+        let direction = delta * (1 / max(delta.length, 1e-6))
+        next.atoms[inserted] = .init(symbol: "H", x: Double(base.x + direction.x * 1.1), y: Double(base.y + direction.y * 1.1), z: Double(base.z + direction.z * 1.1))
+        return try Self(next)
+    }
     public func transformed(selection: [Int], translation: Vector3, axis: Vector3, degrees: Float, pivot: Vector3) throws -> Self {
         guard [translation.x, translation.y, translation.z, axis.x, axis.y, axis.z, degrees, pivot.x, pivot.y, pivot.z].allSatisfy(\.isFinite), selection.allSatisfy(atoms.indices.contains) else { throw ParseError.malformed("Invalid transform") }
         var next = state

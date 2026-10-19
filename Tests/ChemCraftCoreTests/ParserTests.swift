@@ -337,6 +337,33 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(EnergyUnit.kilocaloriePerMole.perHartree, 627.5094740631, accuracy: 1e-8)
     }
 
+    func testBuilderClickAttachmentAndAnyElement() throws {
+        let host = try BuildingProject(atoms: BuildingProject.fragment(1)) // methane
+        let methyl = BuildingProject.fragment(3)
+        let attached = try host.attachingAtAtom(methyl, hostAtom: 0, fragmentLeaving: 1)
+        XCTAssertEqual(attached.atoms.filter { $0.element == "C" }.count, 2)
+        XCTAssertEqual(attached.atoms.filter { $0.element == "H" }.count, 6)
+        XCTAssertEqual(attached.atoms.count, 8)
+        let carbons = attached.atoms.filter { $0.element == "C" }
+        XCTAssertEqual((carbons[0].position - carbons[1].position).length, 1.52, accuracy: 0.01)
+        XCTAssertTrue(attached.atoms.allSatisfy { $0.element != "X" })
+        let fluorinated = try host.attachingAtom("F", hostAtom: 0)
+        XCTAssertEqual(fluorinated.atoms.filter { $0.element == "H" }.count, 3)
+        XCTAssertEqual(fluorinated.atoms.filter { $0.element == "F" }.count, 1)
+        let hydrogen = try host.attachingAtom("H", hostAtom: 0)
+        XCTAssertEqual(hydrogen.atoms.count, 5)
+        let xenon = try host.attachingAtom("Xe", hostAtom: 0)
+        XCTAssertEqual(xenon.atoms.last!.element, "Xe")
+        var rejected = false
+        do { _ = try host.attachingAtom("Invalid", hostAtom: 0) } catch { rejected = true }
+        XCTAssertTrue(rejected)
+        // An unsaturated single atom has no H/X; a new direction is generated.
+        let bare = try BuildingProject(atoms: [Atom(id: 0, element: "Fe", position: .zero)])
+        let metal = try bare.attachingAtAtom(methyl, hostAtom: 0, fragmentLeaving: 1)
+        XCTAssertEqual(metal.atoms.count, 5)
+        XCTAssertEqual(metal.atoms[0].position, .zero)
+    }
+
     func testORCATrajectoryCommentEnergies() throws {
         // Independently generated ORCA-style comments, not personal calculation data.
         let comments = ["Coordinates from ORCA-job sample E -10.125",
