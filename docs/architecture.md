@@ -174,3 +174,6 @@ Validation: 25 standalone core cases and the three integrated suites passed duri
 
 ### ORCA XYZ trajectory comments (0.8.2)
 `XYZCommentEnergy` recognizes the complete `Coordinates from ORCA-job <name> E <number>` comment separately from generic named fields. This format produces Hartree records and frame energies while preserving original comments and source lines. Generic whitespace-separated `E` comments are not assigned units.
+
+## GitHub Swift 6.1 compatibility fix
+Actions run 39299377644 failed while type-checking `ManipulationToolbar.scopeIcon` on Xcode 16.4 / Swift 6.1.2 ARM64. Local Swift 6.3.3 had accepted the same Canvas expression. Extracted drawing into a typed GraphicsContext helper, separated trigonometric/CGFloat arithmetic, and replaced nested ternaries with a scope switch. Icon geometry and colors are unchanged. Local debug build passes; remote CI will verify the actual older toolchain.

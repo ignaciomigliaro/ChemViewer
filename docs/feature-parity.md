@@ -133,3 +133,6 @@ Validation: 25 standalone core cases and the three integrated suites passed duri
 
 ### 0.8.2 XYZ energies
 ORCA trajectory comments with whitespace-separated `E <value>` are recognized in addition to `Energy=` fields. Tested with synthetic frame/provenance and exponent regressions and every energy in the reported 12-frame trajectory; user data remains local.
+
+## GitHub Swift 6.1 compatibility fix
+Actions run 39299377644 failed while type-checking `ManipulationToolbar.scopeIcon` on Xcode 16.4 / Swift 6.1.2 ARM64. Local Swift 6.3.3 had accepted the same Canvas expression. Extracted drawing into a typed GraphicsContext helper, separated trigonometric/CGFloat arithmetic, and replaced nested ternaries with a scope switch. Icon geometry and colors are unchanged. Local debug build passes; remote CI will verify the actual older toolchain.

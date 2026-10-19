@@ -57,16 +57,33 @@ struct ManipulationToolbar: View {
     }
     private func scopeIcon(_ scope: DragScope) -> some View {
         Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let count = scope == .atom ? 0 : scope == .fragment ? 3 : 5
-            for index in 0..<count {
-                let angle = Double(index) * 2 * .pi / Double(count) - .pi / 2
-                let end = CGPoint(x: center.x + cos(angle) * 10, y: center.y + sin(angle) * 10)
-                var path = Path(); path.move(to: center); path.addLine(to: end)
-                context.stroke(path, with: .color(.gray), lineWidth: 2)
-                context.fill(Path(ellipseIn: CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)), with: .color(scope == .fragment ? .green : .pink))
-            }
-            context.fill(Path(ellipseIn: CGRect(x: center.x - 5, y: center.y - 5, width: 10, height: 10)), with: .color(.blue))
+            drawScopeIcon(scope, context: &context, size: size)
         }
+    }
+
+    private func drawScopeIcon(_ scope: DragScope, context: inout GraphicsContext, size: CGSize) {
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let count: Int
+        let satelliteColor: Color
+        switch scope {
+        case .atom: count = 0; satelliteColor = .green
+        case .fragment: count = 3; satelliteColor = .green
+        case .molecule: count = 5; satelliteColor = .pink
+        }
+        for index in 0..<count {
+            let fraction: Double = Double(index) / Double(count)
+            let angle: Double = fraction * (2.0 * Double.pi) - Double.pi / 2.0
+            let offsetX: CGFloat = CGFloat(cos(angle)) * 10
+            let offsetY: CGFloat = CGFloat(sin(angle)) * 10
+            let end = CGPoint(x: center.x + offsetX, y: center.y + offsetY)
+            var bond = Path()
+            bond.move(to: center)
+            bond.addLine(to: end)
+            context.stroke(bond, with: .color(.gray), lineWidth: 2)
+            let satelliteBounds = CGRect(x: end.x - 3, y: end.y - 3, width: 6, height: 6)
+            context.fill(Path(ellipseIn: satelliteBounds), with: .color(satelliteColor))
+        }
+        let centerBounds = CGRect(x: center.x - 5, y: center.y - 5, width: 10, height: 10)
+        context.fill(Path(ellipseIn: centerBounds), with: .color(.blue))
     }
 }

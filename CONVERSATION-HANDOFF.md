@@ -336,3 +336,6 @@ Packaged native energy-workflow smoke test passed: multi-XYZ energies, Abstract/
 ## Installed-app update workflow
 
 Found `/Applications/ChemViewer.app` at 0.8.0 while `~/Applications/ChemViewer.app` was 0.8.2, explaining stale launches. Added `scripts/install-macos.sh`: build/check then update the canonical /Applications bundle and any existing user Applications copy; `--no-build` installs an already validated build. Refreshes LaunchServices registration without closing user windows. AGENTS.md requires this installation step for future local releases. No application behavior/version change.
+
+## GitHub Swift 6.1 compatibility fix
+Actions run 39299377644 failed while type-checking `ManipulationToolbar.scopeIcon` on Xcode 16.4 / Swift 6.1.2 ARM64. Local Swift 6.3.3 had accepted the same Canvas expression. Extracted drawing into a typed GraphicsContext helper, separated trigonometric/CGFloat arithmetic, and replaced nested ternaries with a scope switch. Icon geometry and colors are unchanged. Local debug build passes; remote CI will verify the actual older toolchain.
