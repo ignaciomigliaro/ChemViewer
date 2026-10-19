@@ -251,8 +251,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         cameraObserver = NotificationCenter.default.addObserver(forName: .init("ChemViewerViewportAction"), object: nil, queue: .main) { [weak self] note in
             guard let self, let action = note.object as? String else { return }
             switch action {
-            case "reset": self.yaw = 0.45; self.pitch = -0.30; self.roll = 0; self.zoom = 1; self.pan = .zero
-            case "front": self.yaw = 0; self.pitch = 0; self.roll = 0; self.zoom = 1; self.pan = .zero
+            case "reset": self.recalculateBounds(); self.yaw = 0.45; self.pitch = -0.30; self.roll = 0; self.zoom = 1; self.pan = .zero
+            case "front": self.recalculateBounds(); self.yaw = 0; self.pitch = 0; self.roll = 0; self.zoom = 1; self.pan = .zero
             case "left": self.yaw += .pi / 12
             case "right": self.yaw -= .pi / 12
             case "up": self.pitch += .pi / 12

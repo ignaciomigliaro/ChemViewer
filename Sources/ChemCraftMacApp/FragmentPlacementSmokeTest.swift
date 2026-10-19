@@ -63,6 +63,11 @@ enum FragmentPlacementSmokeTest {
             try require(workspace.currentFrame!.atoms.count == atoms.count * 2, "Second empty click failed")
             let secondCenter = added.reduce(Vector3.zero) { $0 + $1.position } * (1 / Float(added.count))
             try require((secondCenter - secondPosition).length < 1e-4, "Rotated/zoomed placement incorrect")
+            NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "reset")
+            let fitted = workspace.currentFrame!.atoms.indices.compactMap { view.projectedAtomPoint($0) }
+            let fittedX = fitted.reduce(CGFloat(0)) { $0 + $1.x } / CGFloat(fitted.count)
+            let fittedY = fitted.reduce(CGFloat(0)) { $0 + $1.y } / CGFloat(fitted.count)
+            try require(abs(fittedX - view.bounds.midX) < 2 && abs(fittedY - view.bounds.midY) < 2, "Fit and Center did not refit freely placed fragments")
             workspace.clearSelection(); let count = workspace.currentFrame!.atoms.count
             click(view, at: CGPoint(x: 10, y: 10))
             try require(workspace.currentFrame!.atoms.count == count, "Inactive placement added a fragment")
