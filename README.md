@@ -158,3 +158,5 @@ The native app icon is bundled at all standard/Retina sizes. Its editable master
 ORCA NEB-TS outputs now open the energy sheet with a reaction-profile option selected: reactant–TS–product levels, forward/reverse barriers, full-band image view, optional structures, and a toggle back to optimization history. Use **Markers** to make PES plots lines only. [NEB plotting details](docs/neb-reaction-profiles-2026-10-19.md).
 
 Versioned releases are checkpointed in Git and pushed to origin after validation, using annotated `vX.Y.Z` tags. The initial cumulative checkpoint for the locally developed 0.3–0.8 features is `v0.8.0`; earlier local builds were not independently tagged.
+
+GIF export defaults to a transparent background (switch it off for white). Atom-number and element captions no longer have white rectangles. GIF transparency is binary; fractional edge opacity cannot be retained.

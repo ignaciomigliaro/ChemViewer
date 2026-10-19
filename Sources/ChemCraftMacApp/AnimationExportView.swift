@@ -34,24 +34,6 @@ struct MolecularAnimation {
     }
 }
 
-/// Serial encoder keeps palette conversion away from the AppKit event loop.
-actor GIFWriter {
-    private var destination: CGImageDestination?
-    init(url: URL, count: Int) throws {
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.gif.identifier as CFString, count, nil) else { throw AnimationExportError.message("Cannot create GIF file.") }
-        self.destination = destination
-        CGImageDestinationSetProperties(destination, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFLoopCount: 0]] as CFDictionary)
-    }
-    func append(_ image: CGImage, delay: Double) throws {
-        guard let destination else { throw AnimationExportError.message("GIF encoder is closed.") }
-        CGImageDestinationAddImage(destination, image, [kCGImagePropertyGIFDictionary: [kCGImagePropertyGIFDelayTime: delay, kCGImagePropertyGIFUnclampedDelayTime: delay]] as CFDictionary)
-    }
-    func finish() throws {
-        guard let destination, CGImageDestinationFinalize(destination) else { throw AnimationExportError.message("Could not finalize GIF. Check available disk space.") }
-        self.destination = nil
-    }
-}
-
 @MainActor enum AnimationExporter {
     static func viewport() -> MolecularMTKView? {
         func find(_ view: NSView) -> MolecularMTKView? {
@@ -63,7 +45,7 @@ actor GIFWriter {
         return NSApp.windows.filter { $0.sheetParent == nil && $0.isVisible }.compactMap { $0.contentView.flatMap(find) }.first
     }
 
-    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], progress: (Double) -> Void) async throws {
+    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], transparentBackground: Bool = true, progress: (Double) -> Void) async throws {
         guard !animation.frames.isEmpty, animation.count >= 2, animation.count <= 2000,
               [256, 512, 640, 800, 1024].contains(size), fps >= 1, fps <= 50, playbackSpeed >= 0.125, playbackSpeed <= 1,
               animation.frames.allSatisfy({ !$0.atoms.isEmpty }),
@@ -87,7 +69,7 @@ actor GIFWriter {
         for index in 0..<animation.count {
             try Task.checkCancellation()
             let sample = animation.sample(index)
-            let image = try autoreleasepool { try fittedRenderer.renderAnimationFrame(sample.0, positions: sample.1, size: size, measurementIndices: measurementIndices) }
+            let image = try autoreleasepool { try fittedRenderer.renderAnimationFrame(sample.0, positions: sample.1, size: size, measurementIndices: measurementIndices, transparentBackground: transparentBackground) }
             try await writer.append(image, delay: 1 / (fps * playbackSpeed))
             progress(Double(index + 1) / Double(animation.count))
             // Let progress and cancellation events run between GPU submissions.
@@ -109,6 +91,7 @@ struct AnimationExportView: View {
     @State private var fps = 12.0
     @State private var playbackSpeed = 0.5
     @State private var includeMeasurement = false
+    @State private var transparentBackground = true
     @State private var samples = 48
     @State private var pingPong = false
     @State private var progress: Double?
@@ -155,6 +138,8 @@ struct AnimationExportView: View {
                 Text("Eighth speed (0.125×)").tag(0.125)
             }.disabled(task != nil)
             Text("Approximate loop: \(Double(frameCount) / (fps * playbackSpeed), specifier: "%.1f") seconds. Slower playback keeps every frame.").font(.caption)
+            Toggle("Transparent background", isOn: $transparentBackground).disabled(task != nil)
+            Text("GIF transparency has hard edges; it cannot retain partial opacity.").font(.caption).foregroundStyle(.secondary)
             Toggle("Include measurement label and guides", isOn: $includeMeasurement)
                 .disabled(!validSelection || task != nil)
             if validSelection {
@@ -162,7 +147,7 @@ struct AnimationExportView: View {
             } else {
                 Text("Before exporting, select 2 atoms for a length, 3 for an angle (middle atom is the vertex), or 4 for a signed dihedral, in order.").font(.caption).foregroundStyle(.secondary)
             }
-            Text("Keeps your current viewing angle. Fits all frames once, on white, and loops continuously. Selection highlights and displacement vectors are omitted.").font(.caption).foregroundStyle(.secondary)
+            Text("Keeps your current viewing angle. Fits all frames once and loops continuously. Selection highlights and displacement vectors are omitted.").font(.caption).foregroundStyle(.secondary)
             if let progress { ProgressView(value: progress); Text("Rendering \(Int(progress * 100))%…").font(.caption) }
             if let result { Text(result).foregroundStyle(.green).textSelection(.enabled) }
             if let failure { Text(failure).foregroundStyle(.red).textSelection(.enabled) }
@@ -186,11 +171,12 @@ struct AnimationExportView: View {
         let style = workspace.renderingStyle
         let indices = includeMeasurement && validSelection ? workspace.selectedAtomIndices : []
         let speed = playbackSpeed
+        let transparent = transparentBackground
         failure = nil; result = nil; progress = 0
         task = Task { @MainActor in
             defer { task = nil; progress = nil }
             do {
-                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementIndices: indices) { progress = $0 }
+                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementIndices: indices, transparentBackground: transparent) { progress = $0 }
                 result = "Saved \(animation.count) frames to \(url.lastPathComponent)."
             } catch is CancellationError { result = "Export cancelled." }
             catch { failure = error.localizedDescription }

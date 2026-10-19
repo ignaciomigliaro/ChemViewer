@@ -35,7 +35,7 @@ struct MeasurementAnnotation {
         } catch { return nil }
     }
 
-    func draw(in bounds: CGRect) {
+    func draw(in bounds: CGRect, background: Bool = true) {
         if points.count == 4 {
             for triangle in [[0, 1, 2], [1, 2, 3]] {
                 let plane = NSBezierPath(); plane.move(to: points[triangle[0]])
@@ -52,8 +52,10 @@ struct MeasurementAnnotation {
             NSBezierPath(ovalIn: CGRect(x: point.x - 2.5, y: point.y - 2.5, width: 5, height: 5)).fill()
         }
         let rectangle = labelRect(in: bounds)
-        NSColor.white.withAlphaComponent(0.96).setFill()
-        NSBezierPath(roundedRect: rectangle, xRadius: 4, yRadius: 4).fill()
+        if background {
+            NSColor.white.withAlphaComponent(0.96).setFill()
+            NSBezierPath(roundedRect: rectangle, xRadius: 4, yRadius: 4).fill()
+        }
         labelText.draw(at: CGPoint(x: rectangle.minX + 5, y: rectangle.minY + 3))
     }
 
@@ -92,7 +94,7 @@ struct AtomCaptionAnnotation {
     let point: CGPoint
     let label: String
     func draw() {
-        let text = NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .semibold), .foregroundColor: NSColor.black, .backgroundColor: NSColor.white.withAlphaComponent(0.85)])
+        let text = NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .semibold), .foregroundColor: NSColor.black])
         text.draw(at: CGPoint(x: point.x + 5, y: point.y + 5))
     }
 }

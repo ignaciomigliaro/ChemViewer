@@ -492,7 +492,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         return renderer
     }
 
-    func renderAnimationFrame(_ frame: MoleculeFrame, positions: [SIMD3<Float>], size: Int, measurementIndices: [Int] = []) throws -> CGImage {
+    func renderAnimationFrame(_ frame: MoleculeFrame, positions: [SIMD3<Float>], size: Int, measurementIndices: [Int] = [], transparentBackground: Bool = false) throws -> CGImage {
         guard size >= 128, size <= 2048, positions.count == frame.atoms.count, renderingReady,
               let device, let command = commandQueue.makeCommandBuffer() else {
             throw AnimationExportError.message("The Metal renderer is unavailable or the frame is invalid.")
@@ -515,7 +515,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         pass.colorAttachments[0].resolveTexture = multisample == nil ? nil : color
         pass.colorAttachments[0].loadAction = .clear
         pass.colorAttachments[0].storeAction = multisample == nil ? .store : .multisampleResolve
-        pass.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        pass.colorAttachments[0].clearColor = transparentBackground ? MTLClearColorMake(0, 0, 0, 0) : MTLClearColorMake(1, 1, 1, 1)
         pass.depthAttachment.texture = depth; pass.depthAttachment.loadAction = .clear; pass.depthAttachment.clearDepth = 1
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw AnimationExportError.message("Cannot encode GIF frame.") }
         encodeMolecule(encoder, positions: positions, size: CGSize(width: size, height: size))
@@ -530,7 +530,21 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         rgba.withUnsafeMutableBytes { raw in
             let target = raw.bindMemory(to: UInt8.self)
             for i in stride(from: 0, to: rowBytes * size, by: 4) {
-                target[i] = source[i + 2]; target[i + 1] = source[i + 1]; target[i + 2] = source[i]; target[i + 3] = 255
+                let alpha = transparentBackground ? source[i + 3] : 255
+                target[i + 3] = alpha
+                for channel in 0..<3 {
+                    let component = source[i + 2 - channel]
+                    if alpha == 0 { target[i + channel] = 0 }
+                    else if alpha == 255 { target[i + channel] = component }
+                    else {
+                        // MSAA coverage is premultiplied in linear space before sRGB encoding.
+                        let encoded = Float(component) / 255
+                        let linear = encoded <= 0.04045 ? encoded / 12.92 : pow((encoded + 0.055) / 1.055, 2.4)
+                        let straight = min(1, linear / (Float(alpha) / 255))
+                        let color = straight <= 0.0031308 ? straight * 12.92 : 1.055 * pow(straight, 1 / 2.4) - 0.055
+                        target[i + channel] = UInt8(clamping: Int((color * 255).rounded()))
+                    }
+                }
             }
         }
         guard let provider = CGDataProvider(data: rgba as CFData),
@@ -545,9 +559,10 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
               let context = NSGraphicsContext(bitmapImageRep: bitmap) else { throw AnimationExportError.message("Cannot draw the GIF measurement label.") }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = context
+        context.cgContext.clear(CGRect(x: 0, y: 0, width: size, height: size))
         context.cgContext.draw(image, in: CGRect(x: 0, y: 0, width: size, height: size))
         for caption in captions { caption.draw() }
-        annotation?.draw(in: CGRect(x: 0, y: 0, width: size, height: size))
+        annotation?.draw(in: CGRect(x: 0, y: 0, width: size, height: size), background: !transparentBackground)
         NSGraphicsContext.restoreGraphicsState()
         guard let annotated = bitmap.cgImage else { throw AnimationExportError.message("Cannot finish the GIF measurement label.") }
         return annotated

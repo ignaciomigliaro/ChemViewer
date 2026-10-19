@@ -84,6 +84,52 @@ import ImageIO
                 let png = CGImageDestinationCreateWithURL(target as CFURL, "public.png" as CFString, 1, nil)!
                 CGImageDestinationAddImage(png, image, nil); try require(CGImageDestinationFinalize(png), "Measurement PNG failed")
             }
+            let alphaRenderer = view.animationRenderer(frames: vibration.frames, amplitude: vibration.amplitude, displacements: mode.displacements)
+            let frequencySource = CGImageSourceCreateWithURL(frequency as CFURL, nil)!
+            var whiteAtomPixels = 0
+            for index in 0..<vibration.count {
+                let sample = vibration.sample(index)
+                let reference = NSBitmapImageRep(cgImage: try alphaRenderer.renderAnimationFrame(sample.0, positions: sample.1, size: 256, transparentBackground: true))
+                let decoded = NSBitmapImageRep(cgImage: CGImageSourceCreateImageAtIndex(frequencySource, index, nil)!)
+                try require((decoded.colorAt(x: 0, y: 0)?.alphaComponent ?? 1) < 0.01, "GIF background is not transparent")
+                for y in stride(from: 0, to: 256, by: 4) { for x in stride(from: 0, to: 256, by: 4) {
+                    let expected = reference.colorAt(x: x, y: y)!.alphaComponent
+                    let color = decoded.colorAt(x: x, y: y)!.usingColorSpace(.deviceRGB)!
+                    if expected < 0.1 { try require(color.alphaComponent < 0.01, "Transparent GIF retained pixels from a previous frame") }
+                    if expected > 0.9 { try require(color.alphaComponent > 0.99, "Transparent GIF lost an opaque atom/bond") }
+                    if color.alphaComponent > 0.9 && color.redComponent > 0.8 && color.greenComponent > 0.8 && color.blueComponent > 0.8 { whiteAtomPixels += 1 }
+                } }
+                // Save independent per-frame references for a second decoder/compositor check.
+                let target = folder.appendingPathComponent("alpha-reference-\(index).png")
+                let destination = CGImageDestinationCreateWithURL(target as CFURL, "public.png" as CFString, 1, nil)!
+                CGImageDestinationAddImage(destination, reference.cgImage!, nil); try require(CGImageDestinationFinalize(destination), "Alpha reference PNG failed")
+            }
+            try require(whiteAtomPixels > 10, "White hydrogen atoms became transparent")
+            let whiteGIF = folder.appendingPathComponent("trajectory-white.gif")
+            try await AnimationExporter.export(animation, from: view, style: .paton, size: 256, fps: 10, to: whiteGIF, transparentBackground: false) { _ in }
+            let whiteSource = CGImageSourceCreateWithURL(whiteGIF as CFURL, nil)!
+            let whiteBitmap = NSBitmapImageRep(cgImage: CGImageSourceCreateImageAtIndex(whiteSource, 0, nil)!)
+            try require(whiteBitmap.colorAt(x: 0, y: 0)!.alphaComponent > 0.99, "White background option is transparent")
+            // Caption-only rendering must contain dark glyphs and transparency, with no white rectangle.
+            let captionBitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 180, pixelsHigh: 80, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 180 * 4, bitsPerPixel: 32)!
+            NSGraphicsContext.saveGraphicsState()
+            let captionContext = NSGraphicsContext(bitmapImageRep: captionBitmap)!
+            NSGraphicsContext.current = captionContext
+            captionContext.cgContext.clear(CGRect(x: 0, y: 0, width: 180, height: 80))
+            for (i, caption) in [AtomCaption.numbers, .elements, .elementNumbers].enumerated() {
+                AtomCaptionAnnotation(point: CGPoint(x: 10 + i * 50, y: 20), label: caption.label(element: "C", index: 11)).draw()
+            }
+            NSGraphicsContext.restoreGraphicsState()
+            var glyphs = 0, whiteBoxes = 0
+            for y in 0..<80 { for x in 0..<180 {
+                let c = captionBitmap.colorAt(x: x, y: y)!.usingColorSpace(.deviceRGB)!
+                if c.alphaComponent > 0.05 {
+                    if c.redComponent < 0.2 { glyphs += 1 }
+                    if c.redComponent > 0.8 && c.greenComponent > 0.8 && c.blueComponent > 0.8 { whiteBoxes += 1 }
+                }
+            } }
+            try require(glyphs > 20 && whiteBoxes == 0, "Atom/element captions still have white boxes")
+            try captionBitmap.representation(using: .png, properties: [:])!.write(to: folder.appendingPathComponent("transparent-captions.png"))
             for style in MolecularStyle.allCases {
                 let renderer = view.animationRenderer(frames: [frames[0]])
                 renderer.scene.style = style
@@ -111,7 +157,7 @@ import ImageIO
                 try process.run(); process.waitUntilExit()
             }
             workspace.isAnimationExportPresented = false
-            print("ANIMATION_SMOKE_PASS: Paton default, all styles, trajectory/ping-pong, signed frequency sinusoid, GIF counts/size/delay/loop/nonstatic, document preservation, cancellation, animated length/angle/dihedral guides and quarter-speed timing")
+            print("ANIMATION_SMOKE_PASS: Paton default, all styles, trajectory/ping-pong, signed frequency sinusoid, GIF counts/size/delay/loop/nonstatic, document preservation, cancellation, animated length/angle/dihedral guides and quarter-speed timing, transparent frames without trails, retained white atoms, white-background option and box-free captions")
             exit(0)
         } catch { fputs("ANIMATION_SMOKE_FAIL: \(error)\n", stderr); exit(1) }
     }
