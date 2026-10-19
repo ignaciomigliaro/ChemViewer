@@ -132,3 +132,5 @@ Packaged native energy-workflow smoke test passed: multi-XYZ energies, Abstract/
 
 ## GitHub Swift 6.1 compatibility fix
 Actions run 39299377644 failed while type-checking `ManipulationToolbar.scopeIcon` on Xcode 16.4 / Swift 6.1.2 ARM64. Local Swift 6.3.3 had accepted the same Canvas expression. Extracted drawing into a typed GraphicsContext helper, separated trigonometric/CGFloat arithmetic, and replaced nested ternaries with a scope switch. Icon geometry and colors are unchanged. Local debug build passes; remote CI will verify the actual older toolchain.
+
+Follow-up run 39306699269 passed Swift compilation/tests and then exposed a separate Matplotlib source-build failure in bundled FreeType. CI now explicitly selects Python 3.12 with setup-python and requires binary wheels for plotting dependencies. This avoids reliance on the runner default Python and native source compilation.

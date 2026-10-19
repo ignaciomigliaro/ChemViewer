@@ -23,7 +23,14 @@ jobs:
           xcodebuild -version
       - name: Build and test ChemViewer
         run: bash scripts/build-macos.sh --require-xctest
+      - name: Set up plotting Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Validate Matplotlib figures and energy data
+        env:
+          CHEMVIEWER_SETUP_PYTHON: python
+          PIP_ONLY_BINARY: ':all:'
         run: |
           bash scripts/setup-plotting.sh
           "$HOME/Library/Application Support/ChemViewer/plotting-venv/bin/python3" -m unittest python_tests.test_energy_plot -v
