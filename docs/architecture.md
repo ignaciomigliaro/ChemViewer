@@ -346,3 +346,14 @@ group; cancellation is not offered during the combined Run preflight/launch,
 avoiding a race that could conceal an already detached calculation. The native
 button runs the full pipeline from step 1; the embedded editor retains its
 Resume/recovery actions. ORCA and gated model credentials are not bundled.
+
+## ORCA 6.1 package readiness — 0.10.2
+
+The native workflow bridge accepts either complete helper family beside the
+ORCA driver: `orca_startup`/`orca_leanscf` (the supplied 6.1.1 packages) or
+`orca_scf`/`orca_gtoint` (older layouts). Helpers must be executable; a partial
+family still blocks launch. This is an installation check, not a guarantee that
+every optional ORCA module or MPI runtime is available. Missing ChemRefine
+`slurm-header` warnings now block local runs too: its local scheduler still
+requires the header when generating the job script. Scaffold creates missing
+headers without replacing user templates.

@@ -245,3 +245,18 @@ it. Unsupported isotopic input is rejected rather than losing isotope metadata.
 | Workflow readiness | 11 Python runner tests; missing inputs/templates/ORCA/weights/backends and GPU budget refusal | Checks declared engine requirements; custom Python templates can have additional imports/runtime requirements |
 | Backend installation | Real isolated PySCF backend provisioned; selected missing extras only | UMA/other gated weights still require user access; unused backends are not preinstalled |
 | ORCA execution | Blocked on this Mac: user confirmed not installed | Official installer/account download required; no real ORCA/MPI calculation claimed |
+
+## ORCA 6.1 installation compatibility — 0.10.2
+
+- Complete 6.1.1 helper layout accepted; legacy helper layout retained.
+- Missing required job header blocks execution before a driver is launched,
+  including local dispatch.
+- Chemistry integration suite: 26 tests passed, including both helper layouts
+  and missing-header launch refusal. ARM64 build/core and native workflow gates
+  passed. See the current execution validation record for actual engine runs.
+
+Actual native serial ORCA 6.1.1 H2 HF/STO-3G pipeline now passes: normal
+termination, one survivor, zero failures, -1.116759307204 Eh; independent
+PySCF reference differs by 1.9243e-10 Eh. UMA CPU single point independently
+matches fairchem and stretched-H2 optimization converges. These supersede the
+0.10.1 ORCA installation blocker; parallel ORCA/MPI remains untested.

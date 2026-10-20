@@ -544,3 +544,37 @@ macOS installer/account download remains external, and actual ORCA/MPI execution
 is untested. Do not report all backends/models installed: only the isolated
 PySCF backend was added; selected missing MLIP extras are provisionable and gated
 weights still require user access. No personal scientific files were changed.
+
+## 0.10.2 — native ORCA setup (2026-10-20)
+
+The user supplied `/Users/nacho/Documents/software/orca_6_1_1_macosx_arm64_openmpi411`.
+It is an unpacked executable distribution, with a native arm64 driver and
+`orca_startup`/`orca_leanscf` helpers. The previous bridge incorrectly required
+older `orca_scf`/`orca_gtoint` names. Both complete families now pass; missing
+helpers remain blocking. Missing `slurm-header` warnings also block local runs,
+because ChemRefine's local script generator requires that header too.
+
+26 Python chemistry integration tests pass; 31 standalone core cases plus three
+migrated suites pass; native live-editor/save/detached two-step PySCF workflow
+gate passes. Signed ARM64 build24/0.10.2 installed in both Applications copies.
+ORCA path persisted in ChemViewer defaults and ~/.zprofile ORCADIR/PATH for new
+login shells. User sessions were not killed. The user is personally approving
+Gatekeeper prompts for ORCA components; no quarantine/security bypass performed.
+
+UMA environment `/Users/nacho/miniconda3/envs/uma/bin/python` now has the same
+pinned ChemRefine installed without replacing fairchem-core 2.23.0/torch 2.13.0.
+Dependency check passes; existing HF login authorized uma-s-1p2 weights, cached
+under ~/.cache/fairchem. ChemRefine single point on neutral singlet H2 at 0.74 A
+gives -1.1608742095228168 Eh, exactly matching independent fairchem ASE inference.
+CPU/LBFGS optimization from 0.90 A converged to 0.7411425064135867 A and
+-1.1608751163763043 Eh (max force about 0.0005093 eV/A); both pipelines have one
+survivor and zero failures. Synthetic inputs, templates and actual logs are in
+~/Downloads/chemviewer-h2-orca-uma-20261020; these are not committed.
+
+Native ORCA final validation also PASSED: serial H2 HF/STO-3G TightSCF,
+-1.116759307204 Eh, normal termination, one survivor/zero failures. Independent
+PySCF differs by 1.9243e-10 Eh. Actual bridge launched run log
+`20261020T153513.783701Z-run.log`; successful output and verification JSON are
+in the synthetic validation directory. Supersedes previous ORCA-pending notes.
+Parallel/MPI remains untested; no mpirun found. Detailed scope and model results
+are appended to docs/chemrefine-execution-2026-10-20.md and scientific-validation.

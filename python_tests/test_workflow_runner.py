@@ -87,6 +87,32 @@ class WorkflowTests(unittest.TestCase):
             report = bridge.inspect_workflow(self.path)
         self.assertTrue(any(c['name'] == 'ORCA installation' and c['status'] == 'error' for c in report['checks']))
 
+    def test_complete_orca_helper_families_accepted(self):
+        self.config('orca', 'template: step1.inp')
+        bridge.act(dict(action='scaffold', config_path=str(self.path)))
+        (self.root / 'templates/step1.inp').write_text('! HF STO-3G\n')
+        binary = self.root / 'orca'
+        binary.write_text('#!/bin/sh\nexit 0\n'); binary.chmod(0o755)
+        for names in (('orca_startup', 'orca_leanscf'), ('orca_scf', 'orca_gtoint')):
+            with self.subTest(helpers=names):
+                for name in names:
+                    helper = self.root / name
+                    helper.write_text('#!/bin/sh\nexit 0\n'); helper.chmod(0o755)
+                with patch.dict(os.environ, {'PATH': str(self.root)}):
+                    report = bridge.inspect_workflow(self.path)
+                self.assertTrue(report['ok'], report)
+                for name in names:
+                    (self.root / name).unlink()
+
+    def test_missing_header_blocks_even_local_run(self):
+        self.config()
+        bridge.act(dict(action='scaffold', config_path=str(self.path)))
+        (self.root / 'templates/cpu.slurm.header').unlink()
+        with patch('chemrefine.engines.preflight_backends'), patch('chemrefine.agent_tools.start_run') as launch:
+            result = bridge.act(dict(action='run', config_path=str(self.path)))
+        self.assertFalse(result['started']); launch.assert_not_called()
+        self.assertTrue(any(c['status'] == 'error' and 'header' in c['detail'].lower() for c in result['report']['checks']))
+
     def test_mlip_missing_weights_prevents_pipeline_launch(self):
         self.config('mlip', 'options: {task_name: omol, model_path: absent.pt}')
         bridge.act(dict(action='scaffold', config_path=str(self.path)))

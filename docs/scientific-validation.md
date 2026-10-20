@@ -105,3 +105,44 @@ Original parser/editing/project regression suites now run inside the namespaced 
 ## 0.8.0 — detected NEB reaction profiles and optional markers
 
 The energy sheet now auto-selects a complete ORCA NEB/NEB-TS path-summary dataset, separate from Cartesian optimization history. It defaults to a reactant/refined-TS/product diagram; all images and ordinary PES lines are also selectable. Forward/reverse barriers use the explicit refined TS and printed relative energies, not the highest CI or rounded-Hartree subtraction. Structures are taken only from validated optional companion files. All scatter markers can be turned off. PDF/SVG/PNG/CSV/JSON exports include provenance. See docs/neb-reaction-profiles-2026-10-19.md for scientific semantics, implementation, tests and limitations.
+
+## Native ORCA and UMA validation — 0.10.2 (2026-10-20)
+
+Native ORCA 6.1.1 at
+`/Users/nacho/Documents/software/orca_6_1_1_macosx_arm64_openmpi411/orca`
+completed the independently generated neutral-singlet H2 single point at 0.74 A,
+using serial conventional HF/STO-3G with TightSCF. The actual workflow bridge
+launched ChemRefine's detached driver; ORCA printed `ORCA TERMINATED NORMALLY`,
+and ChemRefine recorded one survivor, zero failures and completed pipeline.
+Its steps.csv energy is -1.116759307204 Eh. Independent PySCF 2.14.0 conventional
+RHF/STO-3G gives -1.1167593073964255 Eh; absolute difference 1.9243e-10 Eh.
+
+The user approved each macOS component prompt (driver, bundled tools library,
+startup, guess, leanscf and properties as encountered). No security controls or
+quarantine attributes were modified. ORCA runs in its unpacked folder. Terminal
+login-shell configuration sets ORCADIR/PATH; ChemViewer's chosen executable is
+persisted. Both installed app copies are 0.10.2/build24; quit/reopen to refresh a
+running session. Parallel ORCA/OpenMPI is not installed or tested by this work;
+this validation uses one CPU. Other methods may invoke additional helpers that
+macOS still asks the user to approve.
+
+The existing Conda UMA environment (fairchem-core 2.23.0, torch 2.13.0, ASE 3.29.0)
+was connected to the same pinned ChemRefine source; dependency check passes.
+Existing Hugging Face authentication authorized `uma-s-1p2` (omol head, CPU).
+H2 single point at 0.74 A: -1.1608742095228168 Eh, identical to independent
+fairchem ASE inference (-31.58899624105755 eV converted with ASE's Hartree).
+UMA LBFGS optimisation starting at 0.90 A converged to 0.7411425064135867 A and
+-1.1608751163763043 Eh with max force about 0.0005093 eV/A (target 0.01).
+Both actual ChemRefine runs have one survivor and zero failures. UMA and
+HF/STO-3G are different models: their absolute energies are not compared as an
+accuracy claim. The UMA workflow explicitly selects the user's existing Python
+via options.backend_python; it does not replace fairchem/torch or install every
+optional backend. Weights remain in the user's normal fairchem cache.
+
+Reproducible synthetic inputs, templates, outputs, preserved failed attempts and
+verification JSON: `~/Downloads/chemviewer-h2-orca-uma-20261020`. These and vendor
+binaries/credentials are excluded from git. Local release checks: 26 Python
+chemistry tests, 31 standalone core cases plus three migrated suites, signed
+ARM64 build, and actual native two-step PySCF runner/editor gate all passed.
+Logs: `/private/tmp/chemviewer-0102-{python,build,native}.log`. Genuine XCTest is
+unavailable with the selected local Command Line Tools; CI uses full Xcode.

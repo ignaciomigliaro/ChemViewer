@@ -52,7 +52,7 @@ def inspect_workflow(path, *, prepare_models=False):
     for issue in report.issues:
         row(' / '.join(map(str, issue.loc)) or 'Workflow', 'error', issue.message)
     for warning in report.warnings:
-        blocking = warning.kind in ('input', 'template', 'executable', 'whitespace-path', 'budget')
+        blocking = warning.kind in ('input', 'template', 'executable', 'whitespace-path', 'budget', 'slurm-header')
         row(' / '.join(map(str, warning.loc)) or 'Workflow', 'error' if blocking else 'warning', warning.message)
     config = report.config
     if config is None:
@@ -99,10 +99,13 @@ def inspect_workflow(path, *, prepare_models=False):
                         directory = str(Path(executable).resolve().parent)
                         os.environ['ORCADIR'] = directory
                         os.environ['PATH'] = directory + os.pathsep + os.environ.get('PATH', '')
-                        for companion in ('orca_scf', 'orca_gtoint'):
-                            file = Path(executable).resolve().parent / companion
-                            if not file.is_file() or not os.access(file, os.X_OK):
-                                row('ORCA installation', 'error', f'Missing {companion} beside orca. Install the complete ORCA package, not only the main binary.')
+                        # ORCA 6.1 ships startup/leanscf, rather than the older
+                        # scf/gtoint pair. Accept complete helper sets, not a mix.
+                        helper_sets = (('orca_startup', 'orca_leanscf'), ('orca_scf', 'orca_gtoint'))
+                        def helpers_present(names):
+                            return all((Path(directory) / name).is_file() and os.access(Path(directory) / name, os.X_OK) for name in names)
+                        if not any(helpers_present(names) for names in helper_sets):
+                            row('ORCA installation', 'error', 'Missing ORCA helpers beside orca: expected orca_startup + orca_leanscf (6.1), or orca_scf + orca_gtoint. Install the complete ORCA package.')
                         if sys.platform == 'darwin':
                             architecture = subprocess.run(['/usr/bin/file', executable], capture_output=True, text=True).stdout.strip()
                             if 'ELF' in architecture or 'PE32' in architecture:
