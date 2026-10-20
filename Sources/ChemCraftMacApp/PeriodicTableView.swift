@@ -4,6 +4,7 @@ import SwiftUI
 
 /// All 118 elements, with f-block rows kept separate from the main groups.
 struct PeriodicTableView: View {
+    var onSelect: ((String) -> Void)? = nil
     @EnvironmentObject private var workspace: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
     private let columns = Array(repeating: GridItem(.fixed(42), spacing: 4), count: 18)
@@ -23,27 +24,30 @@ struct PeriodicTableView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Add atom / replace element").font(.title2.bold())
+                Text(onSelect == nil ? "Add atom / replace element" : "Choose an element").font(.title2.bold())
                 Spacer()
                 Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
             }
+            if onSelect == nil {
             Picker("Clicking an existing atom", selection: $workspace.atomPlacementMode) {
                 ForEach(AtomPlacementMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }.pickerStyle(.segmented).frame(width: 400)
             Text("Choose an element, then left-click in the molecule view. Empty space places a new atom; right-click finishes.")
                 .font(.callout).foregroundStyle(.secondary)
+            }
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(1...18, id: \.self) { Text("\($0)").font(.caption).foregroundStyle(.secondary) }
                 ForEach(Array(rows.flatMap { $0 }.enumerated()), id: \.offset) { _, number in
                     if number > 0 {
                         PeriodicElementButton(number: number, symbol: BuildingProject.elements[number]) {
-                            workspace.armAtom(BuildingProject.elements[number]); dismiss()
+                            choose(BuildingProject.elements[number])
                         }.frame(width: 42, height: 42)
                     } else if number < 0 {
                         Text(number == -1 ? "57–71" : "89–103").font(.system(size: 9)).frame(height: 42)
                     } else { Color.clear.frame(height: 42) }
                 }
             }
+            if onSelect == nil {
             HStack {
                 Button("X · dummy attachment site") { workspace.armAtom("X"); dismiss() }
                 Spacer()
@@ -52,7 +56,12 @@ struct PeriodicTableView: View {
                      : "Bond mode uses an available H/X site, otherwise adds a new bond.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+            }
         }.padding(20).frame(width: 866)
+    }
+    private func choose(_ symbol: String) {
+        if let onSelect { onSelect(symbol) } else { workspace.armAtom(symbol) }
+        dismiss()
     }
 }
 

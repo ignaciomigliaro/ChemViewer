@@ -686,4 +686,46 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(project.atoms, atoms)
     }
 
+    func testSketchConnectivityRingsAndDeletion() throws {
+        var sketch = MolecularSketch()
+        try sketch.addRing(size: 6, aromatic: true, x: 0, y: 0)
+        XCTAssertEqual(sketch.atoms.count, 6)
+        XCTAssertEqual(sketch.bonds.count, 6)
+        XCTAssertEqual(sketch.bonds.filter { $0.order == 2 }.count, 3)
+        for bond in sketch.bonds {
+            let a = sketch.atoms.first { $0.id == bond.a }!, b = sketch.atoms.first { $0.id == bond.b }!
+            XCTAssertEqual(hypot(a.x - b.x, a.y - b.y), 48, accuracy: 1e-9)
+        }
+        let original = sketch
+        try sketch.addRing(size: 5, x: 0, y: 0, anchor: 0)
+        XCTAssertEqual(sketch.atoms.count, 10)
+        XCTAssertEqual(sketch.bonds.count, 11)
+        XCTAssertEqual(sketch.atoms[0], original.atoms[0])
+        sketch.removeAtom(0)
+        try sketch.validate()
+        XCTAssertTrue(!sketch.bonds.contains { $0.a == 0 || $0.b == 0 })
+        let newID = try sketch.addAtom("ru", x: 10, y: 20)
+        XCTAssertEqual(sketch.atoms.last?.element, "Ru")
+        XCTAssertEqual(newID, 10)
+        XCTAssertEqual(try JSONDecoder().decode(MolecularSketch.self, from: JSONEncoder().encode(sketch)), sketch)
+    }
+    func testSketchRejectsMalformedConnectivityWithoutMutating() throws {
+        var sketch = MolecularSketch()
+        let a = try sketch.addAtom("C", x: 0, y: 0), b = try sketch.addAtom("O", x: 48, y: 0)
+        try sketch.connect(a, b, order: 2)
+        try sketch.connect(a, b, order: 1)
+        XCTAssertEqual(sketch.bonds.count, 1)
+        let original = sketch
+        for (first, second, order) in [(a, a, 1), (a, 999, 1), (a, b, 4)] {
+            var rejected = false
+            do { try sketch.connect(first, second, order: order) } catch { rejected = true }
+            XCTAssertTrue(rejected)
+            XCTAssertEqual(sketch, original)
+        }
+        var rejected = false
+        do { _ = try sketch.addAtom("X", x: 0, y: 0) } catch { rejected = true }
+        XCTAssertTrue(rejected)
+        XCTAssertEqual(sketch, original)
+    }
+
 }

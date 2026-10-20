@@ -218,3 +218,19 @@ symbols, commits one undoable edit, and invalidates the edited geometry's energy
 Empty or unknown symbols disable Apply and coordinate copying until corrected.
 The core BuildingProject replacement operation validates symbols and atom index,
 preserving atom order, positions, project groups, selection, charge and spin.
+
+## Draw and persistent labels — 0.10.0
+
+| Capability | Implementation | Validation / boundary |
+|---|---|---|
+| Multiple persistent distance/angle/dihedral labels | Per-frame pins independent of selection; individual remove/drag; PNG and GIF | Native four-label/deselect/tab/drag/export and geometry-update/undo gate |
+| Full Draw tab beside ChemRefine | Native 2D canvas and Paton 3D preview | Native mouse-drawn ethanol and benzene → real RDKit 3D + completed Metal frames |
+| Explicit drawing chemistry | Single/double/triple bonds, rings, elements, charge, wedge/dash | Core graph and Python formula/geometry/stereo oracles |
+| Local 2D → 3D | RDKit ETKDGv3 + optional UFF, explicit H | One conformer; full conformer search and quantum optimization not claimed |
+| Drawing import/save | SMILES, Clean 2D, own graph JSON, copy SMILES/XYZ | Chiral/E/Z/explicit-H/radical round-trip tests; no MolDraw design-file compatibility |
+| Persistent draft and cancellation | Independent drawing history; background revision-checked process | Native tab/undo/redo/auto-preview/immediate-cancel/undoable viewer transfer |
+
+Pins persist in the current open session per geometry. Loading another document
+starts a fresh annotation set; .cvproject does not yet serialize labels. Deleting
+an annotated atom removes the affected annotation, with geometry Undo restoring
+it. Unsupported isotopic input is rejected rather than losing isotope metadata.

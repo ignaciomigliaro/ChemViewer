@@ -39,7 +39,7 @@ jobs:
           CHEMVIEWER_CHEMISTRY_PYTHON: python
         run: |
           bash scripts/setup-chemistry.sh
-          "$HOME/Library/Application Support/ChemViewer/chemistry-venv/bin/python" -m unittest python_tests.test_builder_chemistry -v
+          "$HOME/Library/Application Support/ChemViewer/chemistry-venv/bin/python" -m unittest python_tests.test_builder_chemistry python_tests.test_drawing -v
       - name: Verify Apple Silicon bundle
         run: |
           file dist/ChemViewer.app/Contents/MacOS/ChemViewer

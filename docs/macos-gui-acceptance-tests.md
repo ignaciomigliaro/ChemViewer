@@ -220,3 +220,32 @@ Automated native gate: launch a separate dist app with fixture water.xyz and
 actual NSButton periodic cells, sends mouse events to the live Metal viewport,
 and types into the actual Coordinates NSTextField before invoking the default
 Apply action with Return.
+
+## CV-GUI-DRAW-LABELS — persistent measurements and 2D builder (0.10.0)
+
+1. Select two atoms, enable Show bond length, right-click. Select another pair,
+   enable its label, right-click: both labels stay visible. Repeat for angle
+   and dihedral. Drag each label independently; default rectangles should not
+   conceal one another. Remove one using the Visible labels row; others remain.
+2. Edit geometry: label values recompute. Append an unrelated atom: labels
+   survive. Undo restores annotations with geometry. Switch Abstract/Image and
+   verify pins remain. PNG and GIF can include every pinned label.
+3. Draw (beside ChemRefine, Cmd-7): click a C start, drag to extend C, select O
+   and drag the second C to O. The explicit graph is ethanol. Try move, erase,
+   charges, bond orders, rings, Undo and Redo.
+4. Generate 3D (or enable Auto 3D preview): verify formula C2H6O, nine explicit-H
+   atoms and an interactive Metal 3D view. The original viewer document remains
+   unchanged until Use 3D in Viewer. Applying and undoing restores the original.
+5. Change O to N: automatic generation must give the current C2H7N result.
+   Immediately cancel another generation: no orphan/stale result is applied.
+6. Import chiral SMILES `N[C@@H](C)C(=O)O`, generate 3D, verify chirality remains.
+   Draw periodic table must set the drawing element without arming the viewer's
+   separate placement tool. Benzene ring → 3D must give C6H6.
+7. Switch tabs and return: draft and preview remain. Save/open drawing JSON,
+   Clean 2D, Copy SMILES/XYZ. Invalid valence produces a visible error and keeps
+   the current viewer structure; stale previews cannot be accepted.
+
+Native automated gate: `--drawing-labels-smoke-test` with an independently
+launched dist app and fixture water.xyz. It exercises live mouse events, child
+processes, GPU completion, per-label manipulation, GIF generation and tab state.
+Manual saved-drawing dialog and general visual-fidelity checks remain separate.

@@ -24,6 +24,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     var vibrationSpeed: Float = 0.48
     @Binding var selectedAtomIndices: [Int]
     var showMeasurementOverlay = false
+    var measurementSelections: [[Int]] = []
     var draggingEnabled = false
     var dragAxis: DragAxis = .screen
     var onEmptyBuilderClick: (Vector3) -> Bool = { _ in false }
@@ -66,6 +67,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     func updateNSView(_ view: MolecularMTKView, context: Context) {
         context.coordinator.parent = self
         view.showMeasurementOverlay = showMeasurementOverlay
+        view.measurementSelections = measurementSelections
         view.draggingEnabled = draggingEnabled
         view.dragAxis = dragAxis
         view.scene = RenderScene(
@@ -181,8 +183,9 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var bondPipeline: MTLRenderPipelineState!
     let measurementOverlay = MeasurementOverlayView()
     var showMeasurementOverlay = false
+    var measurementSelections: [[Int]] = []
     private var measurementOffsets: [String: CGPoint] = [:]
-    private func measurementKey(_ indices: [Int]) -> String { "\(scene.geometryID):" + indices.map(String.init).joined(separator: ",") }
+    private func measurementKey(_ indices: [Int]) -> String { "\(scene.geometryID):" + measurementIdentity(indices) }
     private var sphereMesh: MTLBuffer?
     private var cylinderMesh: MTLBuffer?
     private var sphereVertexCount = 0
@@ -246,9 +249,9 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         measurementOverlay.frame = bounds
         measurementOverlay.autoresizingMask = [.width, .height]
         addSubview(measurementOverlay)
-        measurementOverlay.onMoveLabel = { [weak self] offset in
+        measurementOverlay.onMoveLabel = { [weak self] annotation in
             guard let self else { return }
-            self.measurementOffsets[self.measurementKey(self.scene.selectedAtomIndices)] = offset
+            self.measurementOffsets[self.measurementKey(annotation.atomIndices)] = annotation.labelOffset
             self.setNeedsDisplay(self.bounds)
         }
         cameraObserver = NotificationCenter.default.addObserver(forName: .init("ChemViewerViewportAction"), object: nil, queue: .main) { [weak self] note in
@@ -371,8 +374,24 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
 
         let positions = displacedPositions()
         measurementOverlay.captions = captionAnnotations(positions: positions, size: bounds.size)
-        measurementOverlay.annotation = showMeasurementOverlay ? MeasurementAnnotation.make(positions: positions, indices: scene.selectedAtomIndices, project: { self.projectPosition(positions[$0]) }) : nil
-        measurementOverlay.annotation?.labelOffset = measurementOffsets[measurementKey(scene.selectedAtomIndices)] ?? .zero
+        var selections = measurementSelections
+        if showMeasurementOverlay && !selections.contains(where: { measurementIdentity($0) == measurementIdentity(scene.selectedAtomIndices) }) { selections.insert(scene.selectedAtomIndices, at: 0) }
+        var annotations: [MeasurementAnnotation] = []
+        for indices in selections {
+            guard var annotation = MeasurementAnnotation.make(positions: positions, indices: indices, project: { self.projectPosition(positions[$0]) }) else { continue }
+            let key = measurementKey(indices)
+            annotation.labelOffset = measurementOffsets[key] ?? .zero
+            if annotation.labelOffset == .zero && annotations.contains(where: { $0.labelRect(in: bounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: bounds)) }) {
+                for row in 1...16 {
+                    let direction: CGFloat = row % 2 == 1 ? 1 : -1
+                    annotation.labelOffset.y = direction * CGFloat((row + 1) / 2) * (annotation.labelRect(in: bounds).height + 8) / max(bounds.height, 1)
+                    if !annotations.contains(where: { $0.labelRect(in: bounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: bounds)) }) { break }
+                }
+                measurementOffsets[key] = annotation.labelOffset
+            }
+            annotations.append(annotation)
+        }
+        measurementOverlay.annotations = annotations
         encodeMolecule(encoder, positions: positions, size: drawableSize)
         if let url = captureURL {
             captureURL = nil
@@ -381,7 +400,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             if let pixels = device?.makeBuffer(length: rowBytes * texture.height, options: .storageModeShared), let blit = commandBuffer.makeBlitCommandEncoder() {
                 blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: .init(), sourceSize: .init(width: texture.width, height: texture.height, depth: 1), to: pixels, destinationOffset: 0, destinationBytesPerRow: rowBytes, destinationBytesPerImage: rowBytes * texture.height)
                 blit.endEncoding()
-                let annotation = measurementOverlay.annotation
+                let annotations = measurementOverlay.annotations
                 let captions = measurementOverlay.captions
                 let overlaySize = bounds.size
                 commandBuffer.addCompletedHandler { [weak self] buffer in
@@ -393,12 +412,12 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
                         let i = y * rowBytes + x * 4
                         target[i] = source[i + 2]; target[i + 1] = source[i + 1]; target[i + 2] = source[i]; target[i + 3] = 255
                     } }
-                    if (annotation != nil || !captions.isEmpty), let context = NSGraphicsContext(bitmapImageRep: bitmap) {
+                    if (!annotations.isEmpty || !captions.isEmpty), let context = NSGraphicsContext(bitmapImageRep: bitmap) {
                         NSGraphicsContext.saveGraphicsState()
                         NSGraphicsContext.current = context
                         context.cgContext.scaleBy(x: CGFloat(texture.width) / max(overlaySize.width, 1), y: CGFloat(texture.height) / max(overlaySize.height, 1))
                         for caption in captions { caption.draw() }
-                        annotation?.draw(in: CGRect(origin: .zero, size: overlaySize))
+                        for annotation in annotations { annotation.draw(in: CGRect(origin: .zero, size: overlaySize)) }
                         NSGraphicsContext.restoreGraphicsState()
                     }
                     do { try bitmap.representation(using: .png, properties: [:])?.write(to: url) }
@@ -520,7 +539,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         return renderer
     }
 
-    func renderAnimationFrame(_ frame: MoleculeFrame, positions: [SIMD3<Float>], size: Int, measurementIndices: [Int] = [], transparentBackground: Bool = false) throws -> CGImage {
+    func renderAnimationFrame(_ frame: MoleculeFrame, positions: [SIMD3<Float>], size: Int, measurementIndices: [Int] = [], measurementSelections: [[Int]] = [], transparentBackground: Bool = false) throws -> CGImage {
         guard size >= 128, size <= 2048, positions.count == frame.atoms.count, renderingReady,
               let device, let command = commandQueue.makeCommandBuffer() else {
             throw AnimationExportError.message("The Metal renderer is unavailable or the frame is invalid.")
@@ -578,9 +597,10 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         guard let provider = CGDataProvider(data: rgba as CFData),
               let image = CGImage(width: size, height: size, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: rowBytes, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { throw AnimationExportError.message("Cannot create GIF image.") }
         let captions = captionAnnotations(positions: positions, size: CGSize(width: size, height: size))
-        guard !measurementIndices.isEmpty || !captions.isEmpty else { return image }
-        let annotation = animationAnnotation(positions: positions, indices: measurementIndices, size: size)
-        if !measurementIndices.isEmpty && annotation == nil {
+        let selections = measurementSelections + (measurementIndices.isEmpty ? [] : [measurementIndices])
+        guard !selections.isEmpty || !captions.isEmpty else { return image }
+        let annotations = selections.compactMap { animationAnnotation(positions: positions, indices: $0, size: size) }
+        if annotations.count != selections.count {
             throw AnimationExportError.message("The selected measurement is undefined in a frame (coincident atoms or a collinear dihedral). Export without the label or choose different atoms.")
         }
         guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: size * 4, bitsPerPixel: 32),
@@ -590,7 +610,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         context.cgContext.clear(CGRect(x: 0, y: 0, width: size, height: size))
         context.cgContext.draw(image, in: CGRect(x: 0, y: 0, width: size, height: size))
         for caption in captions { caption.draw() }
-        annotation?.draw(in: CGRect(x: 0, y: 0, width: size, height: size), background: !transparentBackground)
+        for annotation in annotations { annotation.draw(in: CGRect(x: 0, y: 0, width: size, height: size), background: !transparentBackground) }
         NSGraphicsContext.restoreGraphicsState()
         guard let annotated = bitmap.cgImage else { throw AnimationExportError.message("Cannot finish the GIF measurement label.") }
         return annotated

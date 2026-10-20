@@ -17,6 +17,15 @@ final class WorkspaceStore: ObservableObject {
         didSet { refreshAtomPlacementHint() }
     }
     func presentPeriodicTable() { isPeriodicTablePresented = true }
+    func presentAtomPicker() {
+        if activeTab == "Draw" { drawing.showElements = true } else { presentPeriodicTable() }
+    }
+    func openFromMenu() {
+        if activeTab == "Draw" { drawing.openDrawing() } else { isImporterPresented = true }
+    }
+    func saveFromMenu() {
+        if activeTab == "Draw" { drawing.saveDrawing() } else { saveBuildingProject() }
+    }
     func armAtom(_ text: String) {
         guard let symbol = BuildingProject.validatedElement(text) else { return }
         if document == nil { newMolecule() }
@@ -63,13 +72,13 @@ final class WorkspaceStore: ObservableObject {
                     let next = try project.replacingElement(at: index, with: element)
                     if next.atoms != project.atoms { applyBuildingProject(next) }
                 } else {
-                    applyBuildingProject(try project.attachingAtom(element, hostAtom: index))
+                    applyBuildingProject(try project.attachingAtom(element, hostAtom: index), remapMeasurements: true)
                 }
             } else if let fragment = pendingAttachment {
                 guard fragment.indices.contains(pendingAttachmentLeaving) else {
                     buildingHint = "This fragment has no H/X attachment site. Click empty space to place it."; return true
                 }
-                applyBuildingProject(try project.attachingAtAtom(fragment, hostAtom: index, fragmentLeaving: pendingAttachmentLeaving))
+                applyBuildingProject(try project.attachingAtAtom(fragment, hostAtom: index, fragmentLeaving: pendingAttachmentLeaving), remapMeasurements: true)
             }
             if pendingElement != nil { refreshAtomPlacementHint() }
             else { buildingHint = "Attached. Click another site to add again; right-click to finish." }
@@ -93,6 +102,7 @@ final class WorkspaceStore: ObservableObject {
         let charge: Int
         let multiplicity: Int
         let edited: Bool
+        let measurements: [[Int]]
     }
     private var geometryRedoStacks: [Int: [Snapshot]] = [:]
     @Published var isDraggingEnabled = false {
@@ -114,7 +124,37 @@ final class WorkspaceStore: ObservableObject {
     @Published var isEnergyLandscapePresented = false
     @Published var sourceFocusLine: Int?
     @Published var xyzEnergyUnit: EnergyUnit? = nil { didSet { applyXYZEnergyUnit() } }
+    // Legacy live-selection overlay remains available to native export/tests.
     @Published var showMeasurementOverlay = false
+    @Published private var pinnedMeasurements: [Int: [[Int]]] = [:]
+    var pinnedMeasurementSelections: [[Int]] { pinnedMeasurements[frameIndex] ?? [] }
+    var isSelectionMeasurementVisible: Bool {
+        pinnedMeasurementSelections.contains { measurementIdentity($0) == measurementIdentity(selectedAtomIndices) }
+    }
+    private var compatibleMeasurementFrames: [Int] {
+        guard let document, let atoms = currentFrame?.atoms else { return [] }
+        let elements = atoms.map(\.element)
+        return document.frames.indices.filter { document.frames[$0].atoms.map(\.element) == elements }
+    }
+    func setSelectionMeasurementVisible(_ enabled: Bool) {
+        guard (2...4).contains(selectedAtomIndices.count), Set(selectedAtomIndices).count == selectedAtomIndices.count else { return }
+        let indices = selectedAtomIndices
+        removeMeasurement(indices)
+        if enabled {
+            for frame in compatibleMeasurementFrames { pinnedMeasurements[frame, default: []].append(indices) }
+        }
+    }
+    func removeMeasurement(_ indices: [Int]) {
+        for frame in compatibleMeasurementFrames {
+            pinnedMeasurements[frame] = (pinnedMeasurements[frame] ?? []).filter { measurementIdentity($0) != measurementIdentity(indices) }
+        }
+    }
+    func clearMeasurements() { pinnedMeasurements = [:]; showMeasurementOverlay = false }
+    let drawing = MoleculeDrawingStore()
+    private var drawingObservation: AnyCancellable?
+    init() {
+        drawingObservation = drawing.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+    }
     @Published var geometryRevision = 0
     @Published var activeTab = "Image"
     @Published var renderingStyle: MolecularStyle = .paton
@@ -181,7 +221,7 @@ final class WorkspaceStore: ObservableObject {
                 sourceText = parsed.1
                 editedFrames.removeAll()
                 frameIndex = parsed.0.vibrationalFrameIndex ?? max(0, parsed.0.frames.count - 1)
-                geometryUndoStacks.removeAll()
+                geometryUndoStacks.removeAll(); pinnedMeasurements = [:]; showMeasurementOverlay = false
                 sourceFocusLine = nil
                 applyXYZEnergyUnit()
                 selectedAtomIndices = parsed.2?.selection ?? []
@@ -216,7 +256,7 @@ final class WorkspaceStore: ObservableObject {
     var canRedoGeometry: Bool { !(geometryRedoStacks[frameIndex]?.isEmpty ?? true) }
     private func snapshot(_ frame: MoleculeFrame? = nil) -> Snapshot? {
         guard let frame = frame ?? currentFrame else { return nil }
-        return Snapshot(frame: frame, groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity, edited: editedFrames.contains(frameIndex))
+        return Snapshot(frame: frame, groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity, edited: editedFrames.contains(frameIndex), measurements: pinnedMeasurementSelections)
     }
     private func checkpoint(_ frame: MoleculeFrame? = nil) {
         guard let snapshot = snapshot(frame) else { return }
@@ -347,6 +387,7 @@ final class WorkspaceStore: ObservableObject {
         document.frames[frameIndex] = snapshot.frame
         groupsByFrame[frameIndex] = snapshot.groups; selectedAtomIndices = snapshot.selection
         charge = snapshot.charge; multiplicity = snapshot.multiplicity
+        pinnedMeasurements[frameIndex] = snapshot.measurements
         if snapshot.edited { editedFrames.insert(frameIndex) } else { editedFrames.remove(frameIndex) }
         storedBondAxis = nil; selectedModeIndex = nil
         self.document = document; geometryRevision += 1
@@ -480,6 +521,7 @@ extension WorkspaceStore {
     func newMolecule() {
         finishAtomDrag(); stopTrajectoryPlayback(); loadGeneration += 1; isLoading = false
         document = ParsedDocument(title: "Untitled molecule", sourceFormat: "Builder", frames: [MoleculeFrame(id: 0, atoms: [], comment: "Initial geometry approximation")])
+        pinnedMeasurements = [:]; showMeasurementOverlay = false
         sourceText = ""; frameIndex = 0; selectedModeIndex = nil; selectedAtomIndices = []
         groupsByFrame = [:]; geometryUndoStacks = [:]; geometryRedoStacks = [:]; editedFrames = []
         calculationFacts = []; modesByFrame = [:]; storedBondAxis = nil; charge = 0; multiplicity = 1
@@ -488,11 +530,25 @@ extension WorkspaceStore {
     func buildingProject() throws -> BuildingProject {
         try BuildingProject(atoms: currentFrame?.atoms ?? [], groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity)
     }
-    func applyBuildingProject(_ project: BuildingProject) {
+    func applyBuildingProject(_ project: BuildingProject, remapMeasurements: Bool = false) {
         finishAtomDrag(); stopTrajectoryPlayback()
         if document == nil { newMolecule() }
         guard var document, document.frames.indices.contains(frameIndex) else { return }
         checkpoint()
+        let previousAtoms = document.frames[frameIndex].atoms
+        if remapMeasurements || previousAtoms.count != project.atoms.count {
+            pinnedMeasurements[frameIndex] = pinnedMeasurementSelections.compactMap { indices in
+                var mapped: [Int] = []
+                for index in indices {
+                    guard previousAtoms.indices.contains(index) else { return nil }
+                    let atom = previousAtoms[index]
+                    let matches = project.atoms.indices.filter { project.atoms[$0].element == atom.element && project.atoms[$0].position == atom.position }
+                    guard matches.count == 1 else { return nil }
+                    mapped.append(matches[0])
+                }
+                return Set(mapped).count == indices.count ? mapped : nil
+            }
+        }
         document.frames[frameIndex].atoms = project.atoms
         document.frames[frameIndex].comment = "Edited initial geometry; energy not recalculated"
         document.frames[frameIndex].energyHartree = nil
@@ -510,7 +566,7 @@ extension WorkspaceStore {
     }
     func attachBuildingFragment(_ atoms: [Atom], leaving: Int) {
         guard selectedAtomIndices.count == 1, let host = selectedAtomIndices.first else { errorMessage = "Select one host hydrogen or X dummy atom."; return }
-        do { applyBuildingProject(try buildingProject().attachingAtAtom(atoms, hostAtom: host, fragmentLeaving: leaving)) }
+        do { applyBuildingProject(try buildingProject().attachingAtAtom(atoms, hostAtom: host, fragmentLeaving: leaving), remapMeasurements: true) }
         catch { errorMessage = error.localizedDescription }
     }
     func duplicateSelectedAtoms() {

@@ -14,16 +14,19 @@ struct ChemViewerApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }.keyboardShortcut("n")
-                Button("Open…") { workspace.isImporterPresented = true }
+                Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
                     .keyboardShortcut("o")
             }
             CommandGroup(replacing: .undoRedo) {
-                Button("Undo Geometry Edit") { workspace.undoGeometry() }
-                    .keyboardShortcut("z").disabled(!workspace.canUndoGeometry)
-                Button("Redo Geometry Edit") { workspace.redoGeometry() }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(!workspace.canRedoGeometry)
+                Button(workspace.activeTab == "Draw" ? "Undo Drawing Edit" : "Undo Geometry Edit") {
+                    if workspace.activeTab == "Draw" { workspace.drawing.undo() } else { workspace.undoGeometry() }
+                }.keyboardShortcut("z").disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canUndo : !workspace.canUndoGeometry)
+                Button(workspace.activeTab == "Draw" ? "Redo Drawing Edit" : "Redo Geometry Edit") {
+                    if workspace.activeTab == "Draw" { workspace.drawing.redo() } else { workspace.redoGeometry() }
+                }.keyboardShortcut("z", modifiers: [.command, .shift]).disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canRedo : !workspace.canRedoGeometry)
             }
             CommandMenu("View") {
-                ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"].enumerated()), id: \.offset) { index, tab in
+                ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw"].enumerated()), id: \.offset) { index, tab in
                     Button(tab) { workspace.activeTab = tab }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }
                 Toggle("Result Explorer", isOn: $workspace.showExplorer)
@@ -33,7 +36,7 @@ struct ChemViewerApp: App {
             }
             CommandMenu("Build") {
                 Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
-                Button("Add Atom…") { workspace.presentPeriodicTable() }.keyboardShortcut("a", modifiers: [.command, .shift])
+                Button("Add Atom…") { workspace.presentAtomPicker() }.keyboardShortcut("a", modifiers: [.command, .shift])
                 Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Finish Placement") { workspace.clearSelection() }
             }
@@ -58,7 +61,7 @@ struct ChemViewerApp: App {
                     .disabled((workspace.document?.frames.count ?? 0) < 2 && workspace.document?.nebProfile == nil)
             }
             CommandGroup(replacing: .saveItem) {
-                Button("Save Project…") { workspace.saveBuildingProject() }.keyboardShortcut("s")
+                Button(workspace.activeTab == "Draw" ? "Save Drawing…" : "Save Project…") { workspace.saveFromMenu() }.keyboardShortcut("s")
                 Button("Export ORCA Geometry…") { workspace.exportORCAGeometry() }
                 Button("Export Current Geometry as XYZ") {
                     workspace.requestXYZExport()

@@ -14,15 +14,29 @@ struct SelectionInspector: View {
                 Text("Selection (\(indices.count))").font(.headline)
                 Spacer()
                 if (2...4).contains(indices.count) {
-                    Toggle(indices.count == 2 ? "Show bond length" : indices.count == 3 ? "Show angle" : "Show dihedral", isOn: $workspace.showMeasurementOverlay)
+                    Toggle(indices.count == 2 ? "Show bond length" : indices.count == 3 ? "Show angle" : "Show dihedral", isOn: Binding(get: { workspace.isSelectionMeasurementVisible }, set: workspace.setSelectionMeasurementVisible))
                         .toggleStyle(.checkbox)
-                    if workspace.showMeasurementOverlay {
+                    if workspace.isSelectionMeasurementVisible {
                         Button("Reset label") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "resetLabel") }
                             .help("Drag the measurement label in the canvas to reposition it.")
                     }
                 }
                 Button("Select all") { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) }
                 Button("Clear") { workspace.clearSelection() }.disabled(indices.isEmpty)
+            }
+            if !workspace.pinnedMeasurementSelections.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack {
+                        Text("Visible labels:").font(.caption)
+                        ForEach(workspace.pinnedMeasurementSelections, id: \.self) { selection in
+                            HStack(spacing: 3) {
+                                Button(selection.map { String($0 + 1) }.joined(separator: "–")) { workspace.selectedAtomIndices = selection }
+                                Button { workspace.removeMeasurement(selection) } label: { Image(systemName: "xmark.circle.fill") }.help("Remove this label")
+                            }
+                        }
+                        Button("Hide all") { workspace.clearMeasurements() }
+                    }
+                }
             }
             if indices.isEmpty {
                 Text("Click atoms to select them. Select 2 for a bond length, 3 for an angle, or 4 for a dihedral. Right-click clears the selection.")

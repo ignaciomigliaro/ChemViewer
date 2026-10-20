@@ -7,7 +7,7 @@ struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var chemistry = ChemistryRuntime.shared
 
-    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"]
+    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,10 +24,10 @@ struct ContentView: View {
                 Spacer()
             }.padding(.horizontal, 5).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))
             Divider()
-            ScrollView(.horizontal, showsIndicators: false) { classicToolbar }
+            if workspace.activeTab != "Draw" { ScrollView(.horizontal, showsIndicators: false) { classicToolbar } }
             Divider()
-            if workspace.isDraggingEnabled && workspace.activeTab != "ChemRefine" { ManipulationToolbar() }
-            if !workspace.buildingHint.isEmpty && workspace.activeTab != "ChemRefine" {
+            if workspace.isDraggingEnabled && !["ChemRefine", "Draw"].contains(workspace.activeTab) { ManipulationToolbar() }
+            if !workspace.buildingHint.isEmpty && !["ChemRefine", "Draw"].contains(workspace.activeTab) {
                 HStack {
                     if let element = workspace.pendingElement {
                         Button(element + "…") { workspace.presentPeriodicTable() }.help("Choose another element")
@@ -39,20 +39,21 @@ struct ContentView: View {
             }
             Divider()
             HSplitView {
-                if workspace.showExplorer && workspace.activeTab != "ChemRefine" {
+                if workspace.showExplorer && !["ChemRefine", "Draw"].contains(workspace.activeTab) {
                     sidebar.frame(minWidth: 220, idealWidth: 255, maxWidth: 340)
                 }
                 tabContent
-                if workspace.isBuilderVisible && workspace.activeTab != "ChemRefine" { BuilderPanel() }
+                if workspace.isBuilderVisible && !["ChemRefine", "Draw"].contains(workspace.activeTab) { BuilderPanel() }
             }
         }
         .preferredColorScheme(.light)
-        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine"].contains(workspace.activeTab), step: workspace.stepFrame,
+        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine", "Draw"].contains(workspace.activeTab), step: workspace.stepFrame,
             clear: workspace.clearSelection,
             selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--drawing-labels-smoke-test") { await DrawingAndLabelsSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--atom-editing-smoke-test") { await AtomEditingSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--fragment-placement-smoke-test") { await FragmentPlacementSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--builder-chemistry-smoke-test") { await BuilderChemistrySmokeTest.run(workspace: workspace) }
@@ -179,6 +180,7 @@ struct ContentView: View {
 
     @ViewBuilder private var tabContent: some View {
         switch workspace.activeTab {
+        case "Draw": DrawView(drawing: workspace.drawing)
         case "ChemRefine": LocalWorkflowView(embedded: true)
         case "Abstract": abstractPanel
         case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)
@@ -306,7 +308,7 @@ struct ContentView: View {
                     style: workspace.renderingStyle,
                     showHydrogens: workspace.showHydrogens, atomCaption: workspace.atomCaption, vibrationSpeed: workspace.vibrationSpeed,
                     selectedAtomIndices: $workspace.selectedAtomIndices,
-                    showMeasurementOverlay: workspace.showMeasurementOverlay,
+                    showMeasurementOverlay: workspace.showMeasurementOverlay, measurementSelections: workspace.pinnedMeasurementSelections,
                     draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
                     onEmptyBuilderClick: workspace.placeBuilderItem(inEmptySpace:),
                     onBuilderClick: workspace.placeBuilderItem,

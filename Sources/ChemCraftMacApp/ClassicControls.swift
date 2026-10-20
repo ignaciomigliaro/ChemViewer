@@ -19,27 +19,27 @@ struct ClassicMenuBar: View {
         HStack(spacing: 22) {
             Menu("File") {
                 Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }
-                Button("Open…") { workspace.isImporterPresented = true }
-                Button("Save Project…") { workspace.saveBuildingProject() }
+                Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
+                Button(workspace.activeTab == "Draw" ? "Save Drawing…" : "Save Project…") { workspace.saveFromMenu() }
                 Button("Export XYZ…") { workspace.requestXYZExport() }
                 Button("Export ORCA Geometry…") { workspace.exportORCAGeometry() }
                 Button("Export PNG…") { action("export") }
                 Button("Export GIF…") { workspace.presentAnimationExport() }
             }
             Menu("Edit") {
-                Button("Undo") { workspace.undoGeometry() }.disabled(!workspace.canUndoGeometry)
-                Button("Redo") { workspace.redoGeometry() }.disabled(!workspace.canRedoGeometry)
+                Button("Undo") { if workspace.activeTab == "Draw" { workspace.drawing.undo() } else { workspace.undoGeometry() } }.disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canUndo : !workspace.canUndoGeometry)
+                Button("Redo") { if workspace.activeTab == "Draw" { workspace.drawing.redo() } else { workspace.redoGeometry() } }.disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canRedo : !workspace.canRedoGeometry)
                 Button("Duplicate Selected") { workspace.duplicateSelectedAtoms() }
                 Button("Delete Selected") { workspace.deleteSelectedAtoms() }
             }
             Menu("Build") {
                 Button("Fragment Library…") { workspace.presentFragmentLibrary() }
-                Button("Add Atom…") { workspace.presentPeriodicTable() }
+                Button("Add Atom…") { workspace.presentAtomPicker() }
                 Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible)
                 Button("Finish Placement") { workspace.clearSelection() }
             }
             Menu("View") {
-                ForEach(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"], id: \.self) { tab in Button(tab) { workspace.activeTab = tab } }
+                ForEach(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw"], id: \.self) { tab in Button(tab) { workspace.activeTab = tab } }
                 Toggle("Result Explorer", isOn: $workspace.showExplorer)
                 Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible)
                 Button("Fit Molecule") { action("reset") }

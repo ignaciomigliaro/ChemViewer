@@ -45,16 +45,16 @@ struct MolecularAnimation {
         return NSApp.windows.filter { $0.sheetParent == nil && $0.isVisible }.compactMap { $0.contentView.flatMap(find) }.first
     }
 
-    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], transparentBackground: Bool = true, progress: (Double) -> Void) async throws {
+    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], measurementSelections: [[Int]] = [], transparentBackground: Bool = true, progress: (Double) -> Void) async throws {
         guard !animation.frames.isEmpty, animation.count >= 2, animation.count <= 2000,
               [256, 512, 640, 800, 1024].contains(size), fps >= 1, fps <= 50, playbackSpeed >= 0.125, playbackSpeed <= 1,
               animation.frames.allSatisfy({ !$0.atoms.isEmpty }),
               animation.mode == nil || animation.mode?.displacements.count == animation.frames[0].atoms.count else {
             throw AnimationExportError.message("Choose at least two geometries or a complete frequency mode (maximum 2,000 GIF frames).")
         }
-        if !measurementIndices.isEmpty {
-            guard (2...4).contains(measurementIndices.count), Set(measurementIndices).count == measurementIndices.count,
-                  animation.frames.allSatisfy({ frame in measurementIndices.allSatisfy(frame.atoms.indices.contains) }),
+        for indices in measurementSelections + (measurementIndices.isEmpty ? [] : [measurementIndices]) {
+            guard (2...4).contains(indices.count), Set(indices).count == indices.count,
+                  animation.frames.allSatisfy({ frame in indices.allSatisfy(frame.atoms.indices.contains) }),
                   animation.frames.allSatisfy({ $0.atoms.map(\.element) == animation.frames[0].atoms.map(\.element) }) else {
                 throw AnimationExportError.message("Labels require 2, 3 or 4 distinct selected atoms and consistent atom ordering across geometries.")
             }
@@ -69,7 +69,7 @@ struct MolecularAnimation {
         for index in 0..<animation.count {
             try Task.checkCancellation()
             let sample = animation.sample(index)
-            let image = try autoreleasepool { try fittedRenderer.renderAnimationFrame(sample.0, positions: sample.1, size: size, measurementIndices: measurementIndices, transparentBackground: transparentBackground) }
+            let image = try autoreleasepool { try fittedRenderer.renderAnimationFrame(sample.0, positions: sample.1, size: size, measurementIndices: measurementIndices, measurementSelections: measurementSelections, transparentBackground: transparentBackground) }
             try await writer.append(image, delay: 1 / (fps * playbackSpeed))
             progress(Double(index + 1) / Double(animation.count))
             // Let progress and cancellation events run between GPU submissions.
@@ -101,7 +101,12 @@ struct AnimationExportView: View {
     @State private var viewport: MolecularMTKView?
     private var available: Bool { source == .trajectory ? (workspace.document?.frames.count ?? 0) > 1 : workspace.selectedMode != nil }
     private var validSelection: Bool { (2...4).contains(workspace.selectedAtomIndices.count) }
+    private var exportLabels: [[Int]] {
+        if !workspace.pinnedMeasurementSelections.isEmpty { return workspace.pinnedMeasurementSelections }
+        return validSelection ? [workspace.selectedAtomIndices] : []
+    }
     private var measurementDescription: String {
+        if !workspace.pinnedMeasurementSelections.isEmpty { return "\(exportLabels.count) persistent measurement labels" }
         let kind = workspace.selectedAtomIndices.count == 2 ? "Bond length" : workspace.selectedAtomIndices.count == 3 ? "Angle" : "Dihedral"
         return kind + " · atoms " + workspace.selectedAtomIndices.map { String($0 + 1) }.joined(separator: " → ")
     }
@@ -141,8 +146,8 @@ struct AnimationExportView: View {
             Toggle("Transparent background", isOn: $transparentBackground).disabled(task != nil)
             Text("GIF transparency has hard edges; it cannot retain partial opacity.").font(.caption).foregroundStyle(.secondary)
             Toggle("Include measurement label and guides", isOn: $includeMeasurement)
-                .disabled(!validSelection || task != nil)
-            if validSelection {
+                .disabled(exportLabels.isEmpty || task != nil)
+            if !exportLabels.isEmpty {
                 Text(measurementDescription + ". Recomputed for every animation frame.").font(.caption)
             } else {
                 Text("Before exporting, select 2 atoms for a length, 3 for an angle (middle atom is the vertex), or 4 for a signed dihedral, in order.").font(.caption).foregroundStyle(.secondary)
@@ -160,7 +165,7 @@ struct AnimationExportView: View {
         }
         .padding(24).frame(width: 540)
         .interactiveDismissDisabled(task != nil)
-        .onAppear { viewport = AnimationExporter.viewport(); if workspace.selectedMode != nil { source = .frequency }; includeMeasurement = validSelection && workspace.showMeasurementOverlay }
+        .onAppear { viewport = AnimationExporter.viewport(); if workspace.selectedMode != nil { source = .frequency }; includeMeasurement = !workspace.pinnedMeasurementSelections.isEmpty || (validSelection && workspace.showMeasurementOverlay) }
         .onDisappear { task?.cancel() }
     }
     private func save() {
@@ -169,14 +174,14 @@ struct AnimationExportView: View {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let animation = MolecularAnimation(frames: source == .frequency ? [frame] : (workspace.document?.frames ?? []), mode: source == .frequency ? workspace.selectedMode : nil, amplitude: workspace.vibrationAmplitude, samples: samples, pingPong: source == .trajectory && pingPong)
         let style = workspace.renderingStyle
-        let indices = includeMeasurement && validSelection ? workspace.selectedAtomIndices : []
+        let labels = includeMeasurement ? exportLabels : []
         let speed = playbackSpeed
         let transparent = transparentBackground
         failure = nil; result = nil; progress = 0
         task = Task { @MainActor in
             defer { task = nil; progress = nil }
             do {
-                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementIndices: indices, transparentBackground: transparent) { progress = $0 }
+                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementSelections: labels, transparentBackground: transparent) { progress = $0 }
                 result = "Saved \(animation.count) frames to \(url.lastPathComponent)."
             } catch is CancellationError { result = "Export cancelled." }
             catch { failure = error.localizedDescription }

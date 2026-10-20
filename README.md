@@ -189,3 +189,16 @@ molecule view. Empty space places a new atom; right-click finishes. Switch modes
 in the placement bar. **Build → Fragment Library…** (Cmd-B) retains the fragment
 previews. In **Coord**, type an element symbol or atomic number and click
 **Apply**; element edits support Undo and preserve coordinates.
+
+### Draw and persistent measurement labels (0.10.0)
+
+Enable a measurement for one selection, then right-click and choose another:
+the first label stays visible. Use the **Visible labels** row to select/remove
+individual labels or **Hide all**. Labels support dragging and PNG/GIF export.
+
+**Draw** (next to ChemRefine, Cmd-7) provides a native 2D canvas and interactive
+3D preview. Draw bonds, choose elements/rings, edit charges, move/erase atoms,
+or load SMILES. **Auto 3D preview** uses the installed local RDKit runtime;
+**Generate 3D** runs it manually. **Use 3D in Viewer** transfers the generated
+structure as an undoable edit. Drafts survive tab switches and can be saved as
+JSON. See [usage, tested behavior and limits](docs/drawing-and-labels-2026-10-20.md).

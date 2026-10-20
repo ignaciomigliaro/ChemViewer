@@ -443,3 +443,56 @@ atom/periodic-table/Coordinates workflow, fragment/camera workflow, smooth
 interaction workflow and complete builder/UFF/ChemRefine workflow. See
 `docs/atom-editing-2026-10-20.md` for exact evidence and limits. No personal
 calculations or previously built structures were modified.
+
+## 0.10.0 — Draw workspace and persistent measurements (2026-10-20)
+
+Measurements are now per-frame pinned atom selections in WorkspaceStore, separate
+from active selection. SelectionInspector toggles membership, lists visible
+labels, removes each independently and offers Hide all. Right-click deselects
+without removing pins. Geometry snapshots include pins; unrelated atom additions
+preserve them, topology changes remap surviving unique atom identities by exact
+position/element, and Undo restores the prior annotations. Geometry changes
+recompute values. Default collisions receive separate normalized label offsets;
+all labels remain individually draggable and are rendered in PNG/GIF exports.
+The old single-selection renderer API remains for existing tests/export callers.
+Pins are session state per geometry, not saved in .cvproject files.
+
+Draw (Cmd-7) sits immediately after ChemRefine and uses the full content area.
+MolecularSketch in ChemCraftCore holds explicit atom/bond connectivity, bond
+orders, formal charges, wedge/dash direction, tetrahedral/E/Z metadata and
+explicit hydrogen/radical information. The native AppKit canvas supports atoms,
+bond dragging/connection, 3–8-membered rings/benzene, move/pan/zoom/fit, erase,
+charges and one-gesture undo. MolecularDrawingStore retains the draft across tab
+changes and keeps an independent 100-entry undo/redo history, JSON save/open,
+SMILES import, Clean 2D and optional debounced automatic 3D generation.
+
+The packaged drawing_bridge.py runs in the existing local chemistry runtime.
+RDKit sanitizes explicit connectivity, depicts imported structures, adds H,
+embeds a deterministic ETKDGv3 conformer and uses UFF where parameterized.
+Disconnected components are separated. Wedge/dash and imported E/Z/chirality,
+explicit H and radical counts survive round trips. Isotopes are rejected because
+the viewer Atom model cannot preserve them. Missing UFF parameters or iteration
+limits are explicit in status. This is one starting conformer, not a conformer
+search or a quantum-chemistry optimization. No MolDraw code/assets/services are
+bundled. The native preview uses the existing Paton Metal renderer.
+
+Generation runs in a cancellable child process with a 45-second limit, private
+temporary files and generation/revision guards. Edits cancel stale work and
+prevent old results from replacing a newer draft. A stale preview is marked and
+cannot be transferred. Use 3D in Viewer transfers the explicit-H geometry and
+charge with user-selected multiplicity as an undoable current-frame edit; merely
+sketching or generating a preview leaves the viewer document unchanged.
+
+Measurement tracking also spans trajectory frames with the same atom count and
+element ordering: enabling/removing a pin updates every compatible frame, and
+values are recomputed for the current coordinates. Frames with different atom
+ordering/composition keep separate pin sets. The native gate checks two frames
+with independently known 2.0/2.3 Å distances and propagates removal to both.
+
+Final local 0.10.0 gate passed: 31 standalone core regressions plus three migrated
+building suites; 13 chemistry Python tests (five existing and eight drawing);
+native drawing/persistent-label/trajectory tracking gate; native smooth
+interaction and transparent-GIF suites; existing atom editing, fragment/camera
+and full builder/UFF/ChemRefine workflows. Signed ARM64 build 22 is the validated
+bundle. Latest drawing evidence: /private/tmp/chemviewer-0100-tracking.log; other
+logs /private/tmp/chemviewer-0100-*.log. Personal calculation files were unchanged.

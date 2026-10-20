@@ -1,7 +1,14 @@
 import AppKit
 import ChemCraftCore
 
+func measurementIdentity(_ indices: [Int]) -> String {
+    let forward = indices.map(String.init).joined(separator: ",")
+    let reverse = indices.reversed().map(String.init).joined(separator: ",")
+    return min(forward, reverse)
+}
+
 struct MeasurementAnnotation {
+    var atomIndices: [Int] = []
     let points: [CGPoint]
     let label: String
     let value: Float
@@ -31,7 +38,7 @@ struct MeasurementAnnotation {
                 value = try GeometryEditor.dihedralDegrees(in: frame, firstAtomIndex: 0, secondAtomIndex: 1, thirdAtomIndex: 2, fourthAtomIndex: 3)
                 label = String(format: "%.3f°", locale: Locale(identifier: "en_US_POSIX"), Double(value))
             }
-            return MeasurementAnnotation(points: points, label: label, value: value)
+            return MeasurementAnnotation(atomIndices: indices, points: points, label: label, value: value)
         } catch { return nil }
     }
 
@@ -101,38 +108,47 @@ struct AtomCaptionAnnotation {
 
 final class MeasurementOverlayView: NSView {
     var captions: [AtomCaptionAnnotation] = [] { didSet { needsDisplay = true } }
-    var annotation: MeasurementAnnotation? { didSet { needsDisplay = true; if lastDragPoint == nil && oldValue?.labelRect(in: bounds) != annotation?.labelRect(in: bounds) { window?.invalidateCursorRects(for: self) } } }
+    var annotations: [MeasurementAnnotation] = [] {
+        didSet { needsDisplay = true; if lastDragPoint == nil { window?.invalidateCursorRects(for: self) } }
+    }
+    // Compatibility accessor for the single-label renderer tests.
+    var annotation: MeasurementAnnotation? { annotations.first }
     override var isOpaque: Bool { false }
-    var onMoveLabel: ((CGPoint) -> Void)?
+    var onMoveLabel: ((MeasurementAnnotation) -> Void)?
     private var lastDragPoint: CGPoint?
+    private var draggedID: String?
+    private func label(at point: CGPoint) -> Int? {
+        annotations.indices.reversed().first { annotations[$0].labelRect(in: bounds).contains(point) }
+    }
     override func hitTest(_ point: NSPoint) -> NSView? {
         if NSApp.currentEvent?.type == .rightMouseDown || NSApp.currentEvent?.type == .rightMouseDragged { return nil }
-        let local = convert(point, from: superview)
-        return annotation?.labelRect(in: bounds).contains(local) == true ? self : nil
+        return label(at: convert(point, from: superview)) == nil ? nil : self
     }
     override func resetCursorRects() {
-        if let annotation { addCursorRect(annotation.labelRect(in: bounds), cursor: .openHand) }
+        for annotation in annotations { addCursorRect(annotation.labelRect(in: bounds), cursor: .openHand) }
     }
     override func mouseDown(with event: NSEvent) {
-        lastDragPoint = convert(event.locationInWindow, from: nil)
-        NSCursor.closedHand.push()
+        let point = convert(event.locationInWindow, from: nil)
+        guard let index = label(at: point) else { return }
+        draggedID = measurementIdentity(annotations[index].atomIndices)
+        lastDragPoint = point; NSCursor.closedHand.push()
     }
     override func mouseDragged(with event: NSEvent) {
-        guard let previous = lastDragPoint, var annotation else { return }
+        guard let previous = lastDragPoint, let index = annotations.firstIndex(where: { measurementIdentity($0.atomIndices) == draggedID }) else { return }
+        var annotation = annotations[index]
         let point = convert(event.locationInWindow, from: nil)
         let rect = annotation.labelRect(in: bounds)
-        // Clamp to visible label bounds so dragging against an edge accumulates no hidden offset.
         let x = min(max(rect.minX + point.x - previous.x, 3), max(3, bounds.width - rect.width - 3))
         let y = min(max(rect.minY + point.y - previous.y, 5), max(5, bounds.height - rect.height - 5))
         annotation.labelOffset = annotation.offset(forLabelOrigin: CGPoint(x: x, y: y), in: bounds)
-        self.annotation = annotation
-        lastDragPoint = point
-        onMoveLabel?(annotation.labelOffset)
+        annotations[index] = annotation; lastDragPoint = point; onMoveLabel?(annotation)
     }
     override func mouseUp(with event: NSEvent) {
         if lastDragPoint != nil { NSCursor.pop() }
-        lastDragPoint = nil
-        window?.invalidateCursorRects(for: self)
+        lastDragPoint = nil; draggedID = nil; window?.invalidateCursorRects(for: self)
     }
-    override func draw(_ dirtyRect: NSRect) { for caption in captions { caption.draw() }; annotation?.draw(in: bounds) }
+    override func draw(_ dirtyRect: NSRect) {
+        for caption in captions { caption.draw() }
+        for annotation in annotations { annotation.draw(in: bounds) }
+    }
 }
