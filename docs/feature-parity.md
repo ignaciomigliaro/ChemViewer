@@ -234,3 +234,14 @@ Pins persist in the current open session per geometry. Loading another document
 starts a fresh annotation set; .cvproject does not yet serialize labels. Deleting
 an annotated atom removes the affected annotation, with geometry Undo restoring
 it. Unsupported isotopic input is rejected rather than losing isotope metadata.
+
+## Centered captions and executable ChemRefine workflows — 0.10.1
+
+| Capability | Status/evidence | Boundary |
+|---|---|---|
+| Atom numbers/element labels centered on spheres | Native pixel bounds for H/I/Cl/O12/Ru123 and projected atom centers; actual PNG inspected; GIF regression passed | Common renderer path for viewport/PNG/GIF, no caption background boxes |
+| Native Run ChemRefine | Actual detached two-step PySCF calculation, energy/result files, live log/status, server-shutdown survival | Full run from step 1; recovery/Resume remains in embedded editor |
+| Save current editor before run | Native unsaved basis change and new second step/template tested | YAML saved before template so newly added steps resolve correctly |
+| Workflow readiness | 11 Python runner tests; missing inputs/templates/ORCA/weights/backends and GPU budget refusal | Checks declared engine requirements; custom Python templates can have additional imports/runtime requirements |
+| Backend installation | Real isolated PySCF backend provisioned; selected missing extras only | UMA/other gated weights still require user access; unused backends are not preinstalled |
+| ORCA execution | Blocked on this Mac: user confirmed not installed | Official installer/account download required; no real ORCA/MPI calculation claimed |

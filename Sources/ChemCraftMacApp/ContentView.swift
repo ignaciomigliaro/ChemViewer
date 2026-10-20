@@ -53,6 +53,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--workflow-runner-smoke-test") { await Task { @MainActor in await WorkflowRunnerSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--drawing-labels-smoke-test") { await DrawingAndLabelsSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--atom-editing-smoke-test") { await AtomEditingSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--fragment-placement-smoke-test") { await FragmentPlacementSmokeTest.run(workspace: workspace) }

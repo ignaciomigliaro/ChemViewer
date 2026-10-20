@@ -202,3 +202,16 @@ or load SMILES. **Auto 3D preview** uses the installed local RDKit runtime;
 **Generate 3D** runs it manually. **Use 3D in Viewer** transfers the generated
 structure as an undoable edit. Drafts survive tab switches and can be saved as
 JSON. See [usage, tested behavior and limits](docs/drawing-and-labels-2026-10-20.md).
+
+### Centered labels and Run ChemRefine (0.10.1)
+
+Atom captions now sit at sphere centers in the viewer, PNG and GIF. In the
+**ChemRefine** tab, use **Check workflow**, **Create missing templates** and
+**Install required backends**, then **Run ChemRefine**. The button saves the live
+editor and executes the real workflow in the background, with a log and result
+folder. Existing input.yaml files can be opened directly.
+
+ORCA is not installed on the current Mac. **Get ORCA** opens its official
+installation instructions; after installing the macOS package, use **Choose
+ORCA…**. The isolated PySCF backend is installed and was used for a genuine
+two-step calculation test. See [setup, execution and validation](docs/chemrefine-execution-2026-10-20.md).

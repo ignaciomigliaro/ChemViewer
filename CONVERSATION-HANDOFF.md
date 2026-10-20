@@ -496,3 +496,51 @@ interaction and transparent-GIF suites; existing atom editing, fragment/camera
 and full builder/UFF/ChemRefine workflows. Signed ARM64 build 22 is the validated
 bundle. Latest drawing evidence: /private/tmp/chemviewer-0100-tracking.log; other
 logs /private/tmp/chemviewer-0100-*.log. Personal calculation files were unchanged.
+
+## 0.10.1 — centered captions and native ChemRefine execution (2026-10-20)
+
+AtomCaptionAnnotation uses CoreText glyph-path bounds to center visible text ink
+on the projected atom center. It draws directly into the transparent overlay;
+the same method serves the viewport, PNG and GIF. This replaces the old +5/+5
+pixel offset and avoids ascender/descender padding shifting labels optically.
+
+WorkflowRunner adds native Run ChemRefine, Check workflow, Create missing
+templates, Install required backends, Choose ORCA and log/folder controls.
+ChemistryRuntime flushes the live Alpine form's pending YAML debounce, saves the
+actual input.yaml, then saves an open template editor against that new config.
+This ordering supports newly added unsaved steps. Raw YAML remains the source
+when raw-edit mode is active. Existing workflows can be opened in the local GUI.
+
+workflow_bridge.py uses the pinned ChemRefine validation/scaffold/provisioning/
+agent_tools APIs. Required local input/template/executable/resource-budget
+findings block launch. It checks complete ORCA core components, rejects Linux/
+Windows binaries on macOS, requires mpirun for parallel ORCA templates and
+checks writable output/scratch directories. The configured ORCA directory is
+passed through PATH/ORCADIR, with an explicit workflow executable taking priority.
+Python backend requirements come from each selected engine's registered
+backend_requirement. Missing backends can be installed into ChemRefine-managed
+isolated environments; no unrelated MLIP stack is installed. Model checkpoints
+and selected MLIP calculators/weights are checked before pipeline launch.
+Unavailable access/weights/imports block the run; models produced by an earlier
+training step remain deferred to that step's normal runtime contract.
+
+Execution uses ChemRefine's real detached start_run API. The pipeline owns its
+lock, scheduling, caches and scientific outputs and survives editor/helper/app
+closure. Native monitoring reads actual ChemRefine status/log tails, recognizes
+successful, failed/empty and unexpectedly stopped drivers, and can reconnect to
+the saved last run after reopening the workflow. Old monitor responses cannot
+replace a newer run's status. Setup cancellation terminates its child process
+group; cancellation is not offered during the combined Run preflight/launch,
+avoiding a race that could conceal an already detached calculation. The native
+button runs the full pipeline from step 1; the embedded editor retains its
+Resume/recovery actions. ORCA and gated model credentials are not bundled.
+
+Local 0.10.1 final gates passed: core 31 + three migrated suites; Python 24;
+centered actual glyph pixel and projected sphere-center checks; genuine two-step
+ChemRefine/PySCF conventional HF/STO-3G H2 result -1.1167593074 Eh with live unsaved
+YAML/new-template flushing and detached/editor-server survival; full GIF and
+builder/UFF/ChemRefine regressions. User confirmed ORCA is not installed: official
+macOS installer/account download remains external, and actual ORCA/MPI execution
+is untested. Do not report all backends/models installed: only the isolated
+PySCF backend was added; selected missing MLIP extras are provisionable and gated
+weights still require user access. No personal scientific files were changed.

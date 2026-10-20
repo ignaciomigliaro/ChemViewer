@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import ChemCraftCore
 
 func measurementIdentity(_ indices: [Int]) -> String {
@@ -100,9 +101,19 @@ enum AtomCaption: String, CaseIterable {
 struct AtomCaptionAnnotation {
     let point: CGPoint
     let label: String
+    private var textLine: CTLine {
+        CTLineCreateWithAttributedString(NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .semibold), .foregroundColor: NSColor.black]))
+    }
+    var inkRect: CGRect {
+        let bounds = CTLineGetBoundsWithOptions(textLine, .useGlyphPathBounds)
+        return CGRect(x: point.x - bounds.width / 2, y: point.y - bounds.height / 2, width: bounds.width, height: bounds.height)
+    }
     func draw() {
-        let text = NSAttributedString(string: label, attributes: [.font: NSFont.systemFont(ofSize: 12, weight: .semibold), .foregroundColor: NSColor.black])
-        text.draw(at: CGPoint(x: point.x + 5, y: point.y + 5))
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        let line = textLine, bounds = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+        context.saveGState(); context.textMatrix = .identity
+        context.textPosition = CGPoint(x: point.x - bounds.midX, y: point.y - bounds.midY)
+        CTLineDraw(line, context); context.restoreGState()
     }
 }
 

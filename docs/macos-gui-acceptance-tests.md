@@ -249,3 +249,29 @@ Native automated gate: `--drawing-labels-smoke-test` with an independently
 launched dist app and fixture water.xyz. It exercises live mouse events, child
 processes, GPU completion, per-label manipulation, GIF generation and tab state.
 Manual saved-drawing dialog and general visual-fidelity checks remain separate.
+
+## CV-GUI-RUNNER — centered captions and local ChemRefine execution (0.10.1)
+
+1. Enable atom numbers/elements/element+number captions. Check labels are centered
+   within spheres at rotated views, in PNG and in transparent GIF.
+2. ChemRefine → Create or Open workflow. Check workflow must save the current form
+   (including pending text debounce) and show blocking missing files/executables.
+3. Create missing templates must preserve existing files. Choose ORCA selects
+   an installed executable; Get ORCA opens the official installer instructions.
+   A partial ORCA package and missing parallel MPI must be reported before jobs.
+4. Install required backends must install only missing selected engine extras.
+   Missing/gated model weights must block launching pipeline jobs.
+5. Edit an existing step and add a new step with an unsaved template. Run must
+   save the latest YAML first, then the new template, and execute both steps.
+6. Observe the real log and result tree. Closing the editor server must not stop
+   the detached calculation. Successful status requires cached survivor results,
+   not merely an exited process. Failed/empty steps must not report success.
+7. Reopen the workflow after restarting the app: monitor the saved run rather
+   than rerunning it. Use the embedded Resume action for cache-aware recovery.
+
+Native automated gate: `--workflow-runner-smoke-test` with water.xyz and
+`-ChemViewerLastRunConfig ""` to isolate test startup from a user's saved run.
+It tests actual glyph pixels, saved unsaved form/template content, backend
+readiness, two real H2 PySCF steps, editor-server shutdown, native status and the
+independent conventional HF/STO-3G (no density fitting) -1.1167593074 Eh oracle.
+The test requires the isolated pyscf backend; it does not pretend ORCA is present.

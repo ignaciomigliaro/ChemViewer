@@ -101,6 +101,8 @@ final class ChemistryRuntime: ObservableObject {
             let folder = parent.appendingPathComponent("ChemViewer-workflow-" + UUID().uuidString.prefix(8))
             try FileManager.default.createDirectory(at: folder.appendingPathComponent("templates"), withIntermediateDirectories: true)
             try XYZWriter.string(frame: frame).write(to: folder.appendingPathComponent("seed.xyz"), atomically: true, encoding: .utf8)
+            let configuredORCA = WorkflowRunner.shared.orcaPath.isEmpty ? "orca" : WorkflowRunner.shared.orcaPath
+            let encodedORCA = String(data: try JSONEncoder().encode(configuredORCA), encoding: .utf8)!
             let yaml = """
             input: seed.xyz
             template_dir: templates
@@ -112,7 +114,7 @@ final class ChemistryRuntime: ObservableObject {
             dispatch: local
             slurm_template: cpu.slurm.header
             executables:
-              orca: orca
+              orca: \(encodedORCA)
             steps:
               - step: 1
                 name: cleanup
@@ -122,12 +124,25 @@ final class ChemistryRuntime: ObservableObject {
             try yaml.write(to: folder.appendingPathComponent("input.yaml"), atomically: true, encoding: .utf8)
             try "! XTB2 Opt\n".write(to: folder.appendingPathComponent("templates/cleanup.inp"), atomically: true, encoding: .utf8)
             try "#!/bin/bash\n".write(to: folder.appendingPathComponent("templates/cpu.slurm.header"), atomically: true, encoding: .utf8)
+            startWorkflowEditor(configURL: folder.appendingPathComponent("input.yaml"), workspace: workspace)
+        } catch { workspace.errorMessage = error.localizedDescription }
+    }
+    func openExistingWorkflow(_ workspace: WorkspaceStore) {
+        let panel = NSOpenPanel(); panel.allowedContentTypes = [.plainText, .data]
+        panel.message = "Choose an existing ChemRefine input.yaml."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let guiProcess, guiProcess.isRunning { previousWorkflowServers.append(guiProcess) }
+        guiProcess = nil; guiURL = nil; startWorkflowEditor(configURL: url, workspace: workspace)
+    }
+    func startWorkflowEditor(configURL: URL, workspace: WorkspaceStore) {
+        do {
+            let folder = configURL.deletingLastPathComponent()
             workflowDirectory = folder
             let log = folder.appendingPathComponent("gui.log")
             FileManager.default.createFile(atPath: log.path, contents: nil, attributes: [.posixPermissions: 0o600])
             let handle = try FileHandle(forWritingTo: log)
             let job = Process(); job.executableURL = Self.root.appendingPathComponent("bin/chemrefine")
-            job.arguments = ["gui", folder.appendingPathComponent("input.yaml").path, "--no-browser", "--port", "0"]
+            job.arguments = ["gui", configURL.path, "--no-browser", "--port", "0"]
             job.currentDirectoryURL = folder; job.standardOutput = handle; job.standardError = handle
             var env = ProcessInfo.processInfo.environment
             env["PYTHONUNBUFFERED"] = "1"; env["PATH"] = Self.root.appendingPathComponent("bin").path + ":" + (env["PATH"] ?? "/usr/bin:/bin")
@@ -147,6 +162,41 @@ final class ChemistryRuntime: ObservableObject {
             }
         } catch { workspace.errorMessage = error.localizedDescription }
     }
+    /// Flush the live form (including its debounce), and save drafts before validation.
+    func saveWorkflowEditor(orcaPath: String) async throws -> String {
+        guard let browser = workflowBrowser else { throw ParseError.malformed("Create or open a workflow first.") }
+        let script = """
+        const b = window.Alpine && Alpine.$data(document.body);
+        if (!b || !b.savedPath) throw new Error('Save the workflow as input.yaml in the editor before running.');
+        if (!b.rawEdit) {
+          clearTimeout(b._timer);
+          if (orcaPath && b.cfg.steps.some(s => String(s.engine).includes('orca') || String(s.engine).includes('extopt'))) {
+            b.cfg.executables = b.cfg.executables || {};
+            if (!b.cfg.executables.orca || b.cfg.executables.orca === 'orca') {
+              b.cfg.executables.orca = orcaPath;
+              if (b.syncExecRows) b.syncExecRows();
+            }
+          }
+          const emitted = await b.api('POST', '/api/yaml', {config: b.cfg});
+          if (!emitted) throw new Error(b.flash || 'Could not read the workflow form.');
+          b.yamlText = emitted.yaml_text;
+        }
+        const saved = await b.api('POST', '/api/save', {path: b.savedPath, yaml_text: b.yamlText});
+        if (!saved) throw new Error(b.flash || 'Could not save input.yaml.');
+        if (b.tmpl && b.tmpl.open) {
+          const template = await b.api('POST', '/api/template', {config_path: saved.path, step: b.tmpl.step, text: b.tmpl.text});
+          if (!template) throw new Error(b.flash || 'Could not save the edited template.');
+          b.tmpl.open = false;
+        }
+        b.savedText = b.yamlText;
+        return saved.path;
+        """
+        guard let path = try await browser.callAsyncJavaScript(script, arguments: ["orcaPath": orcaPath], in: nil, contentWorld: .page) as? String else {
+            throw ParseError.malformed("The workflow editor did not return a saved input.yaml.")
+        }
+        return path
+    }
+
 }
 
 struct LocalWorkflowView: View {
@@ -159,6 +209,7 @@ struct LocalWorkflowView: View {
             HStack {
                 Text("ChemRefine · Local workflow").font(.headline)
                 Spacer()
+                Button("Open workflow…") { runtime.openExistingWorkflow(workspace) }
                 if runtime.guiURL != nil {
                     Button("New workflow…") { runtime.newWorkflow(workspace) }
                     Button("Open result…", action: openResult)
@@ -166,7 +217,11 @@ struct LocalWorkflowView: View {
                 }
                 if !embedded { Button("Done") { dismiss() } }
             }.padding(10)
-            if let url = runtime.guiURL { WorkflowWebView(url: url).id(url) }
+            if let url = runtime.guiURL {
+                WorkflowExecutionPanel()
+                Divider()
+                WorkflowWebView(url: url).id(url)
+            }
             else {
                 VStack(spacing: 16) {
                     Image(systemName: "point.3.connected.trianglepath.dotted").font(.system(size: 44)).foregroundStyle(.secondary)
