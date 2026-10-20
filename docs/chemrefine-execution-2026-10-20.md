@@ -63,8 +63,10 @@ account and licence acceptance. Use Get ORCA, download the matching macOS
 package, follow the installer, and then Choose ORCA. No ORCA or MPI calculation
 has been claimed as tested on this host. Official instructions:
 [Installing ORCA](https://www.faccts.de/docs/orca/6.1/tutorials/first_steps/install.html).
-The default GFN2-xTB template uses ORCA's bundled xTB implementation once the full
-ORCA distribution is installed; it does not call an unrelated xTB executable.
+The default GFN2-xTB template can require an external xTB executable. The supplied
+macOS 6.1.1 distribution lacked otool_xtb; the local installation now has a small
+launcher calling the user's existing native xTB 6.7.1 in the reactOT environment.
+Do not assume xTB is bundled with every ORCA platform package.
 
 ## Validation
 

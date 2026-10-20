@@ -169,10 +169,46 @@ def inspect_workflow(path, *, prepare_models=False):
                 requiredBackends=sorted(required), missingBackends=sorted(missing))
 
 
+def workflow_summary(path):
+    """One minimum per configured step, from real CSV rows; no invented energies."""
+    import csv
+    import math
+    from chemrefine.config import load_config
+    from chemrefine import agent_tools
+    config = load_config(Path(path))
+    state = agent_tools.run_status(path, log_tail_lines=0)
+    states = {item['step']: item for item in state['steps']}
+    rows = {}
+    csv_path = config.output_dir / 'steps.csv'
+    if csv_path.is_file():
+        with csv_path.open(newline='') as stream:
+            for row in csv.DictReader(stream):
+                try:
+                    step, energy = int(row['Step']), float(row['Energy (Hartree)'])
+                except (KeyError, ValueError, TypeError):
+                    continue
+                if math.isfinite(energy):
+                    rows.setdefault(step, []).append((energy, row))
+    result = []
+    for step in config.steps:
+        status = states.get(step.step, {})
+        energies = rows.get(step.step, [])
+        best = min(energies, key=lambda item: item[0]) if energies else None
+        result.append(dict(step=step.step, name=step.name or f'Step {step.step}', engine=step.engine,
+                           energy_hartree=best[0] if best else None,
+                           energy_type=best[1].get('Energy type', 'unspecified') if best else '',
+                           conformer=best[1].get('Conformer', '') if best else '',
+                           count=len(energies), previous=bool(best and not (status.get('cached') and status.get('reported_survivors') and not status.get('failures'))),
+                           status='failed' if status.get('failures') else 'completed' if status.get('cached') and status.get('reported_survivors') else 'pending / running' if state['running'] else 'pending'))
+    return dict(steps=result, running=state['running'])
+
+
 def act(request):
     from chemrefine import agent_tools
     path = str(Path(request['config_path']).expanduser().resolve())
     action = request.get('action', 'check')
+    if action == 'summary':
+        return workflow_summary(path)
     if action == 'status':
         return agent_tools.run_status(path, log_tail_lines=60)
     if action == 'scaffold':
@@ -186,12 +222,13 @@ def act(request):
         return inspect_workflow(path)
     if action == 'check':
         return inspect_workflow(path)
-    if action == 'run':
+    from chemrefine.recovery import Action
+    if action in {item.value for item in Action}:
         report = inspect_workflow(path, prepare_models=True)
         if not report['ok']:
             return dict(started=False, report=report)
         # The actual ChemRefine detached process owns locking, scheduling and result files.
-        result = agent_tools.start_run(path, action='run')
+        result = agent_tools.start_run(path, action=action, target=request.get('target'))
         return dict(started=True, report=report, **result)
     raise ValueError('Unknown workflow action')
 

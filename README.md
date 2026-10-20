@@ -215,3 +215,15 @@ ORCA is not installed on the current Mac. **Get ORCA** opens its official
 installation instructions; after installing the macOS package, use **Choose
 ORCA…**. The isolated PySCF backend is installed and was used for a genuine
 two-step calculation test. See [setup, execution and validation](docs/chemrefine-execution-2026-10-20.md).
+
+### ChemRefine dashboard controls and energy table (0.10.3)
+
+The bottom-right Run/Resume/recovery controls now use native confirmation sheets
+and the same editor-save, readiness/model checks, executable environment and
+monitoring as the top Run button. The top panel also provides Resume.
+The Run panel includes a live table of every saved step's name, engine, status,
+lowest reported energy, energy type, conformer and result count. Choose Eh,
+kcal/mol, kJ/mol or eV, and use Copy table for tab-separated results.
+Missing energies stay blank; retained results without a successful cache are
+marked previous. Different methods' energies are not subtracted automatically.
+See [dashboard details](docs/chemrefine-dashboard-2026-10-20.md).

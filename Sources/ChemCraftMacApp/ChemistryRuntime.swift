@@ -14,9 +14,18 @@ final class ChemistryRuntime: ObservableObject {
     @Published var showingWorkflow = false
     private var workflowBrowser: WKWebView?
     private var workflowBrowserURL: URL?
+    private var workflowWebDelegate: ChemRefineWebDelegate?
     func webView(for url: URL) -> WKWebView {
         if workflowBrowserURL == url, let workflowBrowser { return workflowBrowser }
-        let view = WKWebView(); view.load(URLRequest(url: url))
+        let configuration = WKWebViewConfiguration()
+        let delegate = ChemRefineWebDelegate()
+        configuration.userContentController.addScriptMessageHandler(delegate, contentWorld: .page, name: "chemViewerWorkflow")
+        if let script = ChemistryResources.bundle.url(forResource: "workflow_dashboard", withExtension: "js"), let source = try? String(contentsOf: script) {
+            configuration.userContentController.addUserScript(WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        let view = WKWebView(frame: .zero, configuration: configuration)
+        delegate.allowedURL = url; view.uiDelegate = delegate; workflowWebDelegate = delegate
+        view.load(URLRequest(url: url))
         workflowBrowser = view; workflowBrowserURL = url
         return view
     }

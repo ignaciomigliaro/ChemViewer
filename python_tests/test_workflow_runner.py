@@ -138,6 +138,29 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(report['ok'])
         self.assertTrue(any(c['status'] == 'error' and 'budget' in c['detail'].lower() for c in report['checks']))
 
+    def test_recovery_actions_forward_target_and_use_preflight(self):
+        report = dict(ok=True, checks=[], requiredBackends=[], missingBackends=[])
+        for action in ('run', 'resume', 'rebuild-cache', 'rebuild-nms', 'rerun', 'rerun-errors'):
+            with self.subTest(action=action), patch.object(bridge, 'inspect_workflow', return_value=report) as check, patch('chemrefine.agent_tools.start_run', return_value={'pid': 123, 'log': 'test.log'}) as launch:
+                target = None if action in ('run', 'resume') else '2'
+                result = bridge.act(dict(action=action, config_path=str(self.path), target=target))
+                self.assertTrue(result['started'])
+                launch.assert_called_once_with(str(self.path.resolve()), action=action, target=target)
+                check.assert_called_once_with(str(self.path.resolve()), prepare_models=True)
+
+    def test_energy_summary_minimum_names_missing_and_nonfinite(self):
+        self.config()
+        self.path.write_text(self.path.read_text() + '  - step: 2\n    name: refine\n    engine: pyscf\n')
+        out = self.root / 'outputs'; out.mkdir()
+        (out / 'steps.csv').write_text('Step,Conformer,Energy (Hartree),Energy type\n1,0,-1.0,electronic\n1,1,-1.1,electronic\n1,2,nan,electronic\n')
+        result = bridge.act(dict(action='summary', config_path=str(self.path)))
+        self.assertEqual(len(result['steps']), 2)
+        first, second = result['steps']
+        self.assertEqual(first['name'], 'Step 1'); self.assertEqual(second['name'], 'refine')
+        self.assertEqual(first['energy_hartree'], -1.1); self.assertEqual(first['count'], 2)
+        self.assertEqual(first['conformer'], '1'); self.assertTrue(first['previous'])
+        self.assertIsNone(second['energy_hartree'])
+
     def test_status_is_real_chemrefine_status(self):
         self.config()
         result = bridge.act(dict(action='status', config_path=str(self.path)))

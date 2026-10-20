@@ -78,14 +78,29 @@ enum WorkflowRunnerSmokeTest {
             var browser: WKWebView?
             for _ in 0..<150 {
                 browser = views().compactMap { $0 as? WKWebView }.first
-                if let browser, (try? await browser.evaluateJavaScript("!!(window.Alpine && Alpine.$data(document.body).savedPath)")) as? Bool == true { break }
+                if let browser, (try? await browser.evaluateJavaScript("!!(window.chemViewerDashboard && window.chemViewerDashboard.data)")) as? Bool == true { break }
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             guard let browser else { throw ParseError.malformed("Live ChemRefine editor missing") }
             let templateURL = folder.appendingPathComponent("templates/step1.py")
             let template = try String(contentsOf: templateURL, encoding: .utf8) + "\n# native unsaved template flushed before run\n"
             _ = try await browser.callAsyncJavaScript("const b = Alpine.$data(document.body); b.cfg.steps[0].options.basis='sto-3g'; b.cfg.steps.push({step:2,name:'refine',engine:'pyscf',template:'refine.py',options:{method:'hf',basis:'sto-3g',df:false,cores:1}}); b.tmpl={open:true,step:2,text:template}; b.syncYaml(); return true;", arguments: ["template": template], in: nil, contentWorld: .page)
-            runner.perform("run")
+            // Exercise the actual bottom-right dashboard and real native confirmation.
+            browser.evaluateJavaScript("setTimeout(() => Alpine.$data(document.body).launch('run'), 0); true") { _, _ in }
+            var confirmed = false
+            for _ in 0..<100 {
+                if let sheet = NSApp.windows.compactMap(\.attachedSheet).first,
+                   let button = sheet.contentView.map(descendants)?.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Continue" }) {
+                    button.performClick(nil); confirmed = true; break
+                }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            try require(confirmed, "Embedded Run did not display its native confirmation")
+            // Wait for the WK reply to enter native preparation.
+            for _ in 0..<50 {
+                if runner.busy { break }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
             for _ in 0..<600 {
                 if !runner.busy { break }
                 try await Task.sleep(nanoseconds: 100_000_000)
@@ -93,8 +108,7 @@ enum WorkflowRunnerSmokeTest {
             try require(runner.running && runner.runConfigPath == path.path, "Native Run button did not start a real ChemRefine pipeline: " + runner.status)
             try require((try String(contentsOf: path, encoding: .utf8)).contains("sto-3g"), "Runner used stale on-disk YAML instead of the live form")
             try require((try String(contentsOf: folder.appendingPathComponent("templates/refine.py"), encoding: .utf8)).contains("native unsaved template"), "Unsaved template changes were not flushed")
-            // The actual child is detached: closing its editor server cannot kill it.
-            runtime.stopWorkflowTestServer()
+            // Keep the live editor open for the dashboard action/summary checks.
             for _ in 0..<600 {
                 if !runner.running { break }
                 try await Task.sleep(nanoseconds: 100_000_000)
@@ -104,7 +118,58 @@ enum WorkflowRunnerSmokeTest {
             try require(csv.contains("-1.1167593"), "H2 HF/STO-3G energy did not match the independent -1.1167593074 Eh oracle: " + csv)
             let state = try await runner.readStatus(path.path)
             try require(!state.running && state.steps.count == 2 && state.steps.allSatisfy { $0.cached && $0.failures == 0 && $0.reported_survivors == 1 }, "Native status did not report the actual completed calculation")
-            print("WORKFLOW_RUNNER_PASS: missing-template block, non-overwriting scaffold, real isolated backend check, live unsaved YAML/template save, actual detached two-step ChemRefine/PySCF H2 run, editor-server shutdown survival, native log/status and HF/STO-3G energy -1.1167593074 Eh")
+            // Exercise the same live dashboard, now with completed results.
+            let reopened = browser
+            _ = try await reopened.callAsyncJavaScript("await window.chemViewerDashboard.refresh(); return true;", arguments: [:], in: nil, contentWorld: .page)
+            let progressFresh = try await reopened.evaluateJavaScript("Alpine.$data(document.body).runStatus.steps.every(s => s.cached && s.reported_survivors === 1)") as? Bool ?? false
+            try require(progressFresh, "Upstream progress table remained stale after a fast run")
+            let summary = try await reopened.evaluateJavaScript("JSON.stringify(window.chemViewerDashboard.data)") as? String ?? ""
+            try require(summary.contains("refine") && summary.contains("-1.1167593"), "Step table did not load actual step names and energies: " + summary)
+            _ = try await reopened.evaluateJavaScript("window.chemViewerDashboard.refresh(); true")
+            try await Task.sleep(nanoseconds: 800_000_000)
+            let table = try await reopened.evaluateJavaScript("document.querySelector('#chemviewer-step-summary').innerText") as? String ?? ""
+            try require(table.contains("Eh") && table.contains("refine") && table.contains("-1.1167593"), "Visible step table is incomplete: " + table)
+            _ = try await reopened.evaluateJavaScript("var u=document.querySelector('#chemviewer-step-summary select'); u.selectedIndex=1; u.dispatchEvent(new Event('change')); true")
+            let kcal = try await reopened.evaluateJavaScript("document.querySelector('#chemviewer-step-summary tbody').innerText") as? String ?? ""
+            let expected = String(format: "%.6f", -1.1167593073964255 * EnergyUnit.kilocaloriePerMole.perHartree)
+            try require(kcal.contains(expected) && kcal.contains("kcal/mol"), "Table unit conversion differs from independent energy oracle: " + kcal)
+            _ = try await reopened.evaluateJavaScript("var u=document.querySelector('#chemviewer-step-summary select'); u.selectedIndex=0; u.dispatchEvent(new Event('change')); document.querySelector('#run').scrollIntoView(); true")
+            try await Task.sleep(nanoseconds: 300_000_000)
+            let snapshot: NSImage = try await withCheckedThrowingContinuation { continuation in
+                reopened.takeSnapshot(with: nil) { image, error in
+                    if let image { continuation.resume(returning: image) }
+                    else { continuation.resume(throwing: error ?? ParseError.malformed("Dashboard snapshot failed")) }
+                }
+            }
+            if let tiff = snapshot.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff), let png = bitmap.representation(using: .png, properties: [:]) {
+                try png.write(to: evidence.appendingPathComponent("workflow-dashboard.png"))
+            }
+            for action in ["resume", "rebuild-cache", "rerun-errors"] {
+                reopened.evaluateJavaScript("var b=Alpine.$data(document.body); b.runTarget='\(action)' === 'resume' ? '' : '2'; setTimeout(()=>b.launch('\(action)'),0); true;") { _, _ in }
+                var accepted = false
+                for _ in 0..<100 {
+                    if let sheet = NSApp.windows.compactMap(\.attachedSheet).first,
+                       let button = sheet.contentView.map(descendants)?.compactMap({ $0 as? NSButton }).first(where: { $0.title == "Continue" }) {
+                        button.performClick(nil); accepted = true; break
+                    }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                try require(accepted, "No confirmation for embedded " + action)
+                print("DASHBOARD_CONFIRMED: " + action); fflush(stdout)
+                for _ in 0..<100 {
+                    if runner.currentAction == action && (runner.busy || runner.running) { break }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                if action == "rerun-errors" { runtime.stopWorkflowTestServer() }
+                for _ in 0..<600 {
+                    if !runner.busy && !runner.running { break }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                try require(runner.currentAction == action && runner.status.hasPrefix("ChemRefine completed."), "Embedded action failed: " + action + ": " + runner.status)
+            }
+            print("DASHBOARD_ACTIONS_PASS: real bottom Run, Resume, targeted Rebuild cache/Rerun errors, native confirmations, current YAML saving and actual two-step energy table")
+            runtime.stopWorkflowTestServer()
+            print("WORKFLOW_RUNNER_PASS: missing-template block, non-overwriting scaffold, real isolated backend check, live unsaved YAML/template save, actual detached two-step ChemRefine/PySCF H2 run, recovery driver/editor-server shutdown survival, native log/status and HF/STO-3G energy -1.1167593074 Eh")
             print("WORKFLOW_EVIDENCE: " + folder.path)
             restoreDefaults(); fflush(stdout); exit(0)
         } catch {

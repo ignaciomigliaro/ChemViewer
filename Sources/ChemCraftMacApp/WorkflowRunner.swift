@@ -60,10 +60,11 @@ final class WorkflowRunner: ObservableObject {
         guard FileManager.default.isExecutableFile(atPath: url.path) else { status = "Choose an executable file, not an installer/archive."; return }
         orcaPath = url.path; status = "ORCA selected. Check the workflow to verify its installation."
     }
+    static let launchActions: Set<String> = ["run", "resume", "rebuild-cache", "rebuild-nms", "rerun", "rerun-errors"]
     func perform(_ action: String) {
         guard !busy, !running else { return }
         currentAction = action; busy = true; generation += 1; let request = generation
-        status = action == "run" ? "Saving editor and checking files, engines and selected models…" : action == "install" ? "Installing only the workflow's missing backend environments…" : "Saving editor and checking workflow…"
+        status = Self.launchActions.contains(action) ? "Saving editor and checking files, engines and selected models…" : action == "install" ? "Installing only the workflow's missing backend environments…" : "Saving editor and checking workflow…"
         Task {
             defer { if generation == request { busy = false; preparationProcess = nil } }
             do {
@@ -74,18 +75,19 @@ final class WorkflowRunner: ObservableObject {
         }
     }
     /// Native acceptance also uses the exact process/API path, without a file dialog.
-    func execute(action: String, configPath: String, generation request: Int? = nil) async throws {
-        let data = try await bridge(action: action, path: configPath, trackPreparation: true)
-        if let request, request != generation { return }
-        if action == "run" {
+    @discardableResult
+    func execute(action: String, configPath: String, generation request: Int? = nil, target: String? = nil) async throws -> Data {
+        let data = try await bridge(action: action, path: configPath, trackPreparation: true, target: target)
+        if let request, request != generation { return data }
+        if Self.launchActions.contains(action) {
             let response = try JSONDecoder().decode(Response.self, from: data)
             report = response.report
-            guard response.started == true else { status = "Workflow not started. Resolve the items marked red, then run again."; return }
+            guard response.started == true else { status = "Workflow not started. Resolve the items marked red, then run again."; return data }
             running = true; runConfigPath = configPath; logPath = response.log
             driverPID = response.pid; launchedAt = Date()
             UserDefaults.standard.set(configPath, forKey: "ChemViewerLastRunConfig")
             UserDefaults.standard.set(response.pid, forKey: "ChemViewerLastRunPID")
-            status = "ChemRefine started (PID \(response.pid ?? 0)). It continues if this window closes."
+            status = "ChemRefine \(action) started (PID \(response.pid ?? 0)). It continues if this window closes."
             logText = ""; startMonitoring(configPath)
         } else if action == "scaffold" {
             report = try JSONDecoder().decode(Response.self, from: data).report
@@ -94,9 +96,24 @@ final class WorkflowRunner: ObservableObject {
             report = try JSONDecoder().decode(Report.self, from: data)
             status = report?.ok == true ? "Workflow files and declared engines are ready. Run verifies selected MLIP weights before launching." : "Workflow needs the items marked red before it can run."
         }
+        return data
+    }
+    /// The embedded dashboard uses the same saved-editor/preflight/monitoring path.
+    func launchFromEditor(action: String, target: String?) async throws -> Data {
+        guard Self.launchActions.contains(action) else { throw ParseError.malformed("Unknown workflow action.") }
+        guard !busy, !running else { throw ParseError.malformed("A workflow is already running or being prepared.") }
+        busy = true; currentAction = action; generation += 1
+        defer { busy = false; preparationProcess = nil }
+        status = "Saving editor and preparing ChemRefine \(action)…"
+        do {
+            let path = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath)
+            return try await execute(action: action, configPath: path, generation: generation, target: target)
+        } catch {
+            status = error.localizedDescription; throw error
+        }
     }
     func cancelPreparation() {
-        guard currentAction != "run" else { return }
+        guard !Self.launchActions.contains(currentAction) else { return }
         generation += 1
         preparationProcess?.terminate(); preparationProcess = nil; busy = false
         status = "Preparation cancelled. No new workflow was launched."
@@ -133,12 +150,14 @@ final class WorkflowRunner: ObservableObject {
         let data = try await bridge(action: "status", path: path)
         return try JSONDecoder().decode(RunStatus.self, from: data)
     }
-    func bridge(action: String, path: String, trackPreparation: Bool = false) async throws -> Data {
+    func bridge(action: String, path: String, trackPreparation: Bool = false, target: String? = nil) async throws -> Data {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-Workflow-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let input = directory.appendingPathComponent("request.json"), output = directory.appendingPathComponent("result.json"), log = directory.appendingPathComponent("bridge.log")
-        try JSONSerialization.data(withJSONObject: ["action": action, "config_path": path]).write(to: input)
+        var payload: [String: Any] = ["action": action, "config_path": path]
+        if let target, !target.isEmpty { payload["target"] = target }
+        try JSONSerialization.data(withJSONObject: payload).write(to: input)
         guard let script = ChemistryResources.bundle.url(forResource: "workflow_bridge", withExtension: "py") else { throw ParseError.malformed("Missing ChemRefine execution bridge.") }
         FileManager.default.createFile(atPath: log.path, contents: nil, attributes: [.posixPermissions: 0o600])
         let handle = try FileHandle(forWritingTo: log); defer { try? handle.close() }
@@ -172,6 +191,7 @@ struct WorkflowExecutionPanel: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     Button("Run ChemRefine") { runner.perform("run") }.buttonStyle(.borderedProminent).disabled(runner.busy || runner.running)
+                    Button("Resume") { runner.perform("resume") }.disabled(runner.busy || runner.running)
                     Button("Check workflow") { showChecks = true; runner.perform("check") }.disabled(runner.busy || runner.running)
                     Button("Create missing templates") { showChecks = true; runner.perform("scaffold") }.disabled(runner.busy || runner.running)
                     Button("Install required backends") { showChecks = true; runner.perform("install") }.disabled(runner.busy || runner.running || (runner.report?.missingBackends.isEmpty ?? true))
@@ -179,7 +199,7 @@ struct WorkflowExecutionPanel: View {
                     Link("Get ORCA", destination: URL(string: "https://www.faccts.de/docs/orca/6.1/tutorials/first_steps/install.html")!)
                     if runner.busy {
                         ProgressView().controlSize(.small)
-                        if runner.currentAction != "run" { Button("Cancel preparation") { runner.cancelPreparation() } }
+                        if !WorkflowRunner.launchActions.contains(runner.currentAction) { Button("Cancel preparation") { runner.cancelPreparation() } }
                     }
                 }
             }

@@ -578,3 +578,39 @@ PySCF differs by 1.9243e-10 Eh. Actual bridge launched run log
 in the synthetic validation directory. Supersedes previous ORCA-pending notes.
 Parallel/MPI remains untested; no mpirun found. Detailed scope and model results
 are appended to docs/chemrefine-execution-2026-10-20.md and scientific-validation.
+
+## 0.10.3 — working dashboard actions and step energy summary
+
+WKWebView previously lacked UI delegates for the editor's window.confirm calls,
+so bottom-right Run/Resume/recovery could silently cancel. The new scoped
+ChemRefineWebDelegate supplies native sheets and a reply handler; an original
+workflow_dashboard.js resource intercepts only loopback /api/run at document
+start and routes all six actions/targets through native save/check/model/env/
+launch/monitor handling. Installing the hook after Alpine initialization had a
+first-click race; final document-start routing is tested. Upstream ChemRefine
+files are unchanged. Native top panel adds Resume.
+
+The bottom-right Run panel opens to a step table joined from saved config names,
+real status/cache and finite steps.csv Hartree rows. It shows each step's minimum
+energy with type/conformer/count, status, selectable Eh/kcal/mol/kJ/mol/eV and
+Copy table. Missing values stay null; retained unsuccessful-cache values are
+labeled previous. Refresh also updates upstream progress to prevent stale zero
+survivors after fast runs. Units are display-only; no differences between
+incompatible models are inferred. The user's completed workflow was read-only
+checked; no personal scientific jobs were launched.
+
+Final native log /private/tmp/chemviewer-0103-native-verified.log contains
+DASHBOARD_ACTIONS_PASS + WORKFLOW_RUNNER_PASS. It exercises genuine bottom Run
+with live unsaved YAML/template flushing, independent two-step PySCF H2 energies,
+native confirmation sheets, cached Resume, targeted Rebuild cache/Rerun errors,
+upstream progress freshness, actual visible summary and kcal/mol oracle, and
+editor-server closure while the final detached recovery finishes. Python28 and
+core31/three migrated suites pass; signed ARM64 build25/0.10.3. Real WK snapshot
+~/Downloads/chemviewer-runner-evidence/workflow-dashboard.png inspected. Details
+in docs/chemrefine-dashboard-2026-10-20.md. User's pre-existing AGENTS.md edit
+was preserved and excluded from this release commit.
+
+Local xTB support: the Mac ORCA package lacked otool_xtb, contrary to an earlier
+doc claim (corrected). An original launcher beside ORCA calls existing native
+reactOT/bin/xtb 6.7.1. Independent H2 xTB Opt -> ORCA UMA ExtOpt passed with one
+survivor/zero failures each under ~/Downloads/chemviewer-xtb-uma-check.

@@ -260,3 +260,13 @@ termination, one survivor, zero failures, -1.116759307204 Eh; independent
 PySCF reference differs by 1.9243e-10 Eh. UMA CPU single point independently
 matches fairchem and stretched-H2 optimization converges. These supersede the
 0.10.1 ORCA installation blocker; parallel ORCA/MPI remains untested.
+
+## ChemRefine dashboard — 0.10.3
+
+Bottom-right Run/Resume/recovery now display native confirmations and use the
+same live-editor save/check/model/ORCA environment path as native Run. Optional
+step targets are preserved for targeted actions; run locks remain owned by
+ChemRefine. A step summary shows names/fallback Step N, engine/status, minimum
+reported energy, units, energy type and conformer/count. Missing results stay
+blank; prior unsuccessful-cache rows are labeled previous. Unit selector and
+copy table supplement existing per-conformer results. Upstream files unchanged.

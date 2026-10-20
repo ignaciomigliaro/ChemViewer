@@ -357,3 +357,20 @@ every optional ORCA module or MPI runtime is available. Missing ChemRefine
 `slurm-header` warnings now block local runs too: its local scheduler still
 requires the header when generating the job script. Scaffold creates missing
 headers without replacing user templates.
+
+## Embedded workflow dashboard — 0.10.3
+
+ChemRefineWebDelegate supplies WKUIDelegate confirmation/alert/prompt sheets and
+a scoped WKScriptMessageHandlerWithReply. The document-start workflow_dashboard
+resource intercepts local /api/run requests before editor initialization,
+then routes action/target to WorkflowRunner.launchFromEditor. This flushes live
+YAML/templates and reuses native checks, environment, detached launch and
+monitoring. The integration does not modify upstream ChemRefine files.
+
+workflow_summary reads finite Hartree rows from actual steps.csv, joins them to
+configured step names and real run/cache states, and reports each step's minimum
+plus count/conformer/energy type. Missing data stays null, unsuccessful-cache
+results are marked previous, and unit conversion is display-only. The embedded
+summary refresh also refreshes the original status table to avoid stale state
+after drivers that finish before the editor's first poll. Clipboard output uses
+plain tab-separated display values through the native handler.

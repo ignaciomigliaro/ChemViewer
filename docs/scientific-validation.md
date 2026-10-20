@@ -146,3 +146,32 @@ chemistry tests, 31 standalone core cases plus three migrated suites, signed
 ARM64 build, and actual native two-step PySCF runner/editor gate all passed.
 Logs: `/private/tmp/chemviewer-0102-{python,build,native}.log`. Genuine XCTest is
 unavailable with the selected local Command Line Tools; CI uses full Xcode.
+
+## ChemRefine dashboard acceptance — 0.10.3 (2026-10-20)
+
+The embedded Run action was invoked through the actual editor launch function,
+with its real native confirmation sheet accepted by the native test. Unsaved
+6-31G -> STO-3G changes and a newly added second step/template were flushed
+before launch. Both independent H2 conventional HF/STO-3G steps completed with
+-1.1167593074 Eh, one survivor and zero failures. Actual bottom Resume, targeted
+Rebuild cache and Rerun errors also passed through confirmations/native routing
+and completed. The final recovery driver survived termination of its editor
+server. Per-action target dispatch for all six actions is covered by Python
+tests; Rebuild NMS requires a real NMS-configured workflow and is not claimed
+scientifically exercised here.
+
+The actual WK-rendered step table showed Step 1 and refine with their real
+energies/status and units. Its kcal/mol display matched the independent core
+CODATA conversion oracle; the original upstream progress table was also checked
+for fresh successful-cache/survivor state after a fast run. A direct WK snapshot
+was visually inspected at ~/Downloads/chemviewer-runner-evidence/workflow-dashboard.png.
+A prior desktop capture showed the user's editor instead and is not visual
+evidence of this feature.
+
+Final local gates: 28 Python chemistry integration tests; 31 standalone core
+cases plus three migrated suites; signed ARM64 release build; native action/
+confirmation/editor-save/energy-table and unit-conversion acceptance. Genuine
+XCTest is unavailable in the selected local Command Line Tools. Evidence:
+/private/tmp/chemviewer-0103-python.log, chemviewer-0103-build.log,
+chemviewer-0103-native-verified.log; synthetic real-pyscf-D85B504E under
+~/Downloads/chemviewer-runner-evidence. No personal calculation was rerun.
