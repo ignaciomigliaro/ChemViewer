@@ -374,3 +374,17 @@ results are marked previous, and unit conversion is display-only. The embedded
 summary refresh also refreshes the original status table to avoid stale state
 after drivers that finish before the editor's first poll. Clipboard output uses
 plain tab-separated display values through the native handler.
+
+## User-selected UMA Python — 0.10.4
+
+WorkflowRunner persists an optional UMA interpreter default, resolves typed
+environment directories/tilde without resolving executable symlinks, and exposes
+a native picker/import checker/explicit apply control. The normal save path
+flushes pending per-step inputs and fills only missing FAIRChem backend_python
+values; explicit apply replaces the current workflow's FAIRChem overrides.
+Non-FAIRChem families and other engines are untouched. Raw YAML is parsed and
+re-emitted only if a default needs insertion. The embedded Run panel exposes
+per-step MLIP Python fields backed by the real options, not local display state.
+The bridge check-python action runs the selected interpreter with subprocess
+arguments and reports real imports/version/prefix/server dependencies. No UMA
+installation path is hardcoded in application code.

@@ -1,6 +1,34 @@
 // ChemViewer integration; upstream ChemRefine remains unmodified.
 (() => {
   const send = payload => window.webkit.messageHandlers.chemViewerWorkflow.postMessage(payload);
+  window.chemViewerApplyUMAPython = async (path, overwrite) => {
+    const b = window.Alpine && document.body && Alpine.$data(document.body);
+    if (!b || !b.savedPath) throw new Error('Open a workflow first.');
+    window.chemViewerCommitBackendFields?.();
+    clearTimeout(b._timer);
+    let config = b.cfg;
+    if (b.rawEdit) {
+      const parsed = await b.api('POST', '/api/parse', {yaml_text:b.yamlText});
+      if (!parsed) throw new Error(b.flash || 'Invalid workflow YAML.');
+      config = parsed.config;
+    }
+    let changed = 0;
+    const heads = new Set(['omol','omat','odac','oc20','oc22','oc25','omc']);
+    for (const step of config.steps || []) {
+      if (!['mlip','mlip-extopt','mlip-train'].includes(String(step.engine).toLowerCase())) continue;
+      const task = String(step.options?.task_name || step.options?.task || 'omol').toLowerCase();
+      if (!heads.has(task)) continue;
+      step.options = step.options || {};
+      if (overwrite || !step.options.backend_python) { step.options.backend_python = path; changed++; }
+    }
+    if (changed) {
+      const emitted = await b.api('POST', '/api/yaml', {config});
+      if (!emitted) throw new Error(b.flash || 'Could not apply Python environment.');
+      b.cfg = config; b.yamlText = emitted.yaml_text;
+      window.chemViewerDashboard?.renderEnvironments();
+    }
+    return changed;
+  };
   const fetchOriginal = window.fetch.bind(window);
   let launching = false;
   let notify = () => {};
@@ -35,6 +63,50 @@
     if (!b || !b.api || !b.savedPath || !dashboard) { setTimeout(install, 150); return; }
     if (window.chemViewerDashboard) return;
     let loading = false, data = null;
+    const environments = document.createElement('section');
+    environments.id = 'chemviewer-python-environments';
+    const heading = document.createElement('b'); heading.textContent = 'MLIP Python environments';
+    const hint = document.createElement('p'); hint.className = 'muted';
+    hint.textContent = 'Per-step Python overrides the UMA default above. Empty uses that default or a ChemRefine-managed backend. Edit raw YAML directly when raw editing is enabled.';
+    const paths = document.createElement('div'); environments.append(heading,hint,paths);
+    const anchor = dashboard.querySelector('table.runsteps');
+    if (anchor) anchor.before(environments); else dashboard.appendChild(environments);
+    function renderEnvironments() {
+      const steps = (b.cfg.steps || []).filter(s => ['mlip','mlip-extopt','mlip-train'].includes(String(s.engine).toLowerCase()));
+      const keys = new Set(steps.map(s => String(s.step)));
+      for (const row of Array.from(paths.children)) if (!keys.has(row.dataset.step)) row.remove();
+      for (const step of steps) {
+        let row = Array.from(paths.children).find(r => r.dataset.step === String(step.step));
+        if (!row) {
+          row = document.createElement('label'); row.dataset.step = String(step.step);
+          row.style.cssText = 'display:flex;gap:10px;align-items:center;margin-bottom:8px';
+          const caption = document.createElement('span'); caption.style.minWidth = '120px';
+          const input = document.createElement('input'); input.type='text'; input.style.flex='1';
+          input.placeholder='Python executable (default above / managed backend)';
+          input.addEventListener('input', () => { input.dataset.dirty = 'true'; });
+          input.addEventListener('change', () => {
+            const current = (b.cfg.steps || []).find(s => String(s.step) === row.dataset.step);
+            if (!current || b.rawEdit) return;
+            current.options = current.options || {};
+            if (input.value.trim()) current.options.backend_python = input.value.trim();
+            else delete current.options.backend_python;
+            delete input.dataset.dirty; b.syncYaml();
+          });
+          row.append(caption,input); paths.appendChild(row);
+        }
+        row.firstChild.textContent = 'Step ' + step.step + (step.name ? ' · ' + step.name : '');
+        const input = row.querySelector('input');
+        input.setAttribute('aria-label', 'Python for step ' + step.step);
+        input.disabled = !!b.rawEdit;
+        if (document.activeElement !== input && !input.dataset.dirty) input.value = step.options?.backend_python || '';
+      }
+      environments.hidden = steps.length === 0;
+    }
+
+    window.chemViewerCommitBackendFields = () => {
+      if (b.rawEdit) return;
+      for (const input of paths.querySelectorAll('input[data-dirty]')) input.dispatchEvent(new Event('change'));
+    };
     const section = document.createElement('section'); section.id = 'chemviewer-step-summary';
     section.style.cssText = 'border-top:1px solid #d6dde7;margin-top:12px;padding-top:10px;overflow-x:auto';
     // Only static markup is inserted; scientific data/names use textContent below.
@@ -62,7 +134,7 @@
     async function refresh() {
       if (loading) return;
       loading = true;
-      try { await b.refreshStatus(); data = await send({action:'summary'}); render(); }
+      try { renderEnvironments(); await b.refreshStatus(); data = await send({action:'summary'}); render(); }
       catch (e) { panelStatus.textContent = 'Could not load step energies: ' + String(e.message || e); }
       finally { loading = false; }
     }
@@ -74,7 +146,7 @@
       } catch (e) { panelStatus.textContent = String(e.message || e); }
     });
     buttons[1].addEventListener('click', refresh);
-    window.chemViewerDashboard = {refresh, render, get data() { return data; }};
+    window.chemViewerDashboard = {refresh, render, renderEnvironments, get data() { return data; }};
     refresh();
     setInterval(() => { if (!document.hidden) refresh(); }, 5000);
   }

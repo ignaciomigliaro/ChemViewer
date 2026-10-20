@@ -171,12 +171,19 @@ final class ChemistryRuntime: ObservableObject {
             }
         } catch { workspace.errorMessage = error.localizedDescription }
     }
+    func applyUMAPython(_ path: String, overwrite: Bool) async throws -> Int {
+        guard let browser = workflowBrowser else { throw ParseError.malformed("Open a workflow first.") }
+        let result = try await browser.callAsyncJavaScript("return await window.chemViewerApplyUMAPython(path, overwrite);", arguments: ["path":path, "overwrite":overwrite], in: nil, contentWorld: .page)
+        return (result as? NSNumber)?.intValue ?? 0
+    }
     /// Flush the live form (including its debounce), and save drafts before validation.
-    func saveWorkflowEditor(orcaPath: String) async throws -> String {
+    func saveWorkflowEditor(orcaPath: String, umaPython: String = "") async throws -> String {
         guard let browser = workflowBrowser else { throw ParseError.malformed("Create or open a workflow first.") }
         let script = """
         const b = window.Alpine && Alpine.$data(document.body);
         if (!b || !b.savedPath) throw new Error('Save the workflow as input.yaml in the editor before running.');
+        window.chemViewerCommitBackendFields?.();
+        if (umaPython) await window.chemViewerApplyUMAPython(umaPython, false);
         if (!b.rawEdit) {
           clearTimeout(b._timer);
           if (orcaPath && b.cfg.steps.some(s => String(s.engine).includes('orca') || String(s.engine).includes('extopt'))) {
@@ -200,7 +207,7 @@ final class ChemistryRuntime: ObservableObject {
         b.savedText = b.yamlText;
         return saved.path;
         """
-        guard let path = try await browser.callAsyncJavaScript(script, arguments: ["orcaPath": orcaPath], in: nil, contentWorld: .page) as? String else {
+        guard let path = try await browser.callAsyncJavaScript(script, arguments: ["orcaPath": orcaPath, "umaPython": umaPython], in: nil, contentWorld: .page) as? String else {
             throw ParseError.malformed("The workflow editor did not return a saved input.yaml.")
         }
         return path

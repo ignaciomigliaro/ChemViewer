@@ -175,3 +175,25 @@ XCTest is unavailable in the selected local Command Line Tools. Evidence:
 /private/tmp/chemviewer-0103-python.log, chemviewer-0103-build.log,
 chemviewer-0103-native-verified.log; synthetic real-pyscf-D85B504E under
 ~/Downloads/chemviewer-runner-evidence. No personal calculation was rerun.
+
+## UMA Python settings validation — 0.10.4 (2026-10-20)
+
+29 Python chemistry integration tests pass, including selected interpreter/folder
+resolution, import-check dispatch and invalid paths. The actual installed UMA
+environment passed the new checker: Python environment prefix was correct,
+fairchem-core 2.23.0 and compatible ChemRefine imported, and ExtOpt server
+packages were available. This import check does not claim a new UMA calculation.
+
+Native acceptance passed persistent-setting/directory resolution, default-only
+filling, preserved explicit overrides, non-FAIRChem/other-engine exclusion,
+explicit replacement, actual visible per-step editing, pending-input flushing
+and raw YAML insertion. The original live editor config and user preferences
+were restored after synthetic checks. The same test then passed actual bottom
+Run/Resume/targeted recovery, unsaved editor/template saving, a real two-step
+PySCF H2 HF/STO-3G oracle (-1.1167593074 Eh), energy table/unit conversion and
+detached recovery/editor-server survival. Core31 and three migrated suites,
+strict signature and ARM64 release build pass. No personal calculation was run.
+Evidence: /private/tmp/chemviewer-0104-python.log, chemviewer-0104-build.log,
+chemviewer-0104-native-final.log; real-pyscf-CECAC37C under
+~/Downloads/chemviewer-runner-evidence. No vendor binaries or model credentials
+are part of the source release.

@@ -227,3 +227,12 @@ kcal/mol, kJ/mol or eV, and use Copy table for tab-separated results.
 Missing energies stay blank; retained results without a successful cache are
 marked previous. Different methods' energies are not subtracted automatically.
 See [dashboard details](docs/chemrefine-dashboard-2026-10-20.md).
+
+### UMA Python environment (0.10.4)
+
+In ChemRefine, the **UMA Python** row provides **Choose environment**, **Check
+Python**, and **Use for UMA steps**. Select an environment folder or bin/python.
+The saved default fills missing UMA backend paths; existing overrides remain
+unless you explicitly apply it. The Run panel also has editable Python paths
+per MLIP step. Paths are saved in input.yaml as options.backend_python, so CLI
+ChemRefine uses the same interpreter. [Environment settings](docs/uma-environment-settings-2026-10-20.md).

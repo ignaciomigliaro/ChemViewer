@@ -207,6 +207,27 @@ def act(request):
     from chemrefine import agent_tools
     path = str(Path(request['config_path']).expanduser().resolve())
     action = request.get('action', 'check')
+    if action == 'check-python':
+        if not str(request.get('python_path', '')).strip():
+            raise ValueError('Choose a Python interpreter first.')
+        python = Path(request.get('python_path', '')).expanduser()
+        if python.is_dir():
+            python = python / 'bin' / 'python'
+        if not python.is_file() or not os.access(python, os.X_OK):
+            raise ValueError('Choose an executable Python interpreter, or an environment folder containing bin/python.')
+        code = """import importlib.util, importlib.metadata as m, json, sys
+import fairchem.core
+import chemrefine
+optional = [name for name in ('flask', 'waitress') if importlib.util.find_spec(name) is None]
+print(json.dumps(dict(python=sys.executable, prefix=sys.prefix, fairchem=m.version('fairchem-core'), missing_server=optional)))
+"""
+        result = json.loads(child_run([str(python), '-c', code], timeout=60).strip().splitlines()[-1])
+        result['detail'] = f"Python ready: {result['python']} · fairchem-core {result['fairchem']} · ChemRefine import OK."
+        if result['missing_server']:
+            result['detail'] += ' For mlip-extopt, also install: ' + ', '.join(result['missing_server']) + '.'
+        else:
+            result['detail'] += ' ExtOpt server imports available.'
+        return result
     if action == 'summary':
         return workflow_summary(path)
     if action == 'status':

@@ -14,7 +14,11 @@ enum WorkflowRunnerSmokeTest {
         let defaults = UserDefaults.standard
         let domain = defaults.persistentDomain(forName: Bundle.main.bundleIdentifier!) ?? [:]
         let previousPath = domain["ChemViewerLastRunConfig"], previousPID = domain["ChemViewerLastRunPID"]
+        let previousPython = runner.umaPython, pythonDefault = domain["ChemViewerUMAPython"]
         func restoreDefaults() {
+            runner.umaPython = previousPython
+            if let pythonDefault { defaults.set(pythonDefault, forKey: "ChemViewerUMAPython") } else { defaults.removeObject(forKey: "ChemViewerUMAPython") }
+
             if let previousPath, !(previousPath as? String ?? "").contains("chemviewer-runner-evidence") { defaults.set(previousPath, forKey: "ChemViewerLastRunConfig") } else { defaults.removeObject(forKey: "ChemViewerLastRunConfig") }
             if let previousPID { defaults.set(previousPID, forKey: "ChemViewerLastRunPID") } else { defaults.removeObject(forKey: "ChemViewerLastRunPID") }
         }
@@ -82,6 +86,41 @@ enum WorkflowRunnerSmokeTest {
                 try await Task.sleep(nanoseconds: 100_000_000)
             }
             guard let browser else { throw ParseError.malformed("Live ChemRefine editor missing") }
+            // User-selected environment is persistent and accepts an environment directory.
+            runner.umaPython = ChemistryRuntime.root.path
+            try require(runner.resolvedUMAPython == ChemistryRuntime.python.path, "Environment-folder selection did not resolve bin/python")
+            try require(defaults.string(forKey: "ChemViewerUMAPython") == ChemistryRuntime.root.path, "UMA Python setting was not persisted")
+            runner.umaPython = previousPython
+            let environmentChecks = try await browser.callAsyncJavaScript(#"""
+            const b=Alpine.$data(document.body), oldConfig=b.cfg, oldText=b.yamlText, oldRaw=b.rawEdit;
+            try {
+              b.rawEdit=false;
+              b.cfg={steps:[
+                {step:1,engine:'mlip',options:{task_name:'omol'}},
+                {step:2,engine:'mlip-extopt',options:{task_name:'omol',backend_python:'/keep/python'}},
+                {step:3,engine:'mlip',options:{task_name:'mace'}},
+                {step:4,engine:'pyscf'}]};
+              const n=await window.chemViewerApplyUMAPython('/chosen/env/bin/python',false);
+              if(n!==1 || b.cfg.steps[0].options.backend_python!=='/chosen/env/bin/python' || b.cfg.steps[1].options.backend_python!=='/keep/python' || b.cfg.steps[2].options.backend_python || b.cfg.steps[3].options) throw new Error('Default scope/override failed');
+              const m=await window.chemViewerApplyUMAPython('/replacement/python',true);
+              if(m!==2 || b.cfg.steps[1].options.backend_python!=='/replacement/python') throw new Error('Explicit apply failed');
+              window.chemViewerDashboard.renderEnvironments();
+              const input=document.querySelector('#chemviewer-python-environments input');
+              if(!input || input.value!=='/replacement/python') throw new Error('Per-step environment field missing');
+              input.value='/manual/python'; input.dispatchEvent(new Event('change'));
+              if(b.cfg.steps[0].options.backend_python!=='/manual/python') throw new Error('Per-step editing failed');
+              input.value='/typing/python'; input.dispatchEvent(new Event('input'));
+              await window.chemViewerApplyUMAPython('/default/python',false);
+              if(b.cfg.steps[0].options.backend_python!=='/typing/python') throw new Error('Pending input lost before save');
+              clearTimeout(b._timer);
+              b.rawEdit=true; b.yamlText='steps:\n  - step: 1\n    engine: mlip\n    options: {task_name: omol}\n';
+              await window.chemViewerApplyUMAPython('/raw/python',false);
+              if(!b.yamlText.includes('/raw/python')) throw new Error('Raw YAML default missing');
+              return true;
+            } finally {clearTimeout(b._timer); b.cfg=oldConfig;b.yamlText=oldText;b.rawEdit=oldRaw;window.chemViewerDashboard.renderEnvironments();}
+            """#, arguments: [:], in: nil, contentWorld: .page) as? Bool ?? false
+            try require(environmentChecks, "Python environment controls failed")
+            print("UMA_ENVIRONMENT_SETTINGS_PASS: persistent folder/interpreter setting, default-only filling, preserved overrides, explicit apply, visible per-step editing and raw YAML support"); fflush(stdout)
             let templateURL = folder.appendingPathComponent("templates/step1.py")
             let template = try String(contentsOf: templateURL, encoding: .utf8) + "\n# native unsaved template flushed before run\n"
             _ = try await browser.callAsyncJavaScript("const b = Alpine.$data(document.body); b.cfg.steps[0].options.basis='sto-3g'; b.cfg.steps.push({step:2,name:'refine',engine:'pyscf',template:'refine.py',options:{method:'hf',basis:'sto-3g',df:false,cores:1}}); b.tmpl={open:true,step:2,text:template}; b.syncYaml(); return true;", arguments: ["template": template], in: nil, contentWorld: .page)

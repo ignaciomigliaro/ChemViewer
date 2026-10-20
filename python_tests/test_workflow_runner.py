@@ -161,6 +161,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(first['conformer'], '1'); self.assertTrue(first['previous'])
         self.assertIsNone(second['energy_hartree'])
 
+    def test_python_environment_check_uses_selected_interpreter(self):
+        import json
+        binary = self.root / 'my-env/bin/python'; binary.parent.mkdir(parents=True)
+        binary.write_text('#!/bin/sh\nexit 0\n'); binary.chmod(0o755)
+        data = dict(python=str(binary), prefix=str(binary.parent.parent), fairchem='test', missing_server=[])
+        with patch.object(bridge, 'child_run', return_value=json.dumps(data)) as run:
+            result = bridge.act(dict(action='check-python', config_path=str(self.path), python_path=str(binary.parent.parent)))
+        self.assertEqual(run.call_args.args[0][0], str(binary))
+        self.assertIn('ExtOpt server imports available', result['detail'])
+        for invalid in ('', str(self.root / 'missing')):
+            with self.subTest(path=invalid), self.assertRaises(ValueError):
+                bridge.act(dict(action='check-python', config_path=str(self.path), python_path=invalid))
+
     def test_status_is_real_chemrefine_status(self):
         self.config()
         result = bridge.act(dict(action='status', config_path=str(self.path)))

@@ -270,3 +270,12 @@ ChemRefine. A step summary shows names/fallback Step N, engine/status, minimum
 reported energy, units, energy type and conformer/count. Missing results stay
 blank; prior unsuccessful-cache rows are labeled previous. Unit selector and
 copy table supplement existing per-conformer results. Upstream files unchanged.
+
+## UMA environment selection — 0.10.4
+
+Native persisted default/picker/check/apply and editable per-step MLIP paths are
+implemented. Default-only filling preserves explicit overrides and other engine
+families; explicit apply intentionally replaces current workflow UMA paths.
+Raw YAML insertion and pending typed-input flushing are supported. The actual
+installed UMA interpreter/imports were checked successfully; model readiness is
+still performed at run time. See uma-environment-settings-2026-10-20.md.

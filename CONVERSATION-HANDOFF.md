@@ -614,3 +614,29 @@ Local xTB support: the Mac ORCA package lacked otool_xtb, contrary to an earlier
 doc claim (corrected). An original launcher beside ORCA calls existing native
 reactOT/bin/xtb 6.7.1. Independent H2 xTB Opt -> ORCA UMA ExtOpt passed with one
 survivor/zero failures each under ~/Downloads/chemviewer-xtb-uma-check.
+
+## 0.10.4 — user-configurable UMA Python environments
+
+WorkflowRunner has a persistent optional UMA Python default (ChemViewerUMAPython),
+folder/interpreter chooser, actual import checker and explicit Use for UMA steps
+control. Typed tilde/environment folders resolve to bin/python without resolving
+symlinks out of a venv. Normal editor saving fills only missing FAIRChem
+backend_python fields; explicit Apply replaces those workflow overrides. Other
+MLIP families and engines are preserved. The selected path is saved into YAML,
+so CLI ChemRefine uses it too. No developer UMA path is hardcoded in app code.
+
+Embedded Run panel shows editable per-step MLIP Python paths, disabled during
+raw YAML editing. Pending typed fields are flushed before saving/running/applying
+a default, so an immediate native button click cannot lose them. Raw YAML is
+parsed/emitted if a default needs insertion. The default preference is local;
+existing explicit workflow paths remain unchanged until the user applies one.
+
+Final native /private/tmp/chemviewer-0104-native-final.log contains
+UMA_ENVIRONMENT_SETTINGS_PASS + DASHBOARD_ACTIONS_PASS + WORKFLOW_RUNNER_PASS.
+Checks cover persistence, folder resolution, default/override scoping, explicit
+replacement, per-step editing, pending input and raw YAML; actual two-step
+PySCF oracle and bottom Run/Resume/recovery gates still pass. Python29, core31
+and three migrated suites, strict signature/ARM64 build26/0.10.4 pass. Actual
+installed UMA import checker passed fairchem2.23.0/ChemRefine/server packages.
+See docs/uma-environment-settings-2026-10-20.md. User's AGENTS.md changes remain
+uncommitted and are excluded from this version.

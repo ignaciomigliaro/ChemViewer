@@ -34,6 +34,10 @@ final class WorkflowRunner: ObservableObject {
     @Published var orcaPath: String = UserDefaults.standard.string(forKey: "ChemViewerORCAExecutable") ?? "" {
         didSet { UserDefaults.standard.set(orcaPath, forKey: "ChemViewerORCAExecutable") }
     }
+    @Published var umaPython: String = UserDefaults.standard.string(forKey: "ChemViewerUMAPython") ?? "" {
+        didSet { UserDefaults.standard.set(umaPython, forKey: "ChemViewerUMAPython") }
+    }
+    @Published private(set) var pythonStatus = "Default fills missing UMA step paths; each step can override it below."
     @Published private(set) var report: Report?
     @Published private(set) var busy = false
     @Published private(set) var currentAction = ""
@@ -60,6 +64,50 @@ final class WorkflowRunner: ObservableObject {
         guard FileManager.default.isExecutableFile(atPath: url.path) else { status = "Choose an executable file, not an installer/archive."; return }
         orcaPath = url.path; status = "ORCA selected. Check the workflow to verify its installation."
     }
+    var resolvedUMAPython: String {
+        let path = (umaPython.trimmingCharacters(in: .whitespacesAndNewlines) as NSString).expandingTildeInPath
+        guard !path.isEmpty else { return "" }
+        var directory: ObjCBool = false
+        FileManager.default.fileExists(atPath: path, isDirectory: &directory)
+        return directory.boolValue ? URL(fileURLWithPath: path).appendingPathComponent("bin/python").path : path
+    }
+    func chooseUMAPython() {
+        let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = true
+        panel.message = "Choose the UMA environment folder or its bin/python executable."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        var directory: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &directory)
+        let candidate = directory.boolValue ? url.appendingPathComponent("bin/python") : url
+        guard FileManager.default.isExecutableFile(atPath: candidate.path) else { pythonStatus = "Choose an environment containing bin/python, or an executable Python interpreter."; return }
+        // Preserve the environment's symlink path: resolving it can select the base Python.
+        umaPython = candidate.path; pythonStatus = "Python selected. Check Python to verify imports, or Use for UMA steps to update this workflow."
+    }
+    func checkUMAPython() {
+        guard !busy, !running else { return }
+        busy = true; currentAction = "check-python"; pythonStatus = "Checking the selected Python and installed packages…"
+        Task {
+            defer { busy = false; preparationProcess = nil }
+            do {
+                let path = ChemistryRuntime.shared.workflowDirectory?.appendingPathComponent("input.yaml").path ?? FileManager.default.temporaryDirectory.appendingPathComponent("input.yaml").path
+                let data = try await bridge(action: "check-python", path: path, trackPreparation: true, pythonPath: resolvedUMAPython)
+                let result = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                pythonStatus = result["detail"] as? String ?? "Python checked."
+            } catch { pythonStatus = error.localizedDescription }
+        }
+    }
+    func applyUMAPython() {
+        guard !busy, !running else { return }
+        guard !umaPython.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { pythonStatus = "Choose a Python environment first. Clear individual step fields to use managed backends."; return }
+        busy = true; currentAction = "apply-python"
+        Task {
+            defer { busy = false }
+            do {
+                let count = try await ChemistryRuntime.shared.applyUMAPython(resolvedUMAPython, overwrite: true)
+                _ = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath, umaPython: resolvedUMAPython)
+                pythonStatus = "Saved Python environment for \(count) UMA step(s) in this workflow."
+            } catch { pythonStatus = error.localizedDescription }
+        }
+    }
     static let launchActions: Set<String> = ["run", "resume", "rebuild-cache", "rebuild-nms", "rerun", "rerun-errors"]
     func perform(_ action: String) {
         guard !busy, !running else { return }
@@ -68,7 +116,7 @@ final class WorkflowRunner: ObservableObject {
         Task {
             defer { if generation == request { busy = false; preparationProcess = nil } }
             do {
-                let path = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath)
+                let path = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath, umaPython: resolvedUMAPython)
                 guard request == generation else { return }
                 try await execute(action: action, configPath: path, generation: request)
             } catch { if request == generation { status = error.localizedDescription } }
@@ -106,7 +154,7 @@ final class WorkflowRunner: ObservableObject {
         defer { busy = false; preparationProcess = nil }
         status = "Saving editor and preparing ChemRefine \(action)…"
         do {
-            let path = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath)
+            let path = try await ChemistryRuntime.shared.saveWorkflowEditor(orcaPath: orcaPath, umaPython: resolvedUMAPython)
             return try await execute(action: action, configPath: path, generation: generation, target: target)
         } catch {
             status = error.localizedDescription; throw error
@@ -150,13 +198,14 @@ final class WorkflowRunner: ObservableObject {
         let data = try await bridge(action: "status", path: path)
         return try JSONDecoder().decode(RunStatus.self, from: data)
     }
-    func bridge(action: String, path: String, trackPreparation: Bool = false, target: String? = nil) async throws -> Data {
+    func bridge(action: String, path: String, trackPreparation: Bool = false, target: String? = nil, pythonPath: String? = nil) async throws -> Data {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-Workflow-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let input = directory.appendingPathComponent("request.json"), output = directory.appendingPathComponent("result.json"), log = directory.appendingPathComponent("bridge.log")
         var payload: [String: Any] = ["action": action, "config_path": path]
         if let target, !target.isEmpty { payload["target"] = target }
+        if let pythonPath { payload["python_path"] = pythonPath }
         try JSONSerialization.data(withJSONObject: payload).write(to: input)
         guard let script = ChemistryResources.bundle.url(forResource: "workflow_bridge", withExtension: "py") else { throw ParseError.malformed("Missing ChemRefine execution bridge.") }
         FileManager.default.createFile(atPath: log.path, contents: nil, attributes: [.posixPermissions: 0o600])
@@ -203,6 +252,16 @@ struct WorkflowExecutionPanel: View {
                     }
                 }
             }
+            HStack {
+                Text("UMA Python").font(.caption.bold())
+                TextField("Automatic — ChemRefine-managed backend", text: $runner.umaPython)
+                    .textFieldStyle(.roundedBorder).font(.caption.monospaced())
+                    .disabled(runner.busy || runner.running)
+                Button("Choose environment…") { runner.chooseUMAPython() }.disabled(runner.busy || runner.running)
+                Button("Check Python") { runner.checkUMAPython() }.disabled(runner.busy || runner.running || runner.umaPython.isEmpty)
+                Button("Use for UMA steps") { runner.applyUMAPython() }.disabled(runner.busy || runner.running || runner.umaPython.isEmpty)
+            }
+            Text(runner.pythonStatus).font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             Text(runner.status).font(.caption).textSelection(.enabled)
             if let report = runner.report {
                 DisclosureGroup("Readiness · \(report.checks.filter { $0.status == "error" }.count) blocking item(s)", isExpanded: $showChecks) {
