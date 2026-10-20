@@ -667,3 +667,24 @@ pass. Before/after swift test was attempted; local CLT lacks XCTest, standalone
 assertions passed. Actual zigzag-chain.png in Downloads drawing evidence was
 visually inspected. No user scientific files changed; pre-existing AGENTS.md
 edit is preserved/excluded from release. Details: docs/skeletal-drawing-2026-10-20.md.
+
+## 0.10.6 — Draw automatic 3D preview lifecycle
+
+User reported no update with Auto 3D checked. Original unsaved graph unavailable;
+do not infer its exact failure cause. Fixed verified stale-preview cases and
+strengthened scheduling/render refresh: explicit queued/error/version state,
+revision-bound 400ms debounce detached before run cancels old work, immediate
+empty-graph clearing, new local preview geometry IDs for same-count structures.
+Draw now shows waiting/running/failure/Retry directly in preview; stale geometry
+is dimmed and copy/transfer remains blocked until current. Chemical sanitization
+is retained: invalid valence produces a visible failure, not fabricated 3D.
+
+Final native /private/tmp/chemviewer-0106-native.log has
+AUTO_DRAW_PREVIEW_PASS plus PERSISTENT_LABELS_PASS, SKELETAL_DRAWING_PASS and
+DRAWING_LABELS_PASS. Actual rapid gestures auto-generate C6H14; a C2H6O same-count
+ethanol/ether change matches the actual Metal scene and new geometry identity;
+cancelled results are refused; synthetic invalid fluorine is rejected and
+correcting it recovers; Clear removes old geometry. All prior 14 rings and Draw/
+labels/PNG/GIF/chirality/picker/3D transfer gates pass. Core33 + migrated3, Python29,
+strict signature and ARM64 build28/0.10.6 pass. No personal inputs/calculations
+changed; user AGENTS.md remains excluded from release.

@@ -288,3 +288,12 @@ palette including unsaturated/heterocyclic structures. All 14 placed templates
 passed native local 3D generation with independent expected formulas. Formal
 charge editing is under More; source charge data is retained. This adds regular
 ring/vertex attachment, not automatic bond-fused rings or full ChemDraw parity.
+
+## Draw preview reliability — 0.10.6
+
+Native-tested automatic rapid chain edits, same-count ethanol/ether isomer
+changes verified against actual Metal scene atoms/geometry ID, cancelled-result
+refusal, invalid-valence error/recovery and clearing old geometry. Queue, running
+and generation errors are visible in the 3D panel; stale geometry is dimmed and
+transfer remains disabled. This does not generate a valid conformer for invalid
+chemical connectivity; such inputs are reported and can be corrected/retried.

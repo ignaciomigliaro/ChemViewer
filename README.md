@@ -244,3 +244,12 @@ extensions use 120-degree skeletal angles; Option-drag allows other angles.
 The toolbar has benzene and saturated ring icons; **More rings** opens 14 visual
 templates including unsaturated rings, pyridine, pyrrole, furan and thiophene.
 Formal charge tools are under **More**. [Details and validation](docs/skeletal-drawing-2026-10-20.md).
+
+### Draw preview refresh (0.10.6)
+
+Auto 3D preview explicitly shows waiting/generating/error states and rebuilds
+after a short drawing pause. Clearing the canvas removes the old 3D structure.
+Successful results get a new preview geometry ID so changed structures with the
+same atom count are refitted. Stale geometry is dimmed and cannot be transferred;
+failed generation shows a prominent error with Retry 3D. Correcting the drawing
+retries automatically when Auto 3D preview is on.

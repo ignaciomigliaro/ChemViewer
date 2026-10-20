@@ -398,3 +398,15 @@ one graph edit, reusing drawing Undo/3D generation. Terminal bond drags snap to
 120-degree directions (linear for triple bonds), with Option override. The
 SwiftUI toolbar renders original vector ring/chain glyphs and a visual ring
 popover. Formal charge tools move to More without altering graph semantics.
+
+## Draw preview lifecycle — 0.10.6
+
+MoleculeDrawingStore publishes queued/error/version state. Debounced automatic
+generation captures the drawing revision and detaches its completed debounce
+Task before run() cancels previous work. Revision/generation guards still
+prevent cancelled/stale jobs from replacing new geometry. Empty graphs clear
+preview immediately. previewFrame uses a monotonically changing local geometry
+ID, ensuring the Metal preview recomputes bounds for same-atom-count changes
+without modifying main viewer frame identities or orbit rotation. DrawView
+displays queued/running/error states directly in the preview panel, dims stale
+geometry and retains its existing current-preview guard for transfer/copy.

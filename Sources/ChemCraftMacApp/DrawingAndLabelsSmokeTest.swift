@@ -172,6 +172,48 @@ enum DrawingAndLabelsSmokeTest {
             gesture(ringCanvas, CGPoint(x: ringCanvas.bounds.midX, y: ringCanvas.bounds.midY))
             drawing.generate3D(); try await waitForDrawing(drawing)
             try require(drawing.graph.atoms.count == 6 && drawing.preview?.formula == "C6H6", "Native benzene ring-to-3D failed: " + drawing.status)
+            do {
+                drawing.autoPreview = true
+                func waitForAuto() async throws {
+                    for _ in 0..<500 {
+                        if drawing.previewIsCurrent { return }
+                        if let error = drawing.previewError { throw ParseError.malformed("Auto preview failed: " + error) }
+                        try await Task.sleep(nanoseconds: 100_000_000)
+                    }
+                    throw ParseError.malformed("Auto preview never reached the latest revision: " + drawing.status)
+                }
+                drawing.commit(ethanol); try await waitForAuto(); await pause()
+                let originalVersion = drawing.previewVersion
+                var ether = ethanol; ether.atoms[1].element = "O"; ether.atoms[2].element = "C"
+                drawing.commit(ether); try await waitForAuto(); await pause()
+                let actualView = try viewport()
+                try require(drawing.preview?.formula == "C2H6O" && drawing.previewVersion > originalVersion, "Same-count isomer did not regenerate")
+                try require(actualView.scene.atoms == drawing.previewFrame?.atoms && actualView.scene.geometryID == drawing.previewVersion, "Displayed Metal geometry did not follow the automatic same-count result")
+                drawing.generate3D(); drawing.commit(ethanol); try await waitForAuto()
+                try require(drawing.previewIsCurrent && drawing.preview?.frame?.atoms[1].element == "C", "Cancelled old result replaced the latest preview")
+                drawing.commit(MolecularSketch())
+                try require(drawing.preview == nil && drawing.previewFrame == nil, "Clear retained the previous 3D molecule")
+                guard let liveCanvas = views().compactMap({ $0 as? MolecularDrawingCanvas }).first else { throw ParseError.noGeometry }
+                drawing.tool = .chain
+                let start = liveCanvas.screen(CGPoint(x: -100, y: 0))
+                let end = liveCanvas.screen(CGPoint(x: -100 + 4*48*cos(Double.pi/6), y: 0))
+                gesture(liveCanvas, start, end)
+                gesture(liveCanvas, liveCanvas.point(drawing.graph.atoms.last!))
+                try await waitForAuto(); await pause()
+                try require(drawing.preview?.formula == "C6H14" && (try viewport()).scene.atoms == drawing.previewFrame?.atoms, "Rapid chain edits did not auto-update the rendered hexane")
+                var invalid = ethanol; invalid.atoms[1].element = "F"
+                drawing.commit(invalid)
+                for _ in 0..<300 {
+                    if drawing.previewError != nil { break }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                try require(drawing.previewError != nil && !drawing.previewIsCurrent, "Invalid valence was silently shown as a current preview")
+                drawing.commit(ethanol); try await waitForAuto(); await pause()
+                try require(drawing.previewError == nil && drawing.previewIsCurrent, "Correcting the sketch did not automatically recover")
+                drawing.commit(MolecularSketch()); await pause()
+                try require(drawing.preview == nil && !drawing.previewQueued && !drawing.busy, "Empty sketch left stale or queued 3D output")
+                print("AUTO_DRAW_PREVIEW_PASS: rapid chain edits, actual Metal same-count isomer updates, cancelled-result guard, visible invalid-valence error/recovery and clearing stale geometry"); fflush(stdout)
+            }
             print("DRAWING_LABELS_PASS: native 2D bond drawing, move/erase/charge, undo/redo, local 3D/UFF, real Metal preview, auto updates, cancellation, tab preservation, undoable viewer transfer, chiral SMILES import, periodic picker and benzene ring generation")
             fflush(stdout); exit(0)
         } catch { workspace.drawing.cancel(); fputs("DRAWING_LABELS_FAIL: \(error.localizedDescription)\n", stderr); fflush(stderr); exit(1) }

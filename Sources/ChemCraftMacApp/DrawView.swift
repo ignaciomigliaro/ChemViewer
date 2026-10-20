@@ -127,10 +127,21 @@ struct DrawView: View {
     private var previewPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack { Text("3D preview").font(.headline); Spacer(); if !drawing.previewIsCurrent && drawing.preview != nil { Text("Needs update").font(.caption).foregroundStyle(.orange) } }
-            if let result = drawing.preview, let frame = result.frame {
+            if let error = drawing.previewError {
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("3D preview could not update", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    Text(error).font(.caption).textSelection(.enabled).lineLimit(6)
+                    Button("Retry 3D") { drawing.generate3D() }.disabled(drawing.busy)
+                }.padding(10).frame(maxWidth: .infinity, alignment: .leading).background(Color.red.opacity(0.08))
+            } else if drawing.previewQueued || drawing.busy {
+                HStack { ProgressView().controlSize(.small); Text(drawing.previewQueued ? "Waiting for drawing to pause…" : "Updating 3D structure…").font(.caption) }
+            } else if !drawing.autoPreview && !drawing.previewIsCurrent && !drawing.graph.atoms.isEmpty {
+                Text("Auto preview is off — click Generate 3D.").font(.caption).foregroundStyle(.orange)
+            }
+            if let result = drawing.preview, let frame = drawing.previewFrame {
                 MoleculeMetalView(frame: frame, mode: nil, isAnimating: false, amplitude: 0, showDisplacementVectors: false,
                                   style: workspace.renderingStyle, showHydrogens: workspace.showHydrogens, selectedAtomIndices: .constant([]))
-                    .frame(minHeight: 200)
+                    .frame(minHeight: 200).opacity(drawing.previewIsCurrent ? 1 : 0.35)
                 Text(result.formula ?? "").font(.title3.bold())
                 Text(result.smiles).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
                 HStack {

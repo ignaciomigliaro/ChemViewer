@@ -209,3 +209,18 @@ atom editing, chirality, UFF/Metal preview and persistent label/PNG/GIF tests
 also pass. Selected local CLT still lacks XCTest; genuine before/after attempts
 were recorded, and the standalone adapter executed actual core assertions.
 See skeletal-drawing-2026-10-20.md for exact scope and evidence.
+
+## Draw automatic preview — 0.10.6
+
+Native AUTO_DRAW_PREVIEW_PASS checks real RDKit automatic generation and actual
+Metal scene updates: rapid edits produce hexane C6H14; ethanol-to-dimethyl-ether
+changes retain C2H6O/9 atoms but update the displayed atom sequence and geometry
+identity; an obsolete cancelled result cannot replace current geometry. An
+intentionally over-valent fluorine is rejected and reported, then correction
+automatically recovers. Clearing the graph immediately removes the old preview.
+The existing 14-ring, chain/Undo, persistent labels/PNG/GIF, chirality, periodic
+picker and 3D transfer tests pass too. Core33/three migrated suites, Python29
+and signed ARM64 build pass. Evidence: /private/tmp/chemviewer-0106-native.log,
+chemviewer-0106-python.log and chemviewer-0106-build.log. The user's original
+unsaved failing drawing was unavailable; no specific invalid valence is inferred
+for that session from the synthetic rejection test.

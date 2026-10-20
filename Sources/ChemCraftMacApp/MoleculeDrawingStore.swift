@@ -24,6 +24,13 @@ final class MoleculeDrawingStore: ObservableObject {
     @Published private(set) var busy = false
     @Published private(set) var status = "Draw a bond, place atoms, or add a ring."
     @Published private(set) var preview: DrawingResult?
+    @Published private(set) var previewQueued = false
+    @Published private(set) var previewError: String?
+    @Published private(set) var previewVersion = 0
+    var previewFrame: MoleculeFrame? {
+        guard let frame = preview?.frame else { return nil }
+        return MoleculeFrame(id: previewVersion, atoms: frame.atoms, comment: frame.comment)
+    }
     @Published private(set) var revision = 0
     @Published private(set) var fitRevision = 0
     @Published private var undoStack: [MolecularSketch] = []
@@ -70,27 +77,35 @@ final class MoleculeDrawingStore: ObservableObject {
     func fit() { fitRevision += 1 }
     func cancel() {
         if busy { status = "3D generation cancelled; drawing unchanged." }
-        generation += 1; debounce?.cancel(); debounce = nil
+        generation += 1; debounce?.cancel(); debounce = nil; previewQueued = false
         if let process, process.isRunning { process.terminate() }
         process = nil; busy = false
     }
     private func schedulePreview() {
-        debounce?.cancel()
-        guard autoPreview, !graph.atoms.isEmpty else { return }
+        debounce?.cancel(); debounce = nil; previewQueued = false; previewError = nil
+        guard !graph.atoms.isEmpty else {
+            preview = nil; previewRevision = -1; status = "Draw a structure to generate its 3D preview."; return
+        }
+        guard autoPreview else { status = "Auto 3D preview is off. Click Generate 3D to update."; return }
+        guard !previewIsCurrent else { return }
+        let expectedRevision = revision
+        previewQueued = true; status = "3D preview will update after you pause drawing…"
         debounce = Task {
-            try? await Task.sleep(nanoseconds: 750_000_000)
-            guard !Task.isCancelled else { return }; generate3D()
+            do { try await Task.sleep(nanoseconds: 400_000_000) } catch { return }
+            guard !Task.isCancelled, autoPreview, revision == expectedRevision else { return }
+            // Detach the completed debounce before run() cancels prior work.
+            debounce = nil; previewQueued = false; generate3D()
         }
     }
     func generate3D() { run(operation: "generate") }
     func clean2D() { run(operation: "depict") }
     func importSMILES() { run(operation: "depict", smiles: smilesInput) }
     private func run(operation: String, smiles: String? = nil) {
-        guard ChemistryRuntime.shared.installed else { status = "Install the local RDKit runtime: bash scripts/setup-chemistry.sh"; return }
+        guard ChemistryRuntime.shared.installed else { previewError = "The local RDKit runtime is not installed. Run scripts/setup-chemistry.sh."; status = previewError!; return }
         guard smiles != nil || !graph.atoms.isEmpty else { status = "Draw a structure first."; return }
         cancel(); generation += 1
         let requestID = generation, sourceRevision = revision, sourceGraph = graph
-        busy = true; status = operation == "depict" ? "Preparing 2D structure…" : "Generating 3D conformer locally…"
+        previewError = nil; busy = true; status = operation == "depict" ? "Preparing 2D structure…" : "Generating 3D conformer locally…"
         Task {
             guard requestID == generation else { return }
             defer { if requestID == generation { busy = false; process = nil } }
@@ -121,11 +136,11 @@ final class MoleculeDrawingStore: ObservableObject {
                     commit(result.graph); fit(); status = "2D structure ready. Generate 3D or continue drawing."
                 } else {
                     guard let frame = result.frame, !frame.atoms.isEmpty, frame.atoms.allSatisfy({ $0.position.x.isFinite && $0.position.y.isFinite && $0.position.z.isFinite }) else { throw ParseError.malformed("Invalid 3D coordinates returned by RDKit.") }
-                    preview = result; previewRevision = revision
+                    previewRevision = revision; previewVersion += 1; preview = result
                     let cleanup = result.optimized == true ? (result.converged == true ? "UFF converged" : "UFF iteration limit") : "UFF parameters unavailable; embedded geometry"
                     status = "\(result.formula ?? "") · \(cleanup). 3D conformer ready."
                 }
-            } catch { if requestID == generation { status = "Could not build structure: " + error.localizedDescription } }
+            } catch { if requestID == generation { previewError = error.localizedDescription; status = "Could not build structure: " + error.localizedDescription } }
         }
     }
     func use3D(in workspace: WorkspaceStore, multiplicity: Int) {
