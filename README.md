@@ -253,3 +253,40 @@ Successful results get a new preview geometry ID so changed structures with the
 same atom count are refitted. Stale geometry is dimmed and cannot be transferred;
 failed generation shows a prominent error with Retry 3D. Correcting the drawing
 retries automatically when Auto 3D preview is on.
+
+## Remote files and SLURM — 0.10.7
+
+Open **File → Remote files & SLURM…** (Cmd-Shift-O), or **Remote / SLURM…**
+in ChemRefine. Save independent connection profiles with an SSH alias,
+starting directory, remote Python executable **or environment folder**, and
+optional Bash environment commands. Authenticate in Terminal for interactive
+cluster login; ChemViewer reuses its private OpenSSH connection for up to eight
+hours. Existing SSH config handles users, ports and jump hosts. No passwords or
+private keys are stored in the app.
+
+Browse/double-click folders and open output/XYZ files directly in the viewer.
+Their contents transfer automatically into a local cache; **Refresh remote
+file** retrieves updates. This is SSH transfer with automatic caching, not a
+remote filesystem mount. Individual files have the existing 100 MB viewer limit;
+companion files are not recursively synchronized.
+
+Select `input.yaml` and **Use workflow**, or **Upload workflow inputs…** from a
+dedicated local input folder. Upload creates a new remote folder, never merges
+into existing calculations, excludes hidden/default outputs/scratch directories,
+and supports YAML/XYZ/INP/Python/header/JSON/text inputs (100 MB / 2,000 files).
+Use **Edit text…** to configure remote executable/Python paths, `dispatch: slurm`
+and cluster CPU/GPU headers, then explicitly save. Paths/dependencies outside the
+uploaded folder must already exist remotely. Automatic Mac-path rewriting and
+remote dependency installation are not performed.
+
+**Check workflow**, **Run on SLURM…**, **Resume** and **Refresh status** use the
+remote ChemRefine API. Its detached controller submits per-step SLURM jobs;
+closing the viewer does not stop them. Optional Auto refresh polls every ten
+seconds while this window is open. Status includes failure/survivor counts, log
+tail and the first 20 actual conformer energies per step in Hartree; Copy step
+results preserves a TSV table. Scheduler account, partition, time and compute-node
+environment activation belong in the workflow headers. Run asks for confirmation
+because it can invalidate cached results; Resume continues a previous run.
+
+See [remote connection validation](docs/remote-connections-2026-10-20.md) for
+verified scope and remaining live scheduler validation.

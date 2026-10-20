@@ -275,3 +275,26 @@ It tests actual glyph pixels, saved unsaved form/template content, backend
 readiness, two real H2 PySCF steps, editor-server shutdown, native status and the
 independent conventional HF/STO-3G (no density fitting) -1.1167593074 Eh oracle.
 The test requires the isolated pyscf backend; it does not pretend ORCA is present.
+
+## Remote connections — 0.10.7
+
+- CV-REMOTE-001: File → Remote files & SLURM; save/select profiles; authenticate
+  interactively in Terminal; check environment; browse folders; choose a known
+  XYZ/output and open it in the native viewer. Verify exact original bytes and
+  geometry, then refresh after a controlled remote change. Cancel an unavailable
+  host and verify the window remains responsive. No passwords go into profiles.
+- CV-REMOTE-002: Upload a dedicated input folder to a new remote directory; edit
+  input.yaml and a template; explicitly save; reject saving after another writer
+  changes the file. Use workflow selects its YAML. Preflight must reject local
+  dispatch, missing scheduler commands, engine paths, input or template files.
+- CV-REMOTE-003: With a real provisioned cluster workflow/header/allocation, Run
+  requires confirmation; Resume uses existing results; Refresh/Auto shows lock,
+  failures/survivors/cache/logs and exact source energies. Close/reopen and inspect
+  the same config without launching a duplicate driver. This final real SLURM
+  calculation acceptance is **not yet executed**; current live acceptance covers
+  transport/native opening and negative preflight without any submitted jobs.
+
+Automated flags: --remote-connection-smoke-test (native sheet/bundled helper,
+no login) and --remote-live-smoke-test (opt-in staged synthetic fixture metadata
+in Downloads/chemviewer-remote-evidence/live-fixture.json). Final synthetic
+fixture was removed after validation; recreate it deliberately before rerunning.

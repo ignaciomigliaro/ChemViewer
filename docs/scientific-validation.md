@@ -224,3 +224,17 @@ and signed ARM64 build pass. Evidence: /private/tmp/chemviewer-0106-native.log,
 chemviewer-0106-python.log and chemviewer-0106-build.log. The user's original
 unsaved failing drawing was unavailable; no specific invalid valence is inferred
 for that session from the synthetic rejection test.
+
+## Remote transport — 0.10.7
+
+No parser, energy conversion or geometry algorithm changed. Remote transfers
+must preserve source bytes/SHA-256; cached files go through the existing parser.
+Thirteen hermetic tests cover quoting, environment-folder resolution, cached
+refresh, changed-file edit refusal, upload isolation, missing-input/SLURM/local-
+dispatch refusal, supported Run/Resume calls, actual CSV energy/name retention,
+environment inspection and timed-out process cleanup. Mocked launch is explicitly
+not a calculation or scheduler-success assertion. Native remote-sheet acceptance
+checks persisted profiles, bundled authentication helper and invalid-host errors.
+Core33 plus three migrated suites and all 42 Python chemistry/drawing/workflow/
+remote cases pass; strict signed ARM64 packaging passes. Live ORCD evidence and
+limits are in remote-connections-2026-10-20.md. No user calculations were rerun.

@@ -17,6 +17,9 @@ struct ChemViewerApp: App {
                 Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
                     .keyboardShortcut("o")
             }
+            CommandGroup(after: .newItem) {
+                Button("Remote files & SLURM…") { RemoteConnection.shared.presented = true }.keyboardShortcut("o", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button(workspace.activeTab == "Draw" ? "Undo Drawing Edit" : "Undo Geometry Edit") {
                     if workspace.activeTab == "Draw" { workspace.drawing.undo() } else { workspace.undoGeometry() }

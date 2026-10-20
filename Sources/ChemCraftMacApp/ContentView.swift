@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var chemistry = ChemistryRuntime.shared
+    @ObservedObject private var remote = RemoteConnection.shared
 
     private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw"]
 
@@ -53,6 +54,8 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--remote-live-smoke-test") { await RemoteLiveSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--remote-connection-smoke-test") { await RemoteConnectionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--workflow-runner-smoke-test") { await Task { @MainActor in await WorkflowRunnerSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--drawing-labels-smoke-test") { await DrawingAndLabelsSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--atom-editing-smoke-test") { await AtomEditingSmokeTest.run(workspace: workspace) }
@@ -100,6 +103,7 @@ struct ContentView: View {
         } message: {
             Text(workspace.errorMessage ?? "Unknown error")
         }
+        .sheet(isPresented: $remote.presented) { RemoteConnectionView().environmentObject(workspace) }
         .sheet(isPresented: $workspace.isPeriodicTablePresented) { PeriodicTableView() }
         .sheet(isPresented: $workspace.isFragmentLibraryPresented) { FragmentBrowserView() }
         .sheet(isPresented: $workspace.isAnimationExportPresented) { AnimationExportView() }

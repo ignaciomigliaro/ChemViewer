@@ -688,3 +688,36 @@ correcting it recovers; Clear removes old geometry. All prior 14 rings and Draw/
 labels/PNG/GIF/chirality/picker/3D transfer gates pass. Core33 + migrated3, Python29,
 strict signature and ARM64 build28/0.10.6 pass. No personal inputs/calculations
 changed; user AGENTS.md remains excluded from release.
+
+## 0.10.7 — configurable SSH files and remote ChemRefine / SLURM
+
+RemoteConnection/RemoteConnectionView adds saved machine-agnostic profiles,
+Terminal interactive authentication/private OpenSSH multiplexing, file browser,
+automatic SHA-256 cache/refresh, conflict-checked text editing and exclusive-new-
+folder workflow uploads. Remote Python accepts an executable or environment
+folder; explicit non-login Bash setup is user-configurable. File menu CmdShiftO
+and ChemRefine Remote/SLURM button open the same sheet. No credentials saved.
+
+Original remote_bridge.py/remote_agent.py carry data via JSON and fixed quoted
+bootstrap, honor SSH config/normal known-host checks, and bound request/cleanup
+waits. Remote launch delegates to installed ChemRefine validation/start_run,
+requires dispatch: slurm and sbatch/squeue, blocks missing input/template/engine/
+header warnings, and leaves local runner restrictions unchanged. Run confirmation,
+Resume, manual/Auto status, failures/survivors/cache/logs and actual Hartree rows
+(up to20/step, Copy TSV) are provided. Cluster paths/headers/dependencies must be
+configured remotely; uploads never rewrite Mac paths or install packages.
+
+Final core33/migrated3, all42 Python (13new remote), strict signature and arm64
+build29 pass. REMOTE_CONNECTION_PASS validates actual native sheet/profile/helper;
+window-only screenshot inspected. REMOTE_LIVE_PASS uses bundled transport against
+ORCD and opens checksum-matched synthetic H2 in native viewer at0.74Å. Real remote
+ChemRefine2.0.0, Python and sbatch/squeue verified; supplied ~/home/home absent so
+personal profile starts at verified ~. Live upload/list/cache/edit/re-read and
+missing-ORCA preflight rejection pass; exact isolated fixture safely removed.
+No actual SLURM jobs submitted; real scheduler/engine completion is still untested.
+Login-shell inspection initially timed out; explicit Bash setup/lightweight probe
+works. No user calculation changed or existing SSH session terminated.
+
+Source tests RemoteConnectionSmokeTest/RemoteLiveSmokeTest are opt-in; live fixture
+metadata/evidence resides only in Downloads, not repo. User's AGENTS.md change
+remains preserved/excluded. See docs/remote-connections-2026-10-20.md and README.

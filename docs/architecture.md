@@ -410,3 +410,30 @@ ID, ensuring the Metal preview recomputes bounds for same-atom-count changes
 without modifying main viewer frame identities or orbit rotation. DrawView
 displays queued/running/error states directly in the preview panel, dims stale
 geometry and retains its existing current-preview guard for transfer/copy.
+
+## Remote files and workflows — 0.10.7
+
+RemoteConnection owns saved Codable profiles, the remote browser/editor and
+cancelable requests. Original remote_bridge.py invokes system OpenSSH with
+argument arrays, BatchMode, a private multiplex socket and normal host-key
+verification. Interactive authentication is delegated to a generated Terminal
+command. The helper is shipped as source and executed in-memory by the selected
+remote Python; no service is installed. Explicit non-login Bash setup avoids
+another login startup sequence. Python paths may designate environment folders.
+
+Structured JSON carries paths/data separately from shell commands. The fixed
+bootstrap and executable are shell-quoted; profile setup is deliberately
+user-authored Bash. Transfers verify SHA-256 and atomically replace a cache file
+keyed by host/full path, retaining its original basename for parser detection.
+Editor saves compare the loaded digest and use atomic replacement; symlinks are
+refused for editing. Uploads validate relative names and create an exclusive new
+workflow folder. No local executable paths are silently rewritten for a cluster.
+
+remote_agent.py delegates validation/start/status/results to the remote installed
+ChemRefine API. Remote launch requires explicit slurm dispatch and available
+sbatch/squeue, and blocks missing input/template/executable/header warnings.
+The existing local runner retains its local-only restriction. The detached
+remote controller survives disconnects and owns the pipeline lock; canceling a
+viewer request does not promise cancellation of submitted calculations. Request
+and cleanup deadlines bound unresponsive SSH processes; no cluster-wide cancel
+or scancel action is exposed.

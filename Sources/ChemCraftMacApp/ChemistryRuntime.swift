@@ -225,6 +225,7 @@ struct LocalWorkflowView: View {
             HStack {
                 Text("ChemRefine · Local workflow").font(.headline)
                 Spacer()
+                Button("Remote / SLURM…") { RemoteConnection.shared.presented = true }
                 Button("Open workflow…") { runtime.openExistingWorkflow(workspace) }
                 if runtime.guiURL != nil {
                     Button("New workflow…") { runtime.newWorkflow(workspace) }

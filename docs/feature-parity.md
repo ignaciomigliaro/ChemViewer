@@ -297,3 +297,17 @@ refusal, invalid-valence error/recovery and clearing old geometry. Queue, runnin
 and generation errors are visible in the 3D panel; stale geometry is dimmed and
 transfer remains disabled. This does not generate a valid conformer for invalid
 chemical connectivity; such inputs are reported and can be corrected/retried.
+
+## SSH access and remote SLURM — 0.10.7
+
+Implemented configurable saved SSH profiles; interactive Terminal authentication;
+remote directory browser; automatic file caching/refresh; explicit text editing;
+new-folder workflow uploads; remote environment/preflight checks; detached
+ChemRefine Run/Resume; manual/10-second status refresh and copied Hartree results.
+Unit transport/API tests use local fixtures and mocked dispatch, not a scheduler.
+A native macOS sheet acceptance test passes; live ORCD authentication, Python/
+ChemRefine 2.0.0, scheduler-command availability and home listing were verified.
+See remote-connections-2026-10-20.md for final transfer evidence and limitations.
+No actual SLURM calculation has been submitted/validated by this release; cluster
+headers, engine paths and dependencies remain user-configured. This is cached
+file access, not a mounted remote filesystem, and companion files are not synced.
