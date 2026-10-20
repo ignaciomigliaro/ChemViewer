@@ -28,7 +28,7 @@ struct ContentView: View {
             Divider()
             if workspace.isDraggingEnabled && workspace.activeTab != "ChemRefine" { ManipulationToolbar() }
             if !workspace.buildingHint.isEmpty && workspace.activeTab != "ChemRefine" {
-                HStack { Text(workspace.buildingHint).font(.caption); Spacer(); Button("Finish placement") { workspace.clearSelection() } }.padding(6)
+                HStack { Text(workspace.buildingHint).font(.caption); Spacer(); Button("Fit all") { viewportAction("reset") }; Button("Finish placement") { workspace.clearSelection() } }.padding(6)
             }
             Divider()
             HSplitView {

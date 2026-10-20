@@ -384,3 +384,32 @@ The ChemRefine tab retains its WKWebView for the current server session across t
 Free placement preserves camera framing until explicitly requested otherwise. Fit and Center / Front View now recalculate geometry bounds, so freely placed fragments can be centered/fitted afterward. The final packaged native test verifies projected coordinates before fit and centered coordinates after fit, plus workflow DOM-state retention across tab changes.
 
 The final gallery-to-edit-panel regression exposed an intermediate empty-scene update that consumed camera preservation before inserted atoms reached the renderer. Preservation now remains armed until atom data changes, so the first placement after opening/closing editing controls still matches the click. The packaged mouse/projection test passes this sequence. Edit controls also prefer X over H when initializing a fragment attachment site, preserving coordination donor stoichiometry.
+
+## 0.9.2 — builder depth and camera stability (2026-10-20)
+
+Reproduced the reported disappearing fragments: the old empty-canvas unprojection
+used Metal NDC Z=0 (the near clip plane), putting the first fragment ~833.37 Å from
+the empty scene's origin. Earlier gates checked projected X/Y but missed depth
+and raster visibility. Placement now analytically intersects the orthographic ray
+with camera-space Z=0. It avoids near-plane placement and inverse-projection
+cancellation when zoomed out.
+
+After insertion, the orbit pivot is rebased to the mean atom position with pan
+compensation; molecular coordinates and click-screen positions are preserved.
+Rotation therefore pivots around the built structure rather than the empty
+canvas origin. Scroll zoom is pointer-anchored, uses separate precise-device and
+wheel sensitivities, limits per-event jumps and ignores trackpad momentum after
+release. Pinch magnification uses the same zoom path. A visible Fit all button is
+available in the placement banner. Offscreen preview/export renderers no longer
+consume live viewport commands.
+
+The native placement gate now checks reasonable empty-scene world coordinates,
+actual nonwhite rendered pixels through four zoom-out steps, restoration and two
+zoom-in steps, pointer anchor precision, a large trackpad-delta bound, stable
+orbit centroid under mouse dragging, and unchanged geometry. It retains popup,
+attachment-site, fit, undo and persistent ChemRefine-tab checks. Local PNGs/logs
+are under Downloads and /private/tmp, not committed. No existing geometry files
+are automatically repositioned: old assemblies placed at differing zoom levels
+may contain unintended relative depth and should be rebuilt or reviewed.
+
+Final local 0.9.2 gate passed: 28 standalone core cases and three migrated suites; native placement/depth/rendered-zoom/orbit test (3,528 initial nonwhite pixels, 232 after four 0.7× zoom-outs, 3,528 restored, 8,461 after two 1.25× zoom-ins); native smooth dragging/selection/labels test; and the full transparent-GIF/style/frequency/trajectory export test. Inspected actual viewport PNGs. Signed ARM64 0.9.2 build 20 is installed in both Applications locations. Core scientific data and personal geometry files were not edited.

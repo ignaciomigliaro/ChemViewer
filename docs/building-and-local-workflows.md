@@ -107,3 +107,9 @@ available; no UMA optimization has been implemented or claimed tested here.
   workflow passed. Local screenshot/evidence stays in Downloads, not the repository.
 
 The ChemRefine tab retains its WKWebView for the current server session across tab changes. The native acceptance test switches to Image and back, verifies the same web view and JavaScript state survive, and checks the real editor still renders. This preserves unsaved workflow form edits while viewing/building structures.
+
+## Camera/placement fix in 0.9.2
+
+Free placement now uses the true camera plane, not a clipping plane. Scroll zoom stays anchored beneath the pointer, large per-event jumps are limited and inertial zoom stops when fingers lift. Pinch zoom is supported. Dragging the view rotates around the placed structure without changing its coordinates. Use **Fit all** in the placement banner to recover a full view.
+
+Previously saved assemblies are not silently changed. If fragments were placed at different zoom levels in 0.9.1, review their relative depths or start a fresh build; a camera fix cannot determine the intended old coordinates.

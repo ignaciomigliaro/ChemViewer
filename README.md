@@ -176,3 +176,7 @@ Command-B opens the searchable 258-entry fragment/metal-center library. Choose a
 ## Popup builder and ChemRefine tab (0.9.1)
 
 Press **Command-B** or **+** to open the fragment preview gallery. Choose a structure, then left-click blank canvas to place it (including in an empty molecule), or an atom to attach it. Right-click finishes. The gallery contains 265 choices including the original templates. **Command-Shift-B** opens editing/UFF controls. **ChemRefine** now has its own main tab (**Command-6**) with the real local workflow editor.
+
+### Building camera fix (0.9.2)
+
+Corrected fragment placement depth so zooming no longer clips newly placed structures away. Zoom is controlled and anchored at the pointer; off-center structures rotate around their own center. The placement banner includes **Fit all**. Existing saved coordinates are preserved; review/rebuild assemblies affected by the earlier placement-depth bug.

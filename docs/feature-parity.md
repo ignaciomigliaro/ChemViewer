@@ -167,3 +167,30 @@ placed fragments by actual mouse down/up on an initially empty canvas, repeated
 placement after rotation/zoom, checked world and projected click coordinates,
 verified unchanged framing, undo and inactive-click safety, and loaded the live
 local ChemRefine editor in the dedicated tab. Local evidence stays in Downloads.
+
+## 0.9.2 — builder depth and camera stability (2026-10-20)
+
+Reproduced the reported disappearing fragments: the old empty-canvas unprojection
+used Metal NDC Z=0 (the near clip plane), putting the first fragment ~833.37 Å from
+the empty scene's origin. Earlier gates checked projected X/Y but missed depth
+and raster visibility. Placement now analytically intersects the orthographic ray
+with camera-space Z=0. It avoids near-plane placement and inverse-projection
+cancellation when zoomed out.
+
+After insertion, the orbit pivot is rebased to the mean atom position with pan
+compensation; molecular coordinates and click-screen positions are preserved.
+Rotation therefore pivots around the built structure rather than the empty
+canvas origin. Scroll zoom is pointer-anchored, uses separate precise-device and
+wheel sensitivities, limits per-event jumps and ignores trackpad momentum after
+release. Pinch magnification uses the same zoom path. A visible Fit all button is
+available in the placement banner. Offscreen preview/export renderers no longer
+consume live viewport commands.
+
+The native placement gate now checks reasonable empty-scene world coordinates,
+actual nonwhite rendered pixels through four zoom-out steps, restoration and two
+zoom-in steps, pointer anchor precision, a large trackpad-delta bound, stable
+orbit centroid under mouse dragging, and unchanged geometry. It retains popup,
+attachment-site, fit, undo and persistent ChemRefine-tab checks. Local PNGs/logs
+are under Downloads and /private/tmp, not committed. No existing geometry files
+are automatically repositioned: old assemblies placed at differing zoom levels
+may contain unintended relative depth and should be rebuilt or reviewed.

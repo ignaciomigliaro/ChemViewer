@@ -158,10 +158,13 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             } else if !oldValue.animate && scene.animate {
                 animationStart = CACurrentMediaTime() - animationElapsed
             }
-            if !preservePlacementCamera && (oldValue.atoms.isEmpty || scene.geometryID != oldValue.geometryID || scene.atoms.count != oldValue.atoms.count || scene.style != oldValue.style) {
+            let preservingInsertion = preservePlacementCamera && scene.geometryID == oldValue.geometryID
+            if preservingInsertion && scene.atoms != oldValue.atoms {
+                rebaseOrbitCenter()
+            } else if !preservingInsertion && (oldValue.atoms.isEmpty || scene.geometryID != oldValue.geometryID || scene.atoms.count != oldValue.atoms.count || scene.style != oldValue.style) {
                 recalculateBounds()
             }
-            if scene.atoms != oldValue.atoms { preservePlacementCamera = false }
+            if scene.atoms != oldValue.atoms || scene.geometryID != oldValue.geometryID { preservePlacementCamera = false }
             enableSetNeedsDisplay = !scene.animate && !atomDragActive
             isPaused = !scene.animate && !atomDragActive
             setNeedsDisplay(bounds)
@@ -249,7 +252,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             self.setNeedsDisplay(self.bounds)
         }
         cameraObserver = NotificationCenter.default.addObserver(forName: .init("ChemViewerViewportAction"), object: nil, queue: .main) { [weak self] note in
-            guard let self, let action = note.object as? String else { return }
+            guard let self, self.window != nil, let action = note.object as? String else { return }
             switch action {
             case "reset": self.recalculateBounds(); self.yaw = 0.45; self.pitch = -0.30; self.roll = 0; self.zoom = 1; self.pan = .zero
             case "front": self.recalculateBounds(); self.yaw = 0; self.pitch = 0; self.roll = 0; self.zoom = 1; self.pan = .zero
@@ -261,8 +264,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             case "rollRight": self.roll -= .pi / 12
             case "panUp": self.pan.y += 0.08
             case "panDown": self.pan.y -= 0.08
-            case "in": self.zoom = min(self.zoom * 1.2, 20)
-            case "out": self.zoom = max(self.zoom / 1.2, 0.1)
+            case "in": self.zoomBy(factor: 1.2, at: CGPoint(x: self.bounds.midX, y: self.bounds.midY))
+            case "out": self.zoomBy(factor: 1 / 1.2, at: CGPoint(x: self.bounds.midX, y: self.bounds.midY))
             case "resetLabel":
                 self.measurementOffsets.removeValue(forKey: self.measurementKey(self.scene.selectedAtomIndices))
             case "export":
@@ -328,6 +331,19 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         sphereMesh = device.makeBuffer(bytes: sphere, length: MemoryLayout<MetalVertex>.stride * sphere.count)
         cylinderMesh = device.makeBuffer(bytes: cylinder, length: MemoryLayout<MetalVertex>.stride * cylinder.count)
         sphereVertexCount = sphere.count; cylinderVertexCount = cylinder.count; meshBuildCount += 1
+    }
+
+    /// Move the orbit pivot to the structure without moving its rendered pixels.
+    private func rebaseOrbitCenter() {
+        guard !scene.atoms.isEmpty else { return }
+        let next = scene.atoms.reduce(SIMD3<Float>(repeating: 0)) { $0 + SIMD3($1.position.x, $1.position.y, $1.position.z) } / Float(scene.atoms.count)
+        let delta = next - center
+        let rotated = cameraRotation() * SIMD4(delta.x, delta.y, delta.z, 0)
+        let aspect = max(Float(bounds.width), 1) / max(Float(bounds.height), 1)
+        let scale = fitScale * zoom * min(1, aspect)
+        pan.x += rotated.x * scale / aspect
+        pan.y += rotated.y * scale
+        center = next
     }
 
     private func recalculateBounds() {
@@ -785,10 +801,16 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     override func rightMouseDragged(with event: NSEvent) {}
 
     func placementPosition(at point: CGPoint) -> Vector3 {
-        let x = Float(point.x / max(bounds.width, 1)) * 2 - 1
-        let y = Float(point.y / max(bounds.height, 1)) * 2 - 1
-        let world = makeMVP(size: bounds.size).inverse * SIMD4<Float>(x, y, 0, 1)
-        return Vector3(world.x / world.w, world.y / world.w, world.z / world.w)
+        let width = max(Float(bounds.width), 1), height = max(Float(bounds.height), 1)
+        let aspect = width / height
+        let scale = max(fitScale * zoom * min(1, aspect), 1e-8)
+        let x = (Float(point.x) / width * 2 - 1 - pan.x) * aspect / scale
+        let y = (Float(point.y) / height * 2 - 1 - pan.y) / scale
+        // Intersect the orthographic ray with camera-space Z=0 analytically.
+        // NDC Z=0 is Metal's near clip plane, and inverse-projection cancellation
+        // also loses precision when zoomed out. Neither belongs in placement.
+        let worldDelta = cameraRotation().transpose * SIMD4<Float>(x, y, 0, 0)
+        return Vector3(center.x + worldDelta.x, center.y + worldDelta.y, center.z + worldDelta.z)
     }
 
     func projectedAtomPoint(_ index: Int) -> CGPoint? {
@@ -803,7 +825,35 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     override func scrollWheel(with event: NSEvent) {
-        zoom = min(max(zoom * exp(Float(event.scrollingDeltaY) * 0.02), 0.1), 20)
+        // A trackpad fling must not continue shrinking the molecule after release.
+        guard event.momentumPhase.isEmpty else { return }
+        applyScrollZoom(delta: Float(event.scrollingDeltaY), precise: event.hasPreciseScrollingDeltas,
+                        at: convert(event.locationInWindow, from: nil))
+    }
+
+    override func magnify(with event: NSEvent) {
+        zoomBy(factor: exp(max(-0.18, min(0.18, Float(event.magnification)))),
+               at: convert(event.locationInWindow, from: nil))
+    }
+
+    func applyScrollZoom(delta: Float, precise: Bool, at point: CGPoint) {
+        guard delta.isFinite else { return }
+        let exponent = max(-0.18, min(0.18, delta * (precise ? 0.006 : 0.06)))
+        zoomBy(factor: exp(exponent), at: point)
+    }
+
+    func zoomBy(factor: Float, at point: CGPoint) {
+        guard factor.isFinite, factor > 0 else { return }
+        let anchor = CGPoint(x: max(0, min(bounds.width, point.x)), y: max(0, min(bounds.height, point.y)))
+        let before = placementPosition(at: anchor)
+        let next = min(max(zoom * factor, 0.1), 20)
+        guard next != zoom else { return }
+        zoom = next
+        // Keep the point beneath the pointer fixed instead of zooming around an
+        // unrelated canvas origin and throwing an off-center fragment out of view.
+        let clip = makeMVP(size: bounds.size) * SIMD4(before.x, before.y, before.z, 1)
+        pan.x += Float(anchor.x / max(bounds.width, 1)) * 2 - 1 - clip.x / clip.w
+        pan.y += Float(anchor.y / max(bounds.height, 1)) * 2 - 1 - clip.y / clip.w
         setNeedsDisplay(bounds)
     }
 
