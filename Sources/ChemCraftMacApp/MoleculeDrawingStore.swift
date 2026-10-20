@@ -4,7 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 enum DrawingTool: String, CaseIterable {
-    case bond = "Bond", atom = "Atom", ring = "Ring", move = "Move", erase = "Erase", positive = "+ charge", negative = "− charge"
+    case chain = "Chain", bond = "Bond", atom = "Atom", ring = "Ring", move = "Move", erase = "Erase", positive = "+ charge", negative = "− charge"
 }
 
 @MainActor
@@ -16,6 +16,7 @@ final class MoleculeDrawingStore: ObservableObject {
     @Published var stereo = "none"
     @Published var ringSize = 6
     @Published var aromatic = true
+    @Published var ringTemplate: SketchRingTemplate? = .benzene
     @Published var showElements = false
     @Published var selectedID: Int?
     @Published var smilesInput = ""

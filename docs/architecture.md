@@ -388,3 +388,13 @@ per-step MLIP Python fields backed by the real options, not local display state.
 The bridge check-python action runs the selected interpreter with subprocess
 arguments and reports real imports/version/prefix/server dependencies. No UMA
 installation path is hardcoded in application code.
+
+## Skeletal layout and ring catalog — 0.10.5
+
+SketchLayout in ChemCraftCore supplies terminal bond angle selection, atomic
+zigzag-chain insertion and explicit SketchRingTemplate elements/bond orders.
+MolecularDrawingCanvas keeps chain previews local until mouse-up and commits
+one graph edit, reusing drawing Undo/3D generation. Terminal bond drags snap to
+120-degree directions (linear for triple bonds), with Option override. The
+SwiftUI toolbar renders original vector ring/chain glyphs and a visual ring
+popover. Formal charge tools move to More without altering graph semantics.

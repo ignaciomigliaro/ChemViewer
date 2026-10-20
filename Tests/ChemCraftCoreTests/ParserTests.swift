@@ -728,4 +728,39 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(sketch, original)
     }
 
+    func testZigzagSketchLayoutAndClickExtension() throws {
+        var graph = MolecularSketch()
+        let first = try graph.addAtom("C", x: 0, y: 0)
+        _ = try graph.addZigzagChain(from: first, bonds: 6, axis: 0)
+        XCTAssertEqual(graph.atoms.count, 7)
+        for i in 1..<graph.atoms.count {
+            let a = graph.atoms[i-1], b = graph.atoms[i]
+            XCTAssertEqual(hypot(a.x-b.x, a.y-b.y), 48, accuracy: 1e-9)
+        }
+        for i in 1..<(graph.atoms.count-1) {
+            let a = graph.atoms[i-1], b = graph.atoms[i], c = graph.atoms[i+1]
+            let dot = (a.x-b.x)*(c.x-b.x)+(a.y-b.y)*(c.y-b.y)
+            XCTAssertEqual(acos(dot / (48*48)) * 180 / .pi, 120, accuracy: 1e-8)
+        }
+        XCTAssertEqual(graph.atoms[2].y, 0, accuracy: 1e-9)
+        let angle = try graph.suggestedBondAngle(from: graph.atoms.last!.id)
+        let b = graph.atoms.last!, a = graph.atoms[graph.atoms.count-2]
+        let ux = a.x-b.x, uy = a.y-b.y
+        XCTAssertEqual((ux*cos(angle)+uy*sin(angle))/48, -0.5, accuracy: 1e-9)
+    }
+    func testNamedSketchRingTemplates() throws {
+        for template in SketchRingTemplate.allCases {
+            var graph = MolecularSketch()
+            try graph.addRing(template: template, x: 0, y: 0)
+            XCTAssertEqual(graph.atoms.map(\.element), template.elements)
+            XCTAssertEqual(graph.bonds.map(\.order), template.bondOrders)
+            XCTAssertEqual(graph.atoms.count, graph.bonds.count)
+            try graph.validate()
+        }
+        var pyrrole = MolecularSketch()
+        try pyrrole.addRing(template: .pyrrole, x: 0, y: 0)
+        let nitrogen = pyrrole.atoms.first { $0.element == "N" }!.id
+        XCTAssertEqual(pyrrole.bonds.filter { $0.a == nitrogen || $0.b == nitrogen }.map(\.order), [1,1])
+    }
+
 }

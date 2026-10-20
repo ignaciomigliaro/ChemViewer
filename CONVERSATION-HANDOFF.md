@@ -640,3 +640,30 @@ and three migrated suites, strict signature/ARM64 build26/0.10.4 pass. Actual
 installed UMA import checker passed fairchem2.23.0/ChemRefine/server packages.
 See docs/uma-environment-settings-2026-10-20.md. User's AGENTS.md changes remain
 uncommitted and are excluded from this version.
+
+## 0.10.5 — zigzag chains and visual ring palette
+
+Fixed straight terminal chain placement: core suggestedBondAngle uses 120-degree
+skeletal geometry and alternation (linear for triple bonds), with collision
+clearance fallback. DrawingCanvas terminal drags use the nearest 120-degree
+direction; Option permits other snapped angles. New Chain mode previews a
+carbon zigzag locally and commits one undoable edit on mouse-up.
+
+SketchRingTemplate holds 14 original explicit templates: benzene; saturated
+3–8-membered rings; cyclopentene/cyclohexene/cyclopentadiene; pyridine/pyrrole/
+furan/thiophene. Toolbar has original benzene/polygon glyphs, Chain glyph and
+More rings visual grid. Formal charge tools moved to More and the neutral
+preview caption was simplified; graph charges and transfer remain supported.
+Legacy regular-ring API remains. Templates share a vertex when attached; no
+automatic bond fusion is claimed.
+
+Final /private/tmp/chemviewer-0105-native.log contains PERSISTENT_LABELS_PASS,
+SKELETAL_DRAWING_PASS and DRAWING_LABELS_PASS: actual six-bond C7H16 zigzag
+gesture, 120-degree angles, preview-only drag/one Undo, bent terminal horizontal
+drags, all 14 rings placed/generated with independent formula expectations,
+and existing Draw/labels/PNG/GIF/chirality/periodic-table/3D transfer regressions.
+Core33 + three migrated suites, Python29 and strict signed ARM64 build27/0.10.5
+pass. Before/after swift test was attempted; local CLT lacks XCTest, standalone
+assertions passed. Actual zigzag-chain.png in Downloads drawing evidence was
+visually inspected. No user scientific files changed; pre-existing AGENTS.md
+edit is preserved/excluded from release. Details: docs/skeletal-drawing-2026-10-20.md.

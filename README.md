@@ -236,3 +236,11 @@ The saved default fills missing UMA backend paths; existing overrides remain
 unless you explicitly apply it. The Run panel also has editable Python paths
 per MLIP step. Paths are saved in input.yaml as options.backend_python, so CLI
 ChemRefine uses the same interpreter. [Environment settings](docs/uma-environment-settings-2026-10-20.md).
+
+### Skeletal drawing and rings (0.10.5)
+
+In Draw, **Chain** drags out a zigzag alkane as one undoable edit. Terminal bond
+extensions use 120-degree skeletal angles; Option-drag allows other angles.
+The toolbar has benzene and saturated ring icons; **More rings** opens 14 visual
+templates including unsaturated rings, pyridine, pyrrole, furan and thiophene.
+Formal charge tools are under **More**. [Details and validation](docs/skeletal-drawing-2026-10-20.md).

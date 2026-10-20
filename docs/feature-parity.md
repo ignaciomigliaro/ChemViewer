@@ -279,3 +279,12 @@ families; explicit apply intentionally replaces current workflow UMA paths.
 Raw YAML insertion and pending typed-input flushing are supported. The actual
 installed UMA interpreter/imports were checked successfully; model readiness is
 still performed at run time. See uma-environment-settings-2026-10-20.md.
+
+## Skeletal drawing improvements — 0.10.5
+
+Tested zigzag carbon-chain dragging and 120-degree terminal extensions, local
+preview/one Undo, visible benzene/saturated ring glyphs and a 14-template ring
+palette including unsaturated/heterocyclic structures. All 14 placed templates
+passed native local 3D generation with independent expected formulas. Formal
+charge editing is under More; source charge data is retained. This adds regular
+ring/vertex attachment, not automatic bond-fused rings or full ChemDraw parity.

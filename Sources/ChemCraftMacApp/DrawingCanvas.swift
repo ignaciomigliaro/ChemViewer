@@ -67,7 +67,14 @@ final class MolecularDrawingCanvas: NSView {
             if let id = startAtom, let index = snapshot.atoms.firstIndex(where: { $0.id == id }) {
                 var graph = snapshot; graph.atoms[index].x += (position.x - start.x) / zoom; graph.atoms[index].y += (position.y - start.y) / zoom; preview = graph
             } else { pan.x += position.x - last.x; pan.y += position.y - last.y }
-        } else if drawing.tool == .bond { rubberEnd = position }
+        } else if drawing.tool == .chain {
+            preview = try? chainPreview(position)
+        } else if drawing.tool == .bond {
+            if let id = startAtom, let atom = snapshot.atoms.first(where: { $0.id == id }) {
+                let angle = bondAngle(from: atom, toward: world(position), free: event.modifierFlags.contains(.option), graph: snapshot)
+                rubberEnd = screen(CGPoint(x: atom.x + 48 * cos(angle), y: atom.y + 48 * sin(angle)))
+            } else { rubberEnd = position }
+        }
         last = position; needsDisplay = true
     }
     override func mouseUp(with event: NSEvent) {
@@ -85,8 +92,20 @@ final class MolecularDrawingCanvas: NSView {
             case .atom:
                 if let index = graph.atoms.firstIndex(where: { $0.id == startAtom }) { graph.atoms[index].element = drawing.element; graph.atoms[index].chiralTag = 0; graph.atoms[index].explicitHs = nil; graph.atoms[index].noImplicit = nil; graph.atoms[index].radicalElectrons = nil }
                 else { drawing.selectedID = try graph.addAtom(drawing.element, x: location.x, y: location.y) }
+            case .chain:
+                if dragging { graph = try chainPreview(position); drawing.selectedID = graph.atoms.last?.id }
+                else {
+                    let a = try startAtom ?? graph.addAtom("C", x: location.x, y: location.y)
+                    if startAtom != nil {
+                        let atom = graph.atoms.first { $0.id == a }!, angle = try graph.suggestedBondAngle(from: a)
+                        let b = try graph.addAtom("C", x: atom.x + 48 * cos(angle), y: atom.y + 48 * sin(angle))
+                        try graph.connect(a, b, order: 1); drawing.selectedID = b
+                    } else { drawing.selectedID = a }
+                }
             case .ring:
-                try graph.addRing(size: drawing.ringSize, aromatic: drawing.aromatic, x: location.x, y: location.y, anchor: startAtom)
+                if let template = drawing.ringTemplate {
+                    try graph.addRing(template: template, x: location.x, y: location.y, anchor: startAtom)
+                } else { try graph.addRing(size: drawing.ringSize, aromatic: drawing.aromatic, x: location.x, y: location.y, anchor: startAtom) }
             case .bond:
                 if !dragging, startAtom == nil, let index = hitBond(position, graph: graph) {
                     let edge = graph.bonds[index]
@@ -101,9 +120,9 @@ final class MolecularDrawingCanvas: NSView {
                     else {
                         let atom = graph.atoms.first { $0.id == a }!
                         let angle: Double
-                        if dragging { angle = (atan2(location.y - atom.y, location.x - atom.x) / (.pi / 6)).rounded() * (.pi / 6) }
+                        if dragging { angle = bondAngle(from: atom, toward: location, free: event.modifierFlags.contains(.option), graph: graph) }
                         else {
-                            angle = clearDirection(from: atom, in: graph)
+                            angle = try graph.suggestedBondAngle(from: atom.id, order: drawing.order)
                         }
                         b = try graph.addAtom(drawing.element, x: atom.x + 48 * cos(angle), y: atom.y + 48 * sin(angle))
                     }
@@ -161,16 +180,28 @@ final class MolecularDrawingCanvas: NSView {
         }
         return max(explicit, target - valence - (atom.radicalElectrons ?? 0))
     }
-    private func clearDirection(from atom: MolecularSketch.Node, in graph: MolecularSketch) -> Double {
-        var best = Double.pi / 6, bestClearance = -Double.infinity
-        for i in 0..<12 {
-            let angle = Double(i + 1) * Double.pi / 6
-            let x = atom.x + 48 * cos(angle), y = atom.y + 48 * sin(angle)
-            var clearance = 100.0
-            for other in graph.atoms where other.id != atom.id { clearance = min(clearance, hypot(other.x - x, other.y - y)) }
-            if clearance > bestClearance { bestClearance = clearance; best = angle }
-        }
-        return best
+    private func chainPreview(_ position: CGPoint) throws -> MolecularSketch {
+        var graph = snapshot
+        let origin = world(start), target = world(position)
+        let anchor = try startAtom ?? graph.addAtom("C", x: origin.x, y: origin.y)
+        let length = hypot(target.x - origin.x, target.y - origin.y)
+        let count = max(1, min(100, Int((length / (48 * cos(Double.pi / 6))).rounded())))
+        let axis = (atan2(target.y - origin.y, target.x - origin.x) / (.pi / 6)).rounded() * (.pi / 6)
+        _ = try graph.addZigzagChain(from: anchor, bonds: count, axis: axis)
+        return graph
+    }
+    private func bondAngle(from atom: MolecularSketch.Node, toward position: CGPoint, free: Bool, graph: MolecularSketch) -> Double {
+        let pointer = (atan2(position.y - atom.y, position.x - atom.x) / (.pi / 6)).rounded() * (.pi / 6)
+        guard !free else { return pointer }
+        let edges = graph.bonds.filter { $0.a == atom.id || $0.b == atom.id }
+        guard edges.count == 1, let edge = edges.first,
+              let neighbor = graph.atoms.first(where: { $0.id == (edge.a == atom.id ? edge.b : edge.a) }) else { return pointer }
+        let incoming = atan2(atom.y - neighbor.y, atom.x - neighbor.x)
+        if drawing.order == 3 || edge.order == 3 { return incoming }
+        let candidates = [incoming + Double.pi / 3, incoming - Double.pi / 3]
+        let preferred = (try? graph.suggestedBondAngle(from: atom.id, order: drawing.order)) ?? candidates[0]
+        func gap(_ angle: Double) -> Double { abs(atan2(sin(angle - pointer), cos(angle - pointer))) }
+        return abs(gap(candidates[0]) - gap(candidates[1])) < 1e-6 ? preferred : candidates.min(by: { gap($0) < gap($1) })!
     }
     private func drawBond(from a: CGPoint, to b: CGPoint, order: Int, stereo: String) {
         let dx = b.x - a.x, dy = b.y - a.y, length = max(hypot(dx, dy), 0.01), nx = -dy / length, ny = dx / length

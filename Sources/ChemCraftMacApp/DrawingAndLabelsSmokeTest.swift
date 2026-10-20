@@ -86,6 +86,45 @@ enum DrawingAndLabelsSmokeTest {
             workspace.activeTab = "Draw"; await pause()
             guard let canvas = views().compactMap({ $0 as? MolecularDrawingCanvas }).first else { throw ParseError.malformed("Draw tab has no native canvas") }
             try require(canvas.bounds.width >= 350 && canvas.bounds.height >= 250, "Draw workspace is too small")
+            do {
+            // A dragged chain previews without publishing intermediate graph edits.
+            drawing.commit(MolecularSketch()); drawing.tool = .chain
+            let chainStart = canvas.screen(CGPoint(x: -145, y: 0))
+            let chainEnd = canvas.screen(CGPoint(x: -145 + 6 * 48 * cos(Double.pi / 6), y: 0))
+            canvas.mouseDown(with: event(canvas, .leftMouseDown, chainStart))
+            canvas.mouseDragged(with: event(canvas, .leftMouseDragged, chainEnd))
+            try require(drawing.graph.atoms.isEmpty, "Chain preview committed before mouse-up")
+            canvas.mouseUp(with: event(canvas, .leftMouseUp, chainEnd))
+            try require(drawing.graph.atoms.count == 7 && drawing.graph.bonds.count == 6, "Chain drag did not create heptane")
+            for i in 1..<6 {
+                let a=drawing.graph.atoms[i-1], b=drawing.graph.atoms[i], c=drawing.graph.atoms[i+1]
+                let cosine=((a.x-b.x)*(c.x-b.x)+(a.y-b.y)*(c.y-b.y))/(48*48)
+                try require(abs(cosine + 0.5) < 1e-8, "Native alkane chain angle is not 120 degrees")
+            }
+            drawing.undo(); try require(drawing.graph.atoms.isEmpty, "Chain gesture was not a single Undo")
+            drawing.redo(); drawing.generate3D(); try await waitForDrawing(drawing); await pause()
+            try require(drawing.preview?.formula == "C7H16", "Chain-to-3D formula failed: " + drawing.status)
+            if let bitmap=canvas.bitmapImageRepForCachingDisplay(in:canvas.bounds) {
+                canvas.cacheDisplay(in:canvas.bounds,to:bitmap)
+                if let png=bitmap.representation(using:.png,properties:[:]) {try png.write(to:evidence.appendingPathComponent("zigzag-chain.png"))}
+            }
+            // Repeated horizontal drags from a terminal single bond must bend.
+            drawing.commit(MolecularSketch()); drawing.tool = .bond; drawing.element = "C"; drawing.order=1; drawing.stereo="none"
+            let first = canvas.screen(CGPoint(x:-80,y:0)), second=canvas.screen(CGPoint(x:-32,y:0))
+            gesture(canvas,first,second)
+            let endpoint=canvas.point(drawing.graph.atoms.last!)
+            gesture(canvas,endpoint,CGPoint(x:endpoint.x+48*canvas.zoom,y:endpoint.y))
+            let a=drawing.graph.atoms[0],b=drawing.graph.atoms[1],c=drawing.graph.atoms[2]
+            try require(abs(((a.x-b.x)*(c.x-b.x)+(a.y-b.y)*(c.y-b.y))/(48*48)+0.5)<1e-8,"Horizontal bond drag produced a straight alkane")
+            let formulas: [SketchRingTemplate:String] = [.benzene:"C6H6",.cyclopropane:"C3H6",.cyclobutane:"C4H8",.cyclopentane:"C5H10",.cyclohexane:"C6H12",.cycloheptane:"C7H14",.cyclooctane:"C8H16",.cyclopentene:"C5H8",.cyclohexene:"C6H10",.cyclopentadiene:"C5H6",.pyridine:"C5H5N",.pyrrole:"C4H5N",.furan:"C4H4O",.thiophene:"C4H4S"]
+            for template in SketchRingTemplate.allCases {
+                drawing.commit(MolecularSketch()); drawing.tool = .ring; drawing.ringTemplate = template
+                gesture(canvas,canvas.screen(.zero)); drawing.generate3D(); try await waitForDrawing(drawing)
+                try require(drawing.previewIsCurrent && drawing.preview?.formula == formulas[template], "Ring template failed: " + template.rawValue + ": " + drawing.status)
+            }
+            drawing.ringTemplate = .benzene
+            print("SKELETAL_DRAWING_PASS: native zigzag chain with 120-degree angles, preview-only drag, one Undo, C7H16 3D, bent horizontal bond gestures and all 14 ring templates with independent molecular formulas"); fflush(stdout)
+            }
             drawing.commit(MolecularSketch()); drawing.tool = .bond; drawing.element = "C"; drawing.order = 1; drawing.stereo = "none"
             let a = canvas.screen(CGPoint(x: -80, y: 0)), b = canvas.screen(CGPoint(x: -32, y: 0)), c = canvas.screen(CGPoint(x: -8, y: 42))
             gesture(canvas, a); gesture(canvas, a, b); drawing.element = "O"; gesture(canvas, b, c)

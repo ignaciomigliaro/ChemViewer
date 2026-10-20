@@ -197,3 +197,15 @@ Evidence: /private/tmp/chemviewer-0104-python.log, chemviewer-0104-build.log,
 chemviewer-0104-native-final.log; real-pyscf-CECAC37C under
 ~/Downloads/chemviewer-runner-evidence. No vendor binaries or model credentials
 are part of the source release.
+
+## Skeletal drawing — 0.10.5
+
+Core33/three migrated suites and Python29 pass. Native mouse gestures verify
+120-degree zigzag chains with 48-unit bond lengths, one Undo and C7H16 3D
+generation. All 14 explicit ring templates passed native placement and RDKit
+3D generation with independent expected formulas (including pyridine C5H5N,
+pyrrole C4H5N, furan C4H4O and thiophene C4H4S). Existing native Draw, charged
+atom editing, chirality, UFF/Metal preview and persistent label/PNG/GIF tests
+also pass. Selected local CLT still lacks XCTest; genuine before/after attempts
+were recorded, and the standalone adapter executed actual core assertions.
+See skeletal-drawing-2026-10-20.md for exact scope and evidence.
