@@ -194,3 +194,27 @@ attachment-site, fit, undo and persistent ChemRefine-tab checks. Local PNGs/logs
 are under Downloads and /private/tmp, not committed. No existing geometry files
 are automatically repositioned: old assemblies placed at differing zoom levels
 may contain unintended relative depth and should be rebuilt or reviewed.
+
+## 0.9.3 — editable elements and periodic-table atom tool (2026-10-20)
+
+Build is now a dedicated dropdown in the native menu bar, in-window menu bar,
+and toolbar. Fragment Library (Cmd-B), Add Atom (Cmd-Shift-A), Build & Edit
+(Cmd-Shift-B) and Finish Placement are available together. The existing fragment
+gallery, thumbnails and camera/zoom behavior remain available.
+
+Add Atom opens all 118 elements arranged as a periodic table, with separate
+lanthanide/actinide rows and an X dummy-site button. Choose Replace element or
+Add bonded atom, then choose an element. A left click on an atom substitutes its
+element without moving coordinates in Replace mode. Bond mode retains the
+existing attachment algorithm: use an available terminal H/X site, otherwise
+add along a least-crowded direction. Clicking empty space places a single atom
+in either mode. The active placement banner lets you switch mode or reopen the
+table; right-click finishes. These are starting geometries; no new bond-order
+or chemical-valence inference is introduced by this UI.
+
+Coord now provides editable element fields as well as Cartesian coordinates.
+Symbols are case-insensitive and atomic numbers are accepted. Apply normalizes
+symbols, commits one undoable edit, and invalidates the edited geometry's energy.
+Empty or unknown symbols disable Apply and coordinate copying until corrected.
+The core BuildingProject replacement operation validates symbols and atom index,
+preserving atom order, positions, project groups, selection, charge and spin.

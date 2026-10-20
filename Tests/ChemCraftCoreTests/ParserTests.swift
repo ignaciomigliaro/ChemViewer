@@ -659,4 +659,31 @@ final class ParserTests: XCTestCase {
         XCTAssertTrue(ORCANEBParser.parse(lines: text.replacingOccurrences(of: "2 2.0", with: "3 2.0").components(separatedBy: "\n")) == nil)
     }
 
+    func testElementReplacementPreservesGeometryAndProjectState() throws {
+        let atoms = [Atom(id: 0, element: "Fe", position: Vector3(1.2, -3.4, 5.6)),
+                     Atom(id: 1, element: "N", position: Vector3(2.7, -3.4, 5.6))]
+        let project = try BuildingProject(atoms: atoms, groups: [[0, 1]], selection: [0], charge: 2, multiplicity: 3)
+        for input in [" ru ", "44", "Pt", "Og", "X"] {
+            let result = try project.replacingElement(at: 0, with: input)
+            XCTAssertEqual(result.atoms[0].element, BuildingProject.validatedElement(input))
+            XCTAssertEqual(result.atoms.map(\.position), atoms.map(\.position))
+            XCTAssertEqual(result.atoms.map(\.id), [0, 1])
+            XCTAssertEqual(result.atoms[1], atoms[1])
+            XCTAssertEqual(result.groups, [[0, 1]])
+            XCTAssertEqual(result.selection, [0])
+            XCTAssertEqual(result.charge, 2)
+            XCTAssertEqual(result.multiplicity, 3)
+        }
+        for input in ["", "  ", "Foo", "119", "-1"] {
+            XCTAssertTrue(BuildingProject.validatedElement(input) == nil)
+            var rejected = false
+            do { _ = try project.replacingElement(at: 0, with: input) } catch { rejected = true }
+            XCTAssertTrue(rejected)
+        }
+        var rejectedIndex = false
+        do { _ = try project.replacingElement(at: 2, with: "Cu") } catch { rejectedIndex = true }
+        XCTAssertTrue(rejectedIndex)
+        XCTAssertEqual(project.atoms, atoms)
+    }
+
 }

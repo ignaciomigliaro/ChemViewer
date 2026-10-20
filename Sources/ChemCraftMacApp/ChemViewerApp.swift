@@ -26,12 +26,16 @@ struct ChemViewerApp: App {
                 ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"].enumerated()), id: \.offset) { index, tab in
                     Button(tab) { workspace.activeTab = tab }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }
-                Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
-                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b", modifiers: [.command, .shift])
                 Toggle("Result Explorer", isOn: $workspace.showExplorer)
                 Divider()
                 Button("Fit and Center") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "reset") }
                 Button("Front View") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "front") }
+            }
+            CommandMenu("Build") {
+                Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
+                Button("Add Atom…") { workspace.presentPeriodicTable() }.keyboardShortcut("a", modifiers: [.command, .shift])
+                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b", modifiers: [.command, .shift])
+                Button("Finish Placement") { workspace.clearSelection() }
             }
             CommandMenu("Display") {
                 Picker("Drawing Style", selection: $workspace.renderingStyle) {

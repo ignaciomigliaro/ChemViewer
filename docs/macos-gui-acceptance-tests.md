@@ -198,3 +198,25 @@ attachment-site, fit, undo and persistent ChemRefine-tab checks. Local PNGs/logs
 are under Downloads and /private/tmp, not committed. No existing geometry files
 are automatically repositioned: old assemblies placed at differing zoom levels
 may contain unintended relative depth and should be rebuilt or reviewed.
+
+## CV-GUI-ATOM — periodic table and editable coordinate elements (0.9.3)
+
+1. Build → Add Atom (Cmd-Shift-A): verify all 118 buttons and the f-block rows.
+   Cancel must leave the document unchanged.
+2. Choose Fe and click empty space: exactly one atom appears. Select Ru in
+   Replace mode and click Fe: atom count and coordinates stay fixed. Undo/Redo
+   restores Fe/Ru, and the camera does not change.
+3. Switch to Add bonded atom, choose Cl, click Ru: Ru stays and a bonded Cl is
+   inserted at a finite covalent distance. Undo removes this edit. Right-click
+   finishes and subsequent clicks return to selection.
+4. Coord: type an invalid element; Apply and both copy buttons are disabled.
+   Type ` pt ` (or atomic number 78), Apply: Pt replaces the element without
+   moving any coordinate. Undo restores the original element and source energy.
+5. Build → Fragment Library and + still open the preview gallery; placement,
+   fit/zoom/orbit and edit controls remain functional.
+
+Automated native gate: launch a separate dist app with fixture water.xyz and
+`--atom-editing-smoke-test -ApplePersistenceIgnoreState YES`. It activates the
+actual NSButton periodic cells, sends mouse events to the live Metal viewport,
+and types into the actual Coordinates NSTextField before invoking the default
+Apply action with Return.

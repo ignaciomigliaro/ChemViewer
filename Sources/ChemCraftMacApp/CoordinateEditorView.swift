@@ -42,7 +42,11 @@ struct CoordinateEditorView: View {
                         GridRow {
                             Text("\(atom.id + 1)")
                                 .monospacedDigit()
-                            Text(atom.element)
+                            TextField("Element", text: $atom.element)
+                                .textFieldStyle(.roundedBorder)
+                                .accessibilityIdentifier("coordinate-element-\(atom.id)")
+                                .help("Element symbol or atomic number; click Apply to save")
+                                .foregroundStyle(BuildingProject.validatedElement(atom.element) == nil ? Color.red : Color.primary)
                                 .frame(width: 58, alignment: .leading)
                             coordinateField($atom.position.x)
                             coordinateField($atom.position.y)
@@ -52,20 +56,31 @@ struct CoordinateEditorView: View {
                 }
                 .padding(4)
             }
+            if !elementsValid {
+                Text("Enter a valid element symbol or atomic number in each row.").font(.caption).foregroundStyle(.red)
+            }
             HStack {
-                Button("Copy coordinates") { _ = ClipboardSupport.copy(ClipboardSupport.coordinates(atoms)) }
-                Button("Copy XYZ") { _ = ClipboardSupport.copy(XYZWriter.string(frame: MoleculeFrame(id: 0, atoms: atoms, comment: "Cartesian coordinates"))) }
+                Button("Copy coordinates") { _ = ClipboardSupport.copy(ClipboardSupport.coordinates(normalizedAtoms)) }.disabled(!elementsValid)
+                Button("Copy XYZ") { _ = ClipboardSupport.copy(XYZWriter.string(frame: MoleculeFrame(id: 0, atoms: normalizedAtoms, comment: "Cartesian coordinates"))) }
+                .disabled(!elementsValid)
                 Spacer()
                 if !embedded { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 Button("Apply") {
-                    onApply(atoms)
+                    onApply(normalizedAtoms)
                     if !embedded { dismiss() }
                 }
                 .keyboardShortcut(.defaultAction)
+                .disabled(!elementsValid)
+                .accessibilityIdentifier("apply-coordinates")
             }
         }
         .padding()
         .frame(minWidth: 650, minHeight: 420)
+    }
+
+    private var elementsValid: Bool { atoms.allSatisfy { BuildingProject.validatedElement($0.element) != nil } }
+    private var normalizedAtoms: [Atom] {
+        atoms.map { Atom(id: $0.id, element: BuildingProject.validatedElement($0.element) ?? $0.element, position: $0.position) }
     }
 
     private func coordinateField(_ value: Binding<Float>) -> some View {

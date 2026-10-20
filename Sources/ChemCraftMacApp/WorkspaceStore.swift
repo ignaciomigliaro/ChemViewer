@@ -3,10 +3,32 @@ import ChemCraftCore
 import Combine
 import Foundation
 
+enum AtomPlacementMode: String, CaseIterable {
+    case replace = "Replace element"
+    case bond = "Add bonded atom"
+}
+
 @MainActor
 final class WorkspaceStore: ObservableObject {
     @Published var isBuilderVisible = false
     @Published var isFragmentLibraryPresented = false
+    @Published var isPeriodicTablePresented = false
+    @Published var atomPlacementMode: AtomPlacementMode = .replace {
+        didSet { refreshAtomPlacementHint() }
+    }
+    func presentPeriodicTable() { isPeriodicTablePresented = true }
+    func armAtom(_ text: String) {
+        guard let symbol = BuildingProject.validatedElement(text) else { return }
+        if document == nil { newMolecule() }
+        isDraggingEnabled = false; stopTrajectoryPlayback(); isVibrating = false
+        selectedModeIndex = nil; pendingAttachment = nil; pendingElement = symbol
+        activeTab = "Image"; refreshAtomPlacementHint()
+    }
+    func refreshAtomPlacementHint() {
+        guard let symbol = pendingElement else { return }
+        let action = atomPlacementMode == .replace ? "replace its element" : "add a bonded atom (uses an available H/X site)"
+        buildingHint = "\(symbol): click an atom to \(action), or empty space to place. Right-click finishes."
+    }
     func presentFragmentLibrary() {
         if document == nil { newMolecule() }
         isFragmentLibraryPresented = true
@@ -37,14 +59,20 @@ final class WorkspaceStore: ObservableObject {
         do {
             let project = try buildingProject()
             if let element = pendingElement {
-                applyBuildingProject(try project.attachingAtom(element, hostAtom: index))
+                if atomPlacementMode == .replace {
+                    let next = try project.replacingElement(at: index, with: element)
+                    if next.atoms != project.atoms { applyBuildingProject(next) }
+                } else {
+                    applyBuildingProject(try project.attachingAtom(element, hostAtom: index))
+                }
             } else if let fragment = pendingAttachment {
                 guard fragment.indices.contains(pendingAttachmentLeaving) else {
                     buildingHint = "This fragment has no H/X attachment site. Click empty space to place it."; return true
                 }
                 applyBuildingProject(try project.attachingAtAtom(fragment, hostAtom: index, fragmentLeaving: pendingAttachmentLeaving))
             }
-            buildingHint = "Attached. Click another site to add again; right-click to finish."
+            if pendingElement != nil { refreshAtomPlacementHint() }
+            else { buildingHint = "Attached. Click another site to add again; right-click to finish." }
         } catch { errorMessage = error.localizedDescription }
         return true
     }
@@ -296,6 +324,9 @@ final class WorkspaceStore: ObservableObject {
         guard var document,
               document.frames.indices.contains(frameIndex),
               atoms.count == document.frames[frameIndex].atoms.count else { return }
+        guard atoms.allSatisfy({ BuildingProject.validatedElement($0.element) == $0.element }) else {
+            errorMessage = "Enter a valid element symbol (for example Fe, Ru or Pt)."; return
+        }
         guard atoms.allSatisfy({ $0.position.x.isFinite && $0.position.y.isFinite && $0.position.z.isFinite }) else {
             errorMessage = "Coordinates must be finite numbers."; return
         }

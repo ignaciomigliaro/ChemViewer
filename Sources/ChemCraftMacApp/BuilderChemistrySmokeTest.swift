@@ -26,7 +26,7 @@ enum BuilderChemistrySmokeTest {
             workspace.clearSelection()
             workspace.undoGeometry()
             try require(workspace.currentFrame?.atoms.count == 5, "Attachment undo")
-            workspace.pendingElement = "Cl"
+            workspace.atomPlacementMode = .bond; workspace.armAtom("Cl")
             try require(workspace.placeBuilderItem(at: 0), "Element click not handled")
             try require(workspace.currentFrame?.atoms.last?.element == "Cl", "Chlorine insertion")
             workspace.clearSelection()

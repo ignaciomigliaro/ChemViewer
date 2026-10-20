@@ -28,6 +28,22 @@ public struct BuildingProject: Codable {
     public static var fragmentNames: [String] { IntegratedBuilding.builtInFragments.map(\.name) }
     public static var elements: [String] { IntegratedBuilding.elements }
     public static func fragment(_ index: Int) -> [Atom] { convert(IntegratedBuilding.builtInFragments[min(max(index, 0), IntegratedBuilding.builtInFragments.count - 1)].atoms) }
+    /// Accept a symbol or atomic number, rejecting empty/unknown values.
+    public static func validatedElement(_ text: String) -> String? {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let symbol = ElementTable.canonicalSymbol(text)
+        return elements.contains(symbol) ? symbol : nil
+    }
+    /// Substitute an element without moving atoms or changing groups/selection.
+    public func replacingElement(at index: Int, with text: String) throws -> Self {
+        guard atoms.indices.contains(index), let symbol = Self.validatedElement(text) else {
+            throw ParseError.malformed("Choose a valid element and atom.")
+        }
+        var next = state
+        let atom = next.atoms[index]
+        next.atoms[index] = .init(symbol: symbol, x: atom.x, y: atom.y, z: atom.z)
+        return try Self(next)
+    }
     public func deleting(_ indices: [Int]) throws -> Self { try Self(state.deleting(Set(indices))) }
     public func appending(_ atoms: [Atom]) throws -> Self { try Self(state.appending(Self.convert(atoms))) }
     public func placing(_ fragment: [Atom], at location: Vector3) throws -> Self {

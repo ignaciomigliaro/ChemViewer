@@ -55,7 +55,7 @@ struct BuilderPanel: View {
                 Text("Fragments are initial geometries; use UFF cleanup where supported. Review charge and multiplicity before export. Projects save the working geometry, groups and selection; calculation outputs and normal modes stay in the original file.").font(.caption).foregroundStyle(.secondary)
             }.padding(14)
         }.frame(width: 310).background(Color(nsColor: .windowBackgroundColor)).controlSize(.small)
-            .onChange(of: element) { value in if workspace.pendingElement != nil { workspace.pendingElement = value } }
+            .onChange(of: element) { value in if workspace.pendingElement != nil { workspace.armAtom(value) } }
             .onChange(of: leaving) { value in workspace.pendingAttachmentLeaving = value }
             .onAppear { resetSite(); selection = workspace.selectedAtomIndices.map { String($0 + 1) }.joined(separator: ",") }
             .onChange(of: workspace.selectedAtomIndices) { indices in selection = indices.map { String($0 + 1) }.joined(separator: ",") }
@@ -79,12 +79,12 @@ struct BuilderPanel: View {
                     workspace.buildingHint = enabled ? "Click H/X, or a heavy atom to use its available H/X site. Right-click finishes." : ""
                 })).disabled(fragment.isEmpty)
                 Text("X marks a replaceable attachment site. Clicking a heavy atom uses its first H/X site, or adds a bond if none exist. Check valence, then clean up.").font(.caption).foregroundStyle(.secondary)
+                Button("Add Atom / Periodic Table…") { workspace.presentPeriodicTable() }
                 Picker("Element", selection: $element) { ForEach(BuildingProject.elements, id: \.self) { Text($0).tag($0) } }
                 HStack { TextField("Element", text: $element).frame(width: 48); Button("Insert") { workspace.editElement(element, insert: true) }; Button("Replace") { workspace.editElement(element, insert: false) }.disabled(workspace.selectedAtomIndices.isEmpty) }
                 Toggle("Click to add this atom", isOn: Binding(get: { workspace.pendingElement != nil }, set: { enabled in
-                    workspace.pendingAttachment = nil; workspace.isDraggingEnabled = false
-                    workspace.pendingElement = enabled ? element : nil
-                    workspace.buildingHint = enabled ? "Click an atom to add \(element). Right-click finishes." : ""
+                    if enabled { workspace.atomPlacementMode = .bond; workspace.armAtom(element) }
+                    else { workspace.pendingElement = nil; workspace.buildingHint = "" }
                 })).disabled(element == "X")
                 if !workspace.buildingHint.isEmpty { Text(workspace.buildingHint).font(.caption).foregroundStyle(.blue) }
                 Button("Remove unused X sites") {

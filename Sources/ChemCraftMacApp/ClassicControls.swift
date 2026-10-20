@@ -29,9 +29,14 @@ struct ClassicMenuBar: View {
             Menu("Edit") {
                 Button("Undo") { workspace.undoGeometry() }.disabled(!workspace.canUndoGeometry)
                 Button("Redo") { workspace.redoGeometry() }.disabled(!workspace.canRedoGeometry)
-                Button("Fragment Library…") { workspace.presentFragmentLibrary() }
                 Button("Duplicate Selected") { workspace.duplicateSelectedAtoms() }
                 Button("Delete Selected") { workspace.deleteSelectedAtoms() }
+            }
+            Menu("Build") {
+                Button("Fragment Library…") { workspace.presentFragmentLibrary() }
+                Button("Add Atom…") { workspace.presentPeriodicTable() }
+                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible)
+                Button("Finish Placement") { workspace.clearSelection() }
             }
             Menu("View") {
                 ForEach(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine"], id: \.self) { tab in Button(tab) { workspace.activeTab = tab } }

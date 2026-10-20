@@ -180,3 +180,12 @@ Press **Command-B** or **+** to open the fragment preview gallery. Choose a stru
 ### Building camera fix (0.9.2)
 
 Corrected fragment placement depth so zooming no longer clips newly placed structures away. Zoom is controlled and anchored at the pointer; off-center structures rotate around their own center. The placement banner includes **Fit all**. Existing saved coordinates are preserved; review/rebuild assemblies affected by the earlier placement-depth bug.
+
+### Atom placement and editable elements (0.9.3)
+
+Use **Build → Add Atom…** (Cmd-Shift-A) to open the periodic table. Select
+**Replace element** or **Add bonded atom**, then an element and click in the
+molecule view. Empty space places a new atom; right-click finishes. Switch modes
+in the placement bar. **Build → Fragment Library…** (Cmd-B) retains the fragment
+previews. In **Coord**, type an element symbol or atomic number and click
+**Apply**; element edits support Undo and preserve coordinates.
