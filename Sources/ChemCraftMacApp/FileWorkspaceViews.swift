@@ -38,9 +38,9 @@ struct DocumentTabStrip: View {
 
 struct RemoteExplorerView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
-    @ObservedObject private var remote = RemoteConnection.shared
+    @ObservedObject var remote = RemoteConnection.shared
     @State private var directory = ""
-    @State private var allFiles = false
+    @State private var allFiles = true
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -52,21 +52,30 @@ struct RemoteExplorerView: View {
             }.buttonStyle(.plain)
             Text(remote.profile.host.isEmpty ? "Choose a connection in Settings" : remote.profile.host).font(.caption).foregroundStyle(.secondary)
             HStack {
+                Button { remote.loadExplorerFolder("~", makeRoot: true) } label: { Image(systemName: "house") }.help("Remote home folder").disabled(remote.busy)
+                Button { remote.loadExplorerFolder(URL(fileURLWithPath: remote.explorerRoot).deletingLastPathComponent().path, makeRoot: true) } label: { Image(systemName: "arrow.up") }.help("Parent folder").disabled(remote.busy || remote.explorerRoot.isEmpty || remote.explorerRoot == "/")
                 TextField("Remote folder", text: $directory).font(.caption).onSubmit { remote.loadExplorerFolder(directory, makeRoot: true) }
                 Button("Go") { remote.loadExplorerFolder(directory, makeRoot: true) }.disabled(remote.busy)
             }
             Toggle("Show all files", isOn: $allFiles).font(.caption).toggleStyle(.checkbox)
-            if remote.explorerRoot.isEmpty {
+            if remote.explorerRoot.isEmpty || remote.explorerNodes[remote.explorerRoot] == nil {
+                Text(remote.busy ? "Loading remote folder…" : "Folder has not loaded. Browse to connect or retry.").font(.caption).foregroundStyle(.secondary)
                 Button("Browse saved connection") { remote.loadExplorerFolder(remote.profile.directory, makeRoot: true) }.disabled(remote.busy || remote.profile.host.isEmpty)
                 Spacer()
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 3) {
                         ForEach(remote.explorerNodes[remote.explorerRoot] ?? []) { entry in
-                            RemoteExplorerRow(entry: entry, allFiles: allFiles)
+                            RemoteExplorerRow(entry: entry, allFiles: allFiles, remote: remote)
+                        }
+                        if let entries = remote.explorerNodes[remote.explorerRoot] {
+                            if entries.isEmpty { Text("This folder is empty.").font(.caption).foregroundStyle(.secondary) }
+                            else if !allFiles && !entries.contains(where: { $0.directory || $0.isMolecularFile }) {
+                                Text("No molecular files here. Enable Show all files or go to the parent folder.").font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading)
-                }
+                }.frame(minHeight: 100, maxHeight: .infinity)
             }
             if remote.busy { ProgressView().controlSize(.mini) }
             Text(remote.connectionStatus).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
@@ -75,23 +84,23 @@ struct RemoteExplorerView: View {
         .background(Color(nsColor: .controlBackgroundColor))
         .onAppear {
             directory = remote.explorerRoot.isEmpty ? remote.profile.directory : remote.explorerRoot
-            if remote.explorerRoot.isEmpty && !remote.profile.host.isEmpty && !remote.busy { remote.loadExplorerFolder(directory, makeRoot: true) }
         }
-        .onChange(of: remote.explorerRoot) { directory = $0 }
+        .task(id: remote.explorerIdentity) { await remote.ensureExplorerLoaded() }
+        .onChange(of: remote.explorerRoot) { directory = $0.isEmpty ? remote.profile.directory : $0 }
     }
 }
 
 private struct RemoteExplorerRow: View {
     let entry: RemoteConnection.Entry
     let allFiles: Bool
-    @ObservedObject private var remote = RemoteConnection.shared
+    @ObservedObject var remote: RemoteConnection
     @EnvironmentObject private var workspace: WorkspaceStore
-    private var supported: Bool { ["xyz", "out", "log", "inp", "in", "cvproject", "mvproject"].contains(URL(fileURLWithPath: entry.name).pathExtension.lowercased()) }
+    private var supported: Bool { entry.isMolecularFile }
     var body: some View {
         if entry.directory {
             DisclosureGroup(isExpanded: Binding(get: { remote.expandedExplorerPaths.contains(entry.path) }, set: { expanded in remote.toggleExplorerFolder(entry.path, expanded: expanded) })) {
                 if let children = remote.explorerNodes[entry.path] {
-                    ForEach(children) { child in RemoteExplorerRow(entry: child, allFiles: allFiles) }
+                    ForEach(children) { child in RemoteExplorerRow(entry: child, allFiles: allFiles, remote: remote) }
                     if children.isEmpty { Text("Empty folder").font(.caption).foregroundStyle(.secondary) }
                 } else { Text(remote.busy ? "Loading…" : "Expand again to retry").font(.caption).foregroundStyle(.secondary) }
             } label: {

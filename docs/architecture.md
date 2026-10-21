@@ -498,3 +498,13 @@ inline Bohr using0.529177210903Å and delegates XYZ parsing to the existing read
 ParsedDocument has optional charge/multiplicity. Unsupported coordinate forms
 are source-only or explicitly rejected, never fabricated. Input geometries do
 not inherit calculation energies from companion comment lines.
+
+## Explorer loading — 0.10.10
+
+Connection identity invalidation now belongs to RemoteConnection.profile rather
+than the settings sheet. RemoteExplorerView uses a cancellable task keyed by
+profile/host/Python/setup, waits for busy requests, and loads missing root nodes
+once per task. Failed requests keep an explicit manual Browse/Refresh retry;
+there is no indefinite reconnect loop. Recursive rows share their root model.
+All-file default, Home/Parent navigation and minimum list height avoid hidden
+files and collapsed folder contents. Existing persistent SSH/cache is reused.

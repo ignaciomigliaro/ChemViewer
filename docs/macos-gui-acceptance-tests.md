@@ -332,3 +332,13 @@ data/undo and detached renderer/text resources.
 Flags: --document-workspace-smoke-test (synthetic native model/render lifecycle),
 --remote-tree-smoke-test (opt-in isolated live fixture metadata in Downloads).
 Retain existing --smooth-smoke-test and --drawing-labels-smoke-test regressions.
+
+## Explorer initialization — 0.10.10
+
+CV-REMOTE-EXPLORER-001: Show the sidebar while a request is busy; after it ends,
+folder contents must load without reopening settings. Change a connection:
+previous-host contents clear, replacement folder loads. Reopen with a root but
+missing nodes: reload. Directories and ordinary text files are initially visible.
+Home and Parent navigate without another authentication prompt while the master
+is valid. Empty folders and filtered-only files have explanatory messages.
+Native regression flag: --remote-explorer-smoke-test (isolated loopback).

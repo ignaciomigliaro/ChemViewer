@@ -795,3 +795,27 @@ checks caught and fixed stale direct-load camera snapshots and retained closed
 references before release. User AGENTS.md edits remain preserved/excluded. Previous
 0.10.8 CI completed successfully. No actual remote SLURM calculation validation
 was added; this is file/workspace/input-reader scope.
+
+## Remote explorer recovery — 0.10.10 (2026-10-21)
+
+Diagnosed sidebar initialization occurring only onAppear while busy requests
+skip loading, plus delayed settings-sheet invalidation and hidden non-molecular
+files. A cancellable connection-identity task now waits for busy operations and
+loads absent root contents. Profile invalidation lives in the model, independent
+of the sheet. All files initially visible, Home/Parent navigation, explicit
+loading/empty/filter states, and minimum folder-list height added. Manual
+Browse/Refresh remains available after errors without indefinite retries.
+
+Final signed arm64 build32 passes 41 standalone core cases and three migrated
+suites (XCTest remains unavailable with this CLT toolchain). Remote Python16
+passes. Native REMOTE_EXPLORER_PASS verifies busy mount/reload of missing root
+nodes/empty child/connection changes/helper reuse with isolated local fixtures.
+REMOTE_SESSION_PASS verifies persistent RPC/cache/recovery/refresh integrity.
+Live read-only ORCD sidebar displays the saved folder's10entries/9directories;
+window capture inspected. Timing1169ms first/10ms warm/0ms cached, same remote
+helper for timing requests. No jobs submitted or personal calculations modified.
+
+Evidence: /private/tmp/chemviewer-0110-final-build.log, *-python.log,
+*-explorer-final.log, *-session-final.log and *-live.log; scoped window captures
+in Downloads/chemviewer-remote-evidence/{explorer-loading-regression,live-explorer-0110}.png.
+User AGENTS.md edits preserved/excluded. Quit/reopen needed for installed update.

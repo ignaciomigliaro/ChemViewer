@@ -345,3 +345,10 @@ are inferred. Format reference: [ORCA coordinate manual](https://www.faccts.de/d
 
 See [workspace validation](docs/document-workspace-2026-10-21.md) for native, parser
 and live remote evidence and the supported scope.
+
+## Remote explorer fix — 0.10.10
+
+The sidebar waits for an ongoing connection request before loading and reloads
+after connection changes. All files are visible by default; Home/Parent buttons,
+a minimum folder-list height and explicit loading/empty/filter hints make
+navigation clearer. Quit and reopen the installed app to use the update.

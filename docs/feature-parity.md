@@ -338,3 +338,10 @@ companion as separate tabs without a modal. Templates/internal/%coords can show
 Source; expression/annotated rows and Bohr xyzfile are not converted. Multi-input
 charge/spin apply to the first block with a visible warning. No input energies
 or real SLURM execution are inferred/claimed. See document-workspace-2026-10-21.md.
+
+## Explorer initialization — 0.10.10
+
+Sidebar initialization now waits for busy connection requests and follows
+connection identity changes. All files default visible; parent/home controls
+and loading/empty/filter states added. Native regression covers busy mount,
+missing cached nodes, empty child, connection changes and helper reuse.

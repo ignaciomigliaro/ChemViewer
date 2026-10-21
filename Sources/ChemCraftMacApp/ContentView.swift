@@ -62,6 +62,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--remote-explorer-smoke-test") { await RemoteExplorerSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-tree-smoke-test") { await RemoteTreeSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--document-workspace-smoke-test") { await DocumentWorkspaceSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-navigation-smoke-test") { await RemoteNavigationSmokeTest.run() }

@@ -58,7 +58,26 @@ final class RemoteConnection: ObservableObject {
             } catch { if token == serial { status = error.localizedDescription } }
         }
     }
-    @Published var profile = RemoteProfile()
+    var explorerIdentity: String { profile.id.uuidString + "\0" + profile.host + "\0" + profile.python + "\0" + profile.setup }
+    /// One load per visible sidebar/connection identity. Wait for authentication or another request.
+    func ensureExplorerLoaded() async {
+        do { try await Task.sleep(nanoseconds: 350_000_000) } catch { return }
+        let identity = explorerIdentity
+        while busy {
+            do { try await Task.sleep(nanoseconds: 50_000_000) } catch { return }
+            guard identity == explorerIdentity else { return }
+        }
+        guard !Task.isCancelled, identity == explorerIdentity, !profile.host.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              explorerRoot.isEmpty || explorerNodes[explorerRoot] == nil else { return }
+        loadExplorerFolder(explorerRoot.isEmpty ? profile.directory : explorerRoot, makeRoot: true)
+    }
+    @Published var profile = RemoteProfile() {
+        didSet {
+            if oldValue.host != profile.host || oldValue.python != profile.python || oldValue.setup != profile.setup {
+                disconnect(); clearExplorer(); entries = []; selected = nil; editingPath = ""
+            }
+        }
+    }
     @Published var profiles: [RemoteProfile] = []
     @Published var busy = false
     @Published var autoRefresh = false
@@ -88,6 +107,7 @@ final class RemoteConnection: ObservableObject {
         let path: String
         let directory: Bool
         let size: Int64
+        var isMolecularFile: Bool { ["xyz", "out", "log", "inp", "in", "cvproject", "mvproject"].contains(URL(fileURLWithPath: name).pathExtension.lowercased()) }
     }
     private let makeSession: ([String]) throws -> RemoteSSHSession
     init(makeSession: @escaping ([String]) throws -> RemoteSSHSession = { try RemoteSSHSession(arguments: $0) }) {
@@ -361,9 +381,6 @@ struct RemoteConnectionView: View {
                 do { try await Task.sleep(nanoseconds: 10_000_000_000) } catch { break }
                 if remote.autoRefresh && !remote.busy && !remote.profile.config.isEmpty { remote.perform("status", path: remote.profile.config) }
             }
-        }
-        .onChange(of: remote.profile.host + "\0" + remote.profile.python + "\0" + remote.profile.setup) { _ in
-            remote.disconnect(); remote.clearExplorer(); remote.editingPath = ""
         }
         .alert("Run remote ChemRefine workflow?", isPresented: $confirmingRun) {
             Button("Run on SLURM") { remote.perform("run", path: remote.profile.config) }
