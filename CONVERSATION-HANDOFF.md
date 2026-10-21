@@ -924,3 +924,12 @@ production-size performance remain to validate. Do not claim actual BosTMC
 screening succeeded from synthetic fixtures. Prior actual personal ChemRefine
 workflow directories remain untouched. User's preexisting AGENTS.md edits are
 excluded from the release commit.
+
+Release v0.11.0 is installed in both Applications locations and published:
+annotated tag points to a6fe227; main 4cd9ca1 adds whitespace-only cleanup.
+Remote main and peeled tag were verified. Only the preexisting AGENTS.md edit
+remains outside the commit. A supplementary attempt to locate/clean the first
+synthetic HPC fixture timed out after45seconds; that initial fixture/cache may
+remain. The final explicitly tracked test fixture was successfully cleaned.
+Do not remove any user workflow directories to address this; only an exact
+synthetic CSV/seed match and verified cache metadata may be removed.
