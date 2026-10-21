@@ -552,3 +552,37 @@ localized natural filename ordering. A double-click on the label changes the
 root; the disclosure arrow retains tree expansion. Root navigation queues behind
 an ongoing shared request with identity/cancellation guards, and keeps folder
 caching/persistent RPC. Sorting itself makes no network requests.
+
+## BossTMC catalog and candidate documents — 0.11.0
+
+`BossTMCView` / `BossTMCStore` implement a dedicated native screening workspace,
+with a shared source-host catalog, criteria, paginated table, selected-record
+Metal preview, and raw descriptor/source inspector. The ordinary geometry sidebar
+and navigation-key interception are disabled in this tab. A candidate preview
+does not mutate the active molecular document. Opening a candidate uses a
+`DocumentTabs` identity suffix derived from dataset settings and CSV row ID:
+reopening the same record deduplicates, while distinct spin records remain
+independent even when they point at the same XYZ. CSV integral charge and positive
+multiplicity are applied after asynchronous parsing under a viewport generation
+guard; geometry edits are not overwritten. Provenance is recorded as a document
+warning; CSV descriptor energies are not injected into XYZ frame energies.
+
+Original stdlib-only `bostmc_catalog.py` streams CSV into a private SQLite index
+on the source host. Fingerprints use CSV absolute path, size and modification
+nanoseconds. A background process and file lock serialize index creation; an
+atomic rename publishes only complete indexes. Raw source strings coexist with
+numeric shadow columns/indexes. Source changes invalidate the fingerprint;
+malformed records fail rather than silently shifting descriptors. Optional
+source-host cache location supports HPC storage policies. No source files are
+modified and no scheduler job is submitted by indexing.
+
+`remote_bridge.py` embeds this resource ahead of `remote_agent.py`; the existing
+persistent SSH RPC handles catalog start/status/query/detail/files/export.
+Local mode invokes the same resource with JSON request/response files. Generation
+checks reject stale query/preview responses after source or selection changes.
+Result pages contain at most 200 rows (native default 50); selected XYZ retrieval
+uses the existing verified remote-file cache. Filters use bound SQL parameters
+and whitelisted columns. Array aggregates parse JSON/Python literals and exclude
+known atom/index keys from structured records; ambiguous structures need explicit
+dataset validation. Filtered exports stream batches of 500 and retain all raw columns.
+Associated Psi4 outputs are displayed as text, not parsed scientific results.

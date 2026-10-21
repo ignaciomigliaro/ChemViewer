@@ -17,6 +17,11 @@ def remote_path(value):
 
 def execute(request):
     action = request['action']
+    if action.startswith('bostmc-'):
+        if 'BosTMCCatalog' not in globals():
+            from bostmc_catalog import BosTMCCatalog as catalog
+        else: catalog = globals()['BosTMCCatalog']
+        return catalog.execute(request)
     path = remote_path(request.get('path', '~'))
     if action == 'info':
         from importlib.metadata import version

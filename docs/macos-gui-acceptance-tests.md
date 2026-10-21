@@ -387,3 +387,30 @@ persistence assertions. --remote-workflow-smoke-test now holds a valid unsaved
 draft20seconds, probes HTTP, and checks closure. Prior0.10.11 startup acceptance
 ended too early to catch the2-second false-disconnect monitor; that evidence did
 not establish sustained editor stability. No actual cluster calculation submitted.
+
+## BossTMC screening — 0.11.0
+
+CV-BOSTMC-001: Select BossTMC, choose This Mac or an authenticated SSH profile,
+choose a CSV and root containing spin folders. Optionally choose a source-host
+index cache directory. Index CSV; show progress without freezing the window.
+Close/reopen or switch tabs while indexing; an interrupted process must report
+failure/retry rather than a ready partial index. Source CSV/XYZ must be unchanged.
+
+CV-BOSTMC-002: Add metal exact Fe, gap range 1–2 eV, geometry and coordination-number
+criteria against a known fixture. Apply and check AND semantics with independent
+expected rows. Check missing/NaN exclusions, one-sided bounds, text filters,
+array any/all/mean and unit labels. A reversed/invalid range must show an error.
+Verify column choices, numeric ordering, previous/next pages and CSV export with
+all original columns/precision. Edit the source CSV; reindex must reflect it.
+
+CV-BOSTMC-003: Select a candidate, verify atom identities/coordinates and full raw
+properties; inspect associated Psi4 source without confusing it with parsed
+energies. Choose another XYZ if several are found. Open in viewer: charge and
+multiplicity must follow the CSV. Open the same row twice: one document; open a
+different spin row sharing refcode/XYZ: separate document with its own multiplicity.
+Change filters or quickly select rows during transfer: late data must not replace
+the current selection. Switch ordinary document tabs and confirm camera/edits.
+
+Automated native fixture acceptance and synthetic real-SSH acceptance pass for
+this release; actual BosTMC record checks and large production-catalog timing
+remain pending the real source paths. Native test flag: `--bostmc-smoke-test`.

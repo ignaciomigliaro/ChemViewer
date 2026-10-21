@@ -387,3 +387,36 @@ In the remote explorer, use the dropdown beside **Show all files** to choose
 without regard to case and numbered names sort naturally. Your choice is saved.
 Double-click a folder name to enter it; its disclosure arrow still expands the
 folder tree. Home and Parent return to other locations using the existing channel.
+
+## BossTMC catalyst screening — 0.11.0
+
+Open **BossTMC** to screen a BosTMC property CSV on **SSH / HPC** or **This Mac**.
+For HPC data, connect using **SSH settings…**, browse to the CSV, and set **Root**
+to the directory containing `singlets`, `doublets`, `triplets`, `quartets`,
+`quintets`, and `sextets`. Click **Index CSV**. An optional **Index cache** path
+places the rebuildable SQLite index on a source-host filesystem of your choice;
+the default is `~/.cache/ChemViewer/BossTMC`. Indexing runs in the background on
+the source computer; ChemViewer transfers result pages and selected files rather
+than downloading the full dataset. Allow time and disk space for the first index.
+
+Use **Add property filter** for metal, oxidation state, multiplicity, geometry,
+coordination number, HOMO/LUMO or excitation gaps, dipole, spin contamination,
+spin-state energy differences, atomization energies, or other CSV columns.
+Numeric ranges are inclusive, use the original column units, and combine with
+AND. Array fields such as metal–ligand distances support any/all values, mean,
+minimum, and maximum. Numeric criteria exclude missing/nonfinite values.
+**Apply filters** updates the candidates; choose columns and sort explicitly.
+No descriptor is automatically interpreted as catalytic activity.
+
+Select a row for its XYZ preview and full, copyable CSV descriptors. Source
+values retain their precision; different spin-state rows remain separate.
+**Open XYZ in viewer** opens an independent document with the CSV charge and
+multiplicity. If multiple geometries are found, choose **XYZ geometry** first.
+The associated-files menu opens Psi4 `.dat` output as source text; this is not a
+Psi4 results parser. **Export candidates…** writes all source columns for the
+current criteria to a local CSV. The source dataset is never edited.
+
+The supplied 43-column schema, synthetic local catalog, native preview, document
+metadata, and synthetic SSH workflow are tested. The user's actual BosTMC CSV,
+array encodings, folder names, and large-catalog performance require validation
+against the real dataset paths.

@@ -1,0 +1,62 @@
+import AppKit
+import ChemCraftCore
+
+@MainActor
+enum BossTMCSmokeTest {
+    static var started=false
+    static func run(workspace: WorkspaceStore) async {
+        guard !started else{return};started=true
+        let model=BossTMCStore.shared,defaults=UserDefaults.standard
+        let oldCSV=defaults.object(forKey:"BossTMCCSV"),oldRoot=defaults.object(forKey:"BossTMCRoot"),oldCache=defaults.object(forKey:"BossTMCCache")
+        let directory=FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-bostmc-"+UUID().uuidString)
+        func restore(){model.invalidate();if let oldCSV{defaults.set(oldCSV,forKey:"BossTMCCSV")}else{defaults.removeObject(forKey:"BossTMCCSV")};if let oldRoot{defaults.set(oldRoot,forKey:"BossTMCRoot")}else{defaults.removeObject(forKey:"BossTMCRoot")};if let oldCache{defaults.set(oldCache,forKey:"BossTMCCache")}else{defaults.removeObject(forKey:"BossTMCCache")}}
+        func pause() async {try? await Task.sleep(nanoseconds:100_000_000)}
+        func require(_ value:Bool,_ message:String) throws {if !value{throw ParseError.malformed(message)}}
+        defer{restore();try? FileManager.default.removeItem(at:directory)}
+        do{
+            try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+            let xyz="7\nIndependent synthetic FeN6 GUI fixture\nFe 0 0 0\nN 2 0 0\nN -2 0 0\nN 0 2 0\nN 0 -2 0\nN 0 0 2\nN 0 0 -2\n"
+            for spin in ["singlets","triplets"]{
+                let folder=directory.appendingPathComponent(spin+"/HUNJAE_comp_0");try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
+                try xyz.write(to:folder.appendingPathComponent("structure.xyz"),atomically:true,encoding:.utf8)
+                try "Synthetic Psi4 source fixture; no actual calculation.\nCSV descriptors are separate.\n".write(to:folder.appendingPathComponent("psi4.dat"),atomically:true,encoding:.utf8)
+            }
+            let csv="refcode,xyz,spinmult,metal,charge,geometry,coordination_number,electronic_energy_Eh,energetic_gap_eV,metal_ligand_bond_lengths\nHUNJAE_comp_0,structure.xyz,1,Fe,2,octahedral,6,-100.123456789012,1.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\nHUNJAE_comp_0,structure.xyz,3,Fe,2,octahedral,6,-100.0,0.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\n"
+            let file=directory.appendingPathComponent("catalog.csv");try csv.write(to:file,atomically:true,encoding:.utf8)
+            model.remote=false;model.csvPath=file.path;model.rootPath=directory.path;model.cachePath=directory.appendingPathComponent("index-cache").path;workspace.activeTab="BossTMC"
+            for _ in 0..<4{await pause()};model.index()
+            for _ in 0..<300{if !model.busy && model.validCatalog && model.rows.count==2{break};await pause()}
+            try require(model.rows.count==2 && model.matched==2,"Native catalog failed to index/query: "+model.status)
+            model.filters=[.init(property:"metal",mode:"exact",text:"Fe"),.init(property:"energetic_gap_eV",mode:"range",lower:"1.0",upper:"2.0")]
+            model.query(reset:true)
+            for _ in 0..<100{if !model.busy{break};await pause()}
+            try require(model.matched==1 && model.rows.first?.values["spinmult"]=="1","Native filters combined spin records or wrong ranges")
+            model.select(model.rows[0].id)
+            for _ in 0..<100{if !model.selecting{break};await pause()}
+            try require(model.frame?.atoms.count==7 && model.frame?.atoms[0].element=="Fe","Candidate XYZ preview failed: "+model.selectionStatus)
+            try require(abs(model.frame!.atoms[1].position.x-2)<1e-6 && model.details["electronic_energy_Eh"]=="-100.123456789012","Preview coordinates or raw energy precision changed")
+            guard let source=model.files.first(where:{$0.kind=="dat"}) else{throw ParseError.malformed("Associated Psi4 .dat not located")}
+            model.openSource(source)
+            for _ in 0..<100{if model.sourcePresented{break};await pause()}
+            try require(model.sourceText.contains("Synthetic Psi4 source"),"Psi4 raw source viewer failed")
+            model.sourcePresented=false
+            let evidence=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/chemviewer-bostmc-evidence")
+            try FileManager.default.createDirectory(at:evidence,withIntermediateDirectories:true)
+            for _ in 0..<4{await pause()}
+            if let window=NSApp.windows.first(where:{$0.isVisible && $0.sheetParent==nil}),let image=CGWindowListCreateImage(.null,.optionIncludingWindow,CGWindowID(window.windowNumber),[.boundsIgnoreFraming,.bestResolution]),let png=NSBitmapImageRep(cgImage:image).representation(using:.png,properties:[:]){try png.write(to:evidence.appendingPathComponent("bostmc-native.png"))}
+            let count=workspace.documents!.files.count
+            model.openInViewer(workspace)
+            for _ in 0..<100{if !workspace.documents!.activeWorkspace.isLoading && workspace.documents!.activeWorkspace.charge==2{break};await pause()}
+            try require(workspace.documents!.files.count==count+1 && workspace.documents!.activeWorkspace.currentFrame?.atoms.count==7,"Selected XYZ failed to open as an independent document tab")
+            try require(workspace.documents!.activeWorkspace.charge==2 && workspace.documents!.activeWorkspace.multiplicity==1,"CSV charge/spin did not follow the geometry")
+            model.openInViewer(workspace);try require(workspace.documents!.files.count==count+1,"Reopening the same catalog record duplicated its tab")
+            model.select(2)
+            for _ in 0..<100{if !model.selecting{break};await pause()}
+            model.openInViewer(workspace)
+            for _ in 0..<100{if !workspace.documents!.activeWorkspace.isLoading && workspace.documents!.activeWorkspace.multiplicity==3{break};await pause()}
+            try require(workspace.documents!.files.count==count+2 && workspace.documents!.activeWorkspace.multiplicity==3,"Distinct spin record did not retain an independent document and multiplicity")
+            try require(try String(contentsOf:file,encoding:.utf8)==csv,"Catalog source CSV was modified")
+            restore();try? FileManager.default.removeItem(at:directory);print("BOSTMC_PASS: native catalog indexing, AND filters, separate spin records, 7-atom XYZ preview/exact coordinates, full CSV energy precision, associated Psi4 source sheet, independent/deduplicated viewer tabs, CSV charge/spin propagation and separate triplet document, unchanged source CSV. Synthetic fixtures only.");fflush(stdout);exit(0)
+        }catch{restore();try? FileManager.default.removeItem(at:directory);print("BOSTMC_FAIL: \(error)");fflush(stdout);exit(1)}
+    }
+}

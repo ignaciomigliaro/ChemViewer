@@ -15,8 +15,9 @@ final class DocumentTabs: ObservableObject {
         let workspace: WorkspaceStore
         var url: URL?
         var origin: RemoteFileOrigin?
+        var identitySuffix = ""
         @MainActor var title: String { workspace.document?.title ?? url?.lastPathComponent ?? "Untitled" }
-        var key: String? { origin?.key ?? url?.standardizedFileURL.path }
+        var key: String? { (origin?.key ?? url?.standardizedFileURL.path).map { $0 + identitySuffix } }
     }
     @Published private(set) var files: [FileTab] = []
     @Published var pendingClose: UUID?
@@ -40,8 +41,8 @@ final class DocumentTabs: ObservableObject {
         guard let existing = files.first(where: { $0.key == origin.key }) else { return false }
         activate(existing.id); return true
     }
-    @discardableResult func open(_ url: URL, origin: RemoteFileOrigin? = nil, companions: [String:URL] = [:], reload: Bool = false) -> WorkspaceStore {
-        let key = origin?.key ?? url.standardizedFileURL.path
+    @discardableResult func open(_ url: URL, origin: RemoteFileOrigin? = nil, identitySuffix: String = "", companions: [String:URL] = [:], reload: Bool = false) -> WorkspaceStore {
+        let key = (origin?.key ?? url.standardizedFileURL.path) + identitySuffix
         if let existing = files.first(where: { $0.key == key }) {
             activate(existing.id)
             if reload {
@@ -59,7 +60,7 @@ final class DocumentTabs: ObservableObject {
             attach(workspace); files.append(FileTab(id: workspace.documentIdentity, workspace: workspace))
             activate(workspace.documentIdentity)
         }
-        if let index = files.firstIndex(where: { $0.id == workspace.documentIdentity }) { files[index].url = url; files[index].origin = origin }
+        if let index = files.firstIndex(where: { $0.id == workspace.documentIdentity }) { files[index].url = url; files[index].origin = origin; files[index].identitySuffix = identitySuffix }
         workspace.open(url, externalXYZFiles: companions)
         return workspace
     }

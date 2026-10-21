@@ -12,6 +12,11 @@ import sys
 import tempfile
 
 
+def remote_agent_source():
+    source = Path(__file__).with_name('bostmc_catalog.py').read_text()
+    return ('_BOSTMC_SOURCE = '+repr(source)+'\nexec(compile(_BOSTMC_SOURCE,"<bostmc-catalog>","exec"))\n').encode() + Path(__file__).with_name('remote_agent.py').read_bytes()
+
+
 def ssh_arguments(profile, agent, persistent=False):
     host = profile.get('host', '').strip()
     if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@:-]*', host):
@@ -89,7 +94,7 @@ def run(request):
     profile = request['profile']
     payload = request['request']
     if payload['action'] == 'connection-command':
-        agent = Path(__file__).with_name('remote_agent.py').read_bytes()
+        agent = remote_agent_source()
         arguments = ssh_arguments(profile, agent, persistent=True)
         return dict(arguments=arguments)
     if payload['action'] == 'gui-command':
@@ -141,7 +146,7 @@ finally:
         return dict(terminal=name)
     if payload['action'] == 'upload':
         payload['files'] = collect_workflow(request['folder'])
-    agent = Path(__file__).with_name('remote_agent.py').read_bytes()
+    agent = remote_agent_source()
     args = ssh_arguments(profile, agent)
     result = ssh_exchange(args, json.dumps(payload).encode())
     lines = result.stdout.decode('utf-8', errors='replace').splitlines()

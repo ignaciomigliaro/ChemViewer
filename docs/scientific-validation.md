@@ -374,3 +374,38 @@ Evidence: /private/tmp/chemviewer-0112-final-build.log, *-python.log,
 Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
 remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
 AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.
+
+## BossTMC screening — 0.11.0 / build35 (2026-10-21)
+
+The 18 new independent `python_tests.test_bostmc` cases plus 48 existing chemistry,
+drawing, workflow and remote tests pass (66 total). Oracles cover quoted/multiline
+CSV/BOM, all 43 supplied headers, duplicate-refcode spin rows, exact raw energy
+strings, numeric AND filters, missing/nonfinite exclusions, array same-entry
+bounds and structured bond/index separation, sorted pages, injection rejection,
+source-change invalidation, malformed rows, inline XYZ, spin-directory file
+lookup, background startup and a 1050-row streamed export. Array descriptors retain
+their source encoding and units; nested tuple encodings containing mixed indices
+and values require dataset-specific inspection before scientific use.
+
+Native `--bostmc-smoke-test` passes on this Mac with synthetic FeN6 (seven atoms,
+independent 2 Å coordinates), singlet/triplet CSV records and artificial energies.
+It verifies exact energy text, combined filters, source text, independent/deduplicated
+viewer documents, charge 2/spin 1 and spin 3 propagation, and unchanged input CSV.
+Native document-workspace regression verifies 50 switches and unchanged view/edit
+state. Persistent remote-session loopback verifies helper reuse and recovery.
+The mandatory signed arm64 build passes 41 standalone core assertions plus 3
+migrated suites; XCTest is unavailable in the installed Command Line Tools.
+No core parser changed for this feature.
+
+A real authenticated SSH test indexed an exclusively created synthetic catalog,
+combined electronic/geometric criteria, preserved raw energy precision and spin
+records, resolved the singlet XYZ/Psi4 files, SHA-verified selected geometry bytes,
+and exported filtered CSV. Its final run verified cleanup of the exact synthetic
+dataset and private index. No calculation or scheduler submission occurred.
+Local evidence is under `/private/tmp/chemviewer-bostmc-*` and
+`~/Downloads/chemviewer-bostmc-evidence/bostmc-native.png`; it is not shipped.
+
+Limits: the actual BosTMC CSV/root paths are pending. No real catalyst descriptor
+has been independently checked; production-scale timing/quota behavior and exact
+array encodings remain unvalidated. Screening criteria select records, not proven
+catalytic activity. Psi4 `.dat` is source inspection only.

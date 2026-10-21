@@ -889,3 +889,38 @@ Evidence: /private/tmp/chemviewer-0112-final-build.log, *-python.log,
 Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
 remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
 AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.
+
+## 0.11.0 / build35 — BossTMC catalyst screening (2026-10-21)
+
+User requested a BossTMC tab for an HPC-hosted BosTMC property CSV with 43 columns
+and singlets/doublets/triplets/quartets/quintets/sextets/refcode structure folders.
+Implemented native tab with source-host background SQLite index, SSH/local source
+and optional index-cache path, AND property screening, scalar/array/text/missing
+criteria, sort/columns/pages, selected native Metal preview, copyable raw descriptors,
+associated XYZ/Psi4/MOL2 source, independent viewer documents and streamed CSV export.
+CSV energies/units remain raw; charge/multiplicity propagate to candidate documents.
+Distinct CSV spin rows sharing XYZ do not merge; normal document identity unchanged.
+No Psi4 results parser or activity predictor is claimed.
+
+New files: BossTMCStore.swift, BossTMCView.swift, BossTMCSmokeTest.swift,
+Resources/bostmc_catalog.py, python_tests/test_bostmc.py. The remote bridge embeds
+the catalog resource into the existing persistent agent; no separate SSH login
+per query and no full dataset download. Indexing is a source-host background
+process, not a SLURM calculation; users choose a cache path appropriate to the HPC.
+
+Validation:66 Python tests (18 new), signed arm64 mandatory build/core 41+3,
+native BossTMC charge/spin and preview acceptance, document workspace regression,
+persistent remote-session regression, real SSH synthetic catalog/filter/XYZ/source
+lookup/CSV export with final verified cleanup; no scheduler jobs submitted.
+Evidence: `/private/tmp/chemviewer-bostmc-python-release.log`,
+`chemviewer-bostmc-release-native.log`, `chemviewer-bostmc-documents.log`,
+`chemviewer-bostmc-remote-session.log`, `chemviewer-bostmc-hpc-final.log`,
+`chemviewer-bostmc-release35-final.log`; native screenshot in
+`~/Downloads/chemviewer-bostmc-evidence/bostmc-native.png`.
+
+Pending: user has not supplied the actual CSV and dataset-root paths (async
+question already asked). Actual schema encodings, real-record provenance and
+production-size performance remain to validate. Do not claim actual BosTMC
+screening succeeded from synthetic fixtures. Prior actual personal ChemRefine
+workflow directories remain untouched. User's preexisting AGENTS.md edits are
+excluded from the release commit.

@@ -80,8 +80,10 @@ private struct RemoteWorkflowWebView: NSViewRepresentable {
 
 /// Native SSH path picker; never invokes NSOpenPanel for remote operations.
 struct RemoteWorkflowPicker: View {
-    enum Kind: String, Identifiable { case folder, workflow; var id: String { rawValue } }
+    enum Kind: String, Identifiable { case folder, workflow, catalogCSV; var id: String { rawValue } }
     let kind: Kind
+    var title: String? = nil
+    var buttonTitle: String? = nil
     let choose: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var remote = RemoteConnection.shared
@@ -95,7 +97,7 @@ struct RemoteWorkflowPicker: View {
     @State private var requestID = UUID()
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(kind == .folder ? "Create workflow in remote folder" : "Open remote workflow").font(.headline)
+            Text(title ?? (kind == .folder ? "Create workflow in remote folder" : "Open remote workflow")).font(.headline)
             Text(remote.profile.host).font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button("Home") { load("~") }; Button("Parent") { load(parent) }
@@ -103,7 +105,7 @@ struct RemoteWorkflowPicker: View {
                 Button("Go") { load(directory) }
             }.disabled(loading)
             List(selection: $selected) {
-                ForEach(entries.filter { $0.directory || (kind == .workflow && ["yaml","yml"].contains(URL(fileURLWithPath: $0.name).pathExtension.lowercased())) }) { entry in
+                ForEach(entries.filter { $0.directory || ((kind == .workflow ? ["yaml","yml"] : kind == .catalogCSV ? ["csv"] : []).contains(URL(fileURLWithPath: $0.name).pathExtension.lowercased())) }) { entry in
                     Label(entry.name, systemImage: entry.directory ? "folder" : "doc.text").tag(entry.path)
                         .contentShape(Rectangle()).onTapGesture(count: 2) {
                             if entry.directory { load(entry.path) }
@@ -116,9 +118,9 @@ struct RemoteWorkflowPicker: View {
             HStack {
                 Text("Double-click folders to navigate.").font(.caption).foregroundStyle(.secondary)
                 Spacer(); Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(kind == .folder ? "Create here" : "Open") {
+                Button(buttonTitle ?? (kind == .folder ? "Create here" : "Open")) {
                     choose(kind == .folder ? directory : selected!); dismiss()
-                }.keyboardShortcut(.defaultAction).disabled(loading || runtime.busy || !error.isEmpty || directory.isEmpty || (kind == .workflow && !entries.contains { $0.path == selected && !$0.directory }))
+                }.keyboardShortcut(.defaultAction).disabled(loading || runtime.busy || !error.isEmpty || directory.isEmpty || (kind != .folder && !entries.contains { $0.path == selected && !$0.directory }))
             }
         }.padding(18).frame(minWidth: 640, minHeight: 450)
         .task { load(remote.explorerRoot.isEmpty ? remote.profile.directory : remote.explorerRoot) }

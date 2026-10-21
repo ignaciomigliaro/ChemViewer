@@ -362,3 +362,21 @@ Explicit per-binding forward/cancel ownership; remote idle/draft/HTTP survival
 regression extends beyond the monitor interval. Explorer adds persisted Name or
 Extension sorting for roots/children and native-tested double-click folder entry
 with cached return on the same helper. No new SLURM scientific validation.
+
+## BossTMC screening — 0.11.0
+
+Implemented independent catalyst-candidate browser for local or SSH-hosted CSVs:
+background source-host indexing, configurable cache location, all-column AND
+criteria, numeric/array/text/missing-value filters, sorting, column selection,
+pagination, raw descriptor copy, filtered CSV export, native XYZ preview and
+associated Psi4/MOL2 source inspection. Spin-state records remain separate;
+opening a viewer document propagates CSV charge and multiplicity without merging
+states that share geometry paths. Existing molecule editing/analysis remains
+available after opening the candidate.
+
+Tested with the supplied 43-column schema and independently generated synthetic
+records, including a native 7-atom geometry, two spin states, exact energy strings,
+and real SSH transfer/index/query/export. No actual BosTMC scientific record or
+large production CSV has been validated: SSH CSV/root paths are still pending.
+Psi4 scientific-output parsing, catalytic-activity prediction, automatic
+mechanistic ranking and dataset-specific semantic interpretation are not claimed.
