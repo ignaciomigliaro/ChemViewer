@@ -366,3 +366,24 @@ Downloads/chemviewer-remote-evidence/live-workflow-test.json (not committed).
 --workflow-runner-smoke-test checks the retained local runtime/dashboard against
 actual isolated H2/PySCF. --remote-connection-smoke-test captures simplified settings;
 --remote-explorer-smoke-test retains busy/loading/identity regression coverage.
+
+## Forward ownership and folder ordering — 0.10.12
+
+CV-SSH-WORKFLOW-004: With an authenticated shared SSH connection, open the remote
+editor. Keep a valid unsaved form edit for at least20seconds (past multiple
+monitor polls); its draft and HTTP access must survive the forwarding setup
+process exiting0. Close editor: exact loopback forward is canceled; the shared
+SSH master and user jobs survive. Failed setup must report an error, not ready.
+CV-REMOTE-ORDER-001: Choose Extension beside Show all files. Mixed-case extensions
+group together, folders remain first and b2.out precedes b10.out. Switch Name,
+then back; selection persists. Check both root and expanded children.
+CV-REMOTE-ORDER-002: Double-click a rendered folder label to enter it. Parent/Home
+return using the same helper/cache. Disclosure arrow still expands tree. An
+ongoing request must not silently swallow a double-click navigation request.
+
+--remote-explorer-smoke-test now locates the rendered synthetic folder label in
+its own window and sends native double-click events, alongside ordering/cache/
+persistence assertions. --remote-workflow-smoke-test now holds a valid unsaved
+draft20seconds, probes HTTP, and checks closure. Prior0.10.11 startup acceptance
+ended too early to catch the2-second false-disconnect monitor; that evidence did
+not establish sustained editor stability. No actual cluster calculation submitted.

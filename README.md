@@ -374,3 +374,16 @@ It requires `chemrefine[gui]` in the configured remote Python environment.
 Closing the editor stops its own GUI process; submitted calculations have an
 independent lifetime. A lost tunnel shows a reconnect message. Existing local
 editor/run controls remain separate and available.
+
+## Remote editor stability and explorer navigation — 0.10.12
+
+Fixed a false disconnect: OpenSSH's shared connection owns a successfully created
+port forward, even after its setup command exits. The editor now waits for a
+successful forwarding acknowledgement and monitors its GUI session instead.
+Closing the editor explicitly cancels only its own loopback binding.
+
+In the remote explorer, use the dropdown beside **Show all files** to choose
+**Name** or **Extension** sorting. Folders stay first; extensions are grouped
+without regard to case and numbered names sort naturally. Your choice is saved.
+Double-click a folder name to enter it; its disclosure arrow still expands the
+folder tree. Home and Parent return to other locations using the existing channel.

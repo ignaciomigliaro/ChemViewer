@@ -14,6 +14,7 @@ final class RemoteWorkflowRuntime: ObservableObject {
     @Published var results = ""
     private var server: Process?
     private var tunnel: Process?
+    private var cancelForwardArguments: [String]?
     private var input: Pipe?
     private var browser: WKWebView?
     private var delegate: RemoteWorkflowDelegate?
@@ -30,7 +31,13 @@ final class RemoteWorkflowRuntime: ObservableObject {
         generation += 1
         try? input?.fileHandleForWriting.close(); input = nil
         // EOF tells our remote wrapper to terminate its own GUI child; no user jobs are killed.
-        tunnel?.terminate(); tunnel = nil
+        if let tunnel, tunnel.isRunning { tunnel.terminate() }; tunnel = nil
+        if let args = cancelForwardArguments {
+            let cancel = Process(); cancel.executableURL = URL(fileURLWithPath: args[0]); cancel.arguments = Array(args.dropFirst())
+            cancel.standardInput = FileHandle.nullDevice; cancel.standardOutput = FileHandle.nullDevice; cancel.standardError = FileHandle.nullDevice
+            try? cancel.run() // Cancel only this loopback binding, never the shared SSH master.
+        }
+        cancelForwardArguments = nil
         if let job = server {
             Task { try? await Task.sleep(nanoseconds: 7_000_000_000); if job.isRunning { job.terminate() } }
         }
@@ -67,14 +74,25 @@ final class RemoteWorkflowRuntime: ObservableObject {
                 guard let remoteURL, let port = remoteURL.port else { throw ParseError.malformed("Remote editor startup timed out. Check SSH settings and the remote GUI installation.") }
                 let forward = try await remote.localRequest(["action":"tunnel-command", "port":port], profile: profile)
                 guard token == generation, let forwardArgs = forward["arguments"] as? [String], let localPort = forward["port"] as? Int else { return }
+                guard let cancellation = forward["cancel_arguments"] as? [String] else { throw ParseError.malformed("Missing SSH forwarding cleanup command.") }
+                cancelForwardArguments = cancellation
                 let link = Process(); link.executableURL = URL(fileURLWithPath: forwardArgs[0]); link.arguments = Array(forwardArgs.dropFirst())
                 link.standardInput = FileHandle.nullDevice; link.standardOutput = output; link.standardError = output; try link.run(); tunnel = link
+                var confirmed = false
+                for _ in 0..<100 {
+                    guard token == generation else { return }
+                    if !link.isRunning {
+                        guard link.terminationStatus == 0 else { throw ParseError.malformed("SSH could not create the editor forward. Reconnect in SSH settings and retry.") }
+                        confirmed = true; break
+                    }
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                guard confirmed else { throw ParseError.malformed("SSH forwarding setup timed out.") }
                 var components = URLComponents(url: remoteURL, resolvingAgainstBaseURL: false)!; components.port = localPort
                 let local = components.url!
                 var ready = false
                 for _ in 0..<60 {
                     guard token == generation else { return }
-                    guard link.isRunning else { throw ParseError.malformed("SSH forwarding failed. Reconnect in SSH settings, then reopen the remote editor.") }
                     var request = URLRequest(url: local); request.timeoutInterval = 1
                     if let (_, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200 { ready = true; break }
                     try await Task.sleep(nanoseconds: 150_000_000)
@@ -86,7 +104,7 @@ final class RemoteWorkflowRuntime: ObservableObject {
                     while token == generation {
                         try? await Task.sleep(nanoseconds: 2_000_000_000)
                         guard token == generation else { return }
-                        if !job.isRunning || !link.isRunning { stop(); status = "Remote editor disconnected. Reopen it to reconnect; submitted jobs continue independently."; return }
+                        if !job.isRunning { stop(); status = "Remote editor disconnected. Reopen it to reconnect; submitted jobs continue independently."; return }
                     }
                 }
             } catch { if token == generation { stop(); status = error.localizedDescription } }

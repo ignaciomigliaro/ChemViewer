@@ -24,6 +24,33 @@ final class RemoteConnection: ObservableObject {
     @Published var explorerVisible = UserDefaults.standard.bool(forKey: "ChemViewerRemoteExplorerVisible") {
         didSet { UserDefaults.standard.set(explorerVisible, forKey: "ChemViewerRemoteExplorerVisible") }
     }
+    enum ExplorerOrder: String, CaseIterable { case name = "Name", fileExtension = "Extension" }
+    @Published var explorerOrder = ExplorerOrder(rawValue: UserDefaults.standard.string(forKey: "ChemViewerRemoteExplorerOrder") ?? "") ?? .name {
+        didSet { UserDefaults.standard.set(explorerOrder.rawValue, forKey: "ChemViewerRemoteExplorerOrder") }
+    }
+    func sortedExplorerEntries(_ path: String) -> [Entry] {
+        (explorerNodes[path] ?? []).sorted {
+            if $0.directory != $1.directory { return $0.directory }
+            if explorerOrder == .fileExtension && !$0.directory {
+                let a = URL(fileURLWithPath: $0.name).pathExtension.lowercased()
+                let b = URL(fileURLWithPath: $1.name).pathExtension.lowercased()
+                if a != b { return a < b }
+            }
+            let comparison = $0.name.localizedStandardCompare($1.name)
+            return comparison == .orderedSame ? $0.path < $1.path : comparison == .orderedAscending
+        }
+    }
+    private var folderNavigation = 0
+    func enterExplorerFolder(_ path: String) {
+        folderNavigation += 1; let navigation = folderNavigation
+        if !busy { loadExplorerFolder(path, makeRoot: true); return }
+        let identity = explorerIdentity, cancellation = explorerCancellation
+        Task {
+            while busy { do { try await Task.sleep(nanoseconds: 50_000_000) } catch { return } }
+            guard navigation == folderNavigation, identity == explorerIdentity, cancellation == explorerCancellation else { return }
+            loadExplorerFolder(path, makeRoot: true)
+        }
+    }
     @Published var explorerRoot = ""
     @Published var explorerNodes: [String:[Entry]] = [:]
     @Published var expandedExplorerPaths: Set<String> = []

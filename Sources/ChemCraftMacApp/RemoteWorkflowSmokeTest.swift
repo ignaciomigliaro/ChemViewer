@@ -38,6 +38,16 @@ enum RemoteWorkflowSmokeTest {
                 if ready { break }; try await Task.sleep(nanoseconds: 100_000_000)
             }
             try require(ready, "Remote editor did not load configuration")
+            let connectedURL = runtime.guiURL
+            _ = try await web.evaluateJavaScript("Alpine.$data(document.body).cfg.steps[0].name='unsaved_draft_survives_idle'; true")
+            for _ in 0..<20 {
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                try require(runtime.guiURL == connectedURL, "Editor disconnected after successful forwarding setup: \(runtime.status)")
+            }
+            let draft = try await web.evaluateJavaScript("Alpine.$data(document.body).cfg.steps[0].name") as? String
+            try require(draft == "unsaved_draft_survives_idle", "Connection monitoring reloaded an unsaved draft")
+            let health = try await web.callAsyncJavaScript("const r=await fetch('/'); return r.status;", arguments:[:],in:nil,contentWorld:.page) as? Int
+            try require(health == 200, "Forward stopped serving after setup process exited")
             let config = try await web.evaluateJavaScript("JSON.stringify(Alpine.$data(document.body).cfg)") as! String
             let cfg = try JSONSerialization.jsonObject(with: Data(config.utf8)) as! [String:Any]
             try require(cfg["dispatch"] as? String == "slurm" && cfg["input"] as? String == "seed.xyz", "Remote defaults did not use relative paths and SLURM")
@@ -71,7 +81,16 @@ enum RemoteWorkflowSmokeTest {
             try require(!NSApp.windows.contains(where: { $0.isVisible && $0 is NSOpenPanel }), "Remote operation opened a local file chooser")
             if let image = CGWindowListCreateImage(.null,.optionIncludingWindow,CGWindowID(picker.windowNumber),[.boundsIgnoreFraming,.bestResolution]),let png = NSBitmapImageRep(cgImage:image).representation(using:.png,properties:[:]) { try png.write(to:evidence.appendingPathComponent("remote-workflow-picker.png")) }
             picker.orderOut(nil); picker.contentView = nil
-            print("REMOTE_WORKFLOW_PASS: live SSH editor embedded in ChemRefine tab, remote filesystem browse, exclusive workflow/structure creation, dispatch:slurm and relative-path defaults, saved template draft, native plus web Run/Resume preflight rejects local dispatch; no jobs submitted. Fixture metadata saved for guarded cleanup.")
+            let oldURL = runtime.guiURL!
+            runtime.stop()
+            var closed = false
+            for _ in 0..<30 {
+                var request = URLRequest(url: oldURL); request.timeoutInterval = 0.5
+                if (try? await URLSession.shared.data(for:request)) == nil { closed = true; break }
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+            try require(closed, "Closing editor left its loopback forward listening on the shared master")
+            print("REMOTE_WORKFLOW_PASS: 20-second idle/draft/HTTP survival beyond setup-process exit and exact forwarding cleanup; live SSH editor embedded in ChemRefine tab, remote filesystem browse, exclusive workflow/structure creation, dispatch:slurm and relative-path defaults, saved template draft, native plus web Run/Resume preflight rejects local dispatch; no jobs submitted. Fixture metadata saved for guarded cleanup.")
             restore(); fflush(stdout); exit(0)
         } catch { restore(); print("REMOTE_WORKFLOW_FAIL: \(error)"); fflush(stdout); exit(1) }
     }

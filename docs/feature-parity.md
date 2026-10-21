@@ -354,3 +354,11 @@ Local execution/editor remains available through the same tab's Run on selector.
 SSH settings is a compact connection-only sheet. Live remote GUI, remote drafts,
 creation and non-SLURM rejection tested; local actual PySCF workflow/dashboard
 regression passes. A real SLURM calculation is still not scientifically validated.
+
+## Remote stability/navigation — 0.10.12
+
+Corrected false editor disconnection after successful multiplex forwarding setup.
+Explicit per-binding forward/cancel ownership; remote idle/draft/HTTP survival
+regression extends beyond the monitor interval. Explorer adds persisted Name or
+Extension sorting for roots/children and native-tested double-click folder entry
+with cached return on the same helper. No new SLURM scientific validation.

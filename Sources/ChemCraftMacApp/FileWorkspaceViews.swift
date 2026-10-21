@@ -57,7 +57,13 @@ struct RemoteExplorerView: View {
                 TextField("Remote folder", text: $directory).font(.caption).onSubmit { remote.loadExplorerFolder(directory, makeRoot: true) }
                 Button("Go") { remote.loadExplorerFolder(directory, makeRoot: true) }.disabled(remote.busy)
             }
-            Toggle("Show all files", isOn: $allFiles).font(.caption).toggleStyle(.checkbox)
+            HStack {
+                Toggle("Show all files", isOn: $allFiles).font(.caption).toggleStyle(.checkbox)
+                Spacer(minLength: 2)
+                Picker("Sort", selection: $remote.explorerOrder) {
+                    ForEach(RemoteConnection.ExplorerOrder.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }.labelsHidden().font(.caption).frame(width: 98).help("Sort files by name or extension; folders stay first")
+            }
             if remote.explorerRoot.isEmpty || remote.explorerNodes[remote.explorerRoot] == nil {
                 Text(remote.busy ? "Loading remote folder…" : "Folder has not loaded. Browse to connect or retry.").font(.caption).foregroundStyle(.secondary)
                 Button("Browse saved connection") { remote.loadExplorerFolder(remote.profile.directory, makeRoot: true) }.disabled(remote.busy || remote.profile.host.isEmpty)
@@ -65,7 +71,7 @@ struct RemoteExplorerView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 3) {
-                        ForEach(remote.explorerNodes[remote.explorerRoot] ?? []) { entry in
+                        ForEach(remote.sortedExplorerEntries(remote.explorerRoot)) { entry in
                             RemoteExplorerRow(entry: entry, allFiles: allFiles, remote: remote)
                         }
                         if let entries = remote.explorerNodes[remote.explorerRoot] {
@@ -100,11 +106,15 @@ private struct RemoteExplorerRow: View {
         if entry.directory {
             DisclosureGroup(isExpanded: Binding(get: { remote.expandedExplorerPaths.contains(entry.path) }, set: { expanded in remote.toggleExplorerFolder(entry.path, expanded: expanded) })) {
                 if let children = remote.explorerNodes[entry.path] {
-                    ForEach(children) { child in RemoteExplorerRow(entry: child, allFiles: allFiles, remote: remote) }
+                    ForEach(remote.sortedExplorerEntries(entry.path)) { child in RemoteExplorerRow(entry: child, allFiles: allFiles, remote: remote) }
                     if children.isEmpty { Text("Empty folder").font(.caption).foregroundStyle(.secondary) }
                 } else { Text(remote.busy ? "Loading…" : "Expand again to retry").font(.caption).foregroundStyle(.secondary) }
             } label: {
                 Label(entry.name, systemImage: "folder").lineLimit(1).font(.system(size: 12))
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    .onTapGesture(count: 2) { remote.enterExplorerFolder(entry.path) }
+                    .accessibilityIdentifier("remote-folder:" + entry.path)
+                    .help("Double-click to enter this folder; use the arrow to expand it")
                     .contextMenu { Button("Use as explorer root") { remote.loadExplorerFolder(entry.path, makeRoot: true) } }
             }
         } else if allFiles || supported {

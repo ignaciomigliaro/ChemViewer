@@ -71,7 +71,12 @@ class RemoteTests(unittest.TestCase):
         self.assertNotIn('-fN', gui['arguments']) # GUI lifetime is owned by stdin EOF.
         self.assertIn('ExitOnForwardFailure=yes', forward['arguments'])
         self.assertIn(f"127.0.0.1:{forward['port']}:127.0.0.1:43210", forward['arguments'])
-        self.assertIn('-N', forward['arguments'])
+        self.assertEqual(forward['arguments'][forward['arguments'].index('-O')+1], 'forward')
+        self.assertNotIn('-N', forward['arguments'])
+        cancel = forward['cancel_arguments']
+        self.assertEqual(cancel[cancel.index('-O')+1], 'cancel')
+        self.assertEqual(cancel[cancel.index('-L')+1], forward['arguments'][forward['arguments'].index('-L')+1])
+        self.assertEqual(cancel[-1], profile['host'])
         self.assertEqual(forward['arguments'][-1], profile['host'])
         with self.assertRaisesRegex(ValueError, 'Invalid remote port'):
             bridge.run(dict(profile=profile, request=dict(action='tunnel-command', port=65536)))

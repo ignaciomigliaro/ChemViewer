@@ -849,3 +849,43 @@ Evidence: /private/tmp/chemviewer-0111-final-release-build.log, *-python-all.log
 Downloads/chemviewer-remote-evidence/{remote-chemrefine-tab,remote-workflow-picker,
 remote-browser}.png. Local calculation evidence path is recorded in local-final.
 User AGENTS.md changes preserved and excluded from release commits.
+
+## Multiplex forwarding fix and explorer controls — 0.10.12 (2026-10-21)
+
+Reproduced the user's disconnect with healthy HTTP200 and live GUI process while
+the multiplexed forwarding setup child had already exited0. The old2-second
+monitor treated successful setup as failure. Explicit -O forward/-O cancel now
+tracks master-owned bindings; only the foreground GUI child is monitored as a
+persistent process. Readiness waits for successful control-command completion.
+An independent live proof cancels the exact listener while the GUI child remains
+alive and leaves the user's SSH master untouched. No connection safety settings
+changed. The previous0.10.11 startup test ended before its monitor caught this;
+that startup gate did not establish sustained stability.
+
+Explorer now persists Name/Extension sorting, keeps folders first, groups mixed-
+case extensions, naturally orders numeric names, and sorts recursive children.
+Double-clicking labels enters a folder; disclosure arrows still expand the tree.
+Root navigation can wait behind active RPC without opening a new SSH login.
+
+Build34/0.10.12 signed arm64:41 standalone core assertions +3 migrated suites pass;
+Python48 pass. XCTest unavailable with selected CLT (core not changed). Native
+REMOTE_EXPLORER_PASS verifies ordering/persistence and a real double-click located
+from rendered text in its own window, folder entry and cached return on one helper,
+plus existing busy-load/identity/missing-node checks. Capture inspected. Initial
+accessibility-based test could not locate SwiftUI's lazy label; replaced with
+window-scoped Vision text location and actual AppKit mouse events.
+
+Final live REMOTE_WORKFLOW_PASS holds a valid unsaved draft20seconds across monitor
+polls, verifies draft and HTTP survival after setup exits, remote form/template
+saving, remote picker, SLURM defaults/local-dispatch rejection and forwarding
+closure. An initial test draft used an invalid space-containing step name; fixed
+the synthetic draft to valid underscores, then the full test passed. No actual
+SLURM jobs submitted. REMOTE_SESSION_PASS retains persistent RPC/cache/integrity.
+Exact synthetic remote fixtures removed with home/prefix/seed-hash guards and
+owned-GUI-exit verification; personal calculations/login unchanged.
+
+Evidence: /private/tmp/chemviewer-0112-final-build.log, *-python.log,
+*-explorer2.log, *-remote-final.log, *-session-final.log, *-forward-proof.log;
+Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
+remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
+AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.

@@ -535,3 +535,20 @@ and routed through native save + remote dispatch/scheduler/file preflight for
 all supported launch actions/targets. Native Run/Resume follows the same path;
 status reads saved results without saving pending drafts. Actual form/template
 save runs against the remote GUI API, never the local chemistry runtime.
+
+## SSH forwarding ownership and explorer ordering — 0.10.12
+
+Reproduction demonstrated that a multiplexed `ssh -N -L` can exit0 while the
+master still serves HTTP200. Version0.10.11 incorrectly monitored this setup
+process as a persistent child and stopped the healthy GUI on its2-second poll.
+The bridge now prepares explicit `ssh -O forward` and matching `-O cancel`
+commands. Runtime waits for successful setup completion, probes HTTP readiness,
+monitors only the owned foreground GUI session and cancels the exact forwarding
+binding at stop. It never stops the user's SSH master or submitted jobs.
+
+ExplorerOrder persists Name/Extension selection. Root and recursively expanded
+folders share a directory-first comparator, lowercase extension grouping and
+localized natural filename ordering. A double-click on the label changes the
+root; the disclosure arrow retains tree expansion. Root navigation queues behind
+an ongoing shared request with identity/cancellation guards, and keeps folder
+caching/persistent RPC. Sorting itself makes no network requests.

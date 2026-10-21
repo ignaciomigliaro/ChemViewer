@@ -123,8 +123,12 @@ finally:
             sock.bind(('127.0.0.1', 0))
             local_port = sock.getsockname()[1]
         arguments = ssh_arguments(profile, b'')[:-1]
-        arguments[-1:-1] = ['-N', '-o', 'ExitOnForwardFailure=yes', '-L', f'127.0.0.1:{local_port}:127.0.0.1:{remote_port}']
-        return dict(arguments=arguments, port=local_port)
+        binding = f'127.0.0.1:{local_port}:127.0.0.1:{remote_port}'
+        # A multiplex master owns forwarding. Control commands intentionally exit.
+        arguments[-1:-1] = ['-O', 'forward', '-o', 'ExitOnForwardFailure=yes', '-L', binding]
+        cancel = list(arguments)
+        cancel[cancel.index('forward')] = 'cancel'
+        return dict(arguments=arguments, cancel_arguments=cancel, port=local_port)
     if payload['action'] == 'prepare-upload':
         return dict(files=collect_workflow(request['folder']))
     if payload['action'] == 'authenticate':
