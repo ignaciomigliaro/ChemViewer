@@ -312,3 +312,23 @@ Automated --remote-session-smoke-test exercises native persistent streams and
 cache/refresh/reconnect with a local synthetic helper; --remote-navigation-smoke-test
 is opt-in read-only live timing using the saved authenticated connection. The
 existing --remote-connection-smoke-test covers the native sheet.
+
+## Document workspace — 0.10.9
+
+CV-WORKSPACE-001: Connect/Browse once. Remote tree stays beside the viewer while
+expanding folders/opening xyz,out,inp. Existing geometry/frequency lists remain.
+Open multiple local files, select tabs, reopen an existing file: no duplicate
+tab. Source-only ORCA template displays original text and a limitation message.
+CV-WORKSPACE-002: Rotate/zoom/select and place labels in A; edit/undo in B. Repeated
+switches preserve each file's state, stop inactive playback/workers, retain one
+loaded Image renderer/mesh. Abstract/Draw previews use the correct document.
+Close dirty geometry/drawing: cancel/discard guard. Save project then close.
+Cmd-W closes one active document; last-close leaves an empty workspace.
+CV-WORKSPACE-003: Remote input with an explicit XYZ companion opens the referenced
+geometry in its own file tab; selecting the already-open XYZ activates its tab.
+No silent energy assignment; no source files rewritten. Close releases loaded
+data/undo and detached renderer/text resources.
+
+Flags: --document-workspace-smoke-test (synthetic native model/render lifecycle),
+--remote-tree-smoke-test (opt-in isolated live fixture metadata in Downloads).
+Retain existing --smooth-smoke-test and --drawing-labels-smoke-test regressions.

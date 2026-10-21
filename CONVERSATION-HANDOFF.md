@@ -749,3 +749,49 @@ Evidence /private/tmp/chemviewer-0108-{python-final,validated-build,session-fina
 navigation-final,sheet}.log; final native rechecks below use release-specific
 filenames. User AGENTS.md edit is preserved/excluded from release. Real SLURM
 calculation completion remains untested; this release changes transport only.
+
+## 0.10.9 — persistent remote explorer, document tabs and ORCA inputs
+
+DocumentTabs now owns separate WorkspaceStores per local URL / remote host:path.
+File/Open multi-select and remote reads enter tabs; duplicate opens activate the
+existing tab. DocumentTabStrip is above Image/Abstract/etc, horizontally scrolls
+to activation and supports X/Cmd-W with dirty geometry/drawing protection.
+RemoteExplorerView stays in the main left pane, lazily expands folders on the
+same persistent channel and retains geometry/frequency explorer below. Settings/
+SLURM are still available through its gear. Busy expansions queue, cancel/profile
+changes guard stale replies. Settings change clears obsolete tree/editor context.
+
+Loaded Image tabs reuse one Metal view/mesh. Main and Abstract camera/zoom/label
+snapshots are per file; Draw has versioned preview state. New-source viewport
+generations prevent a previous file's snapshot overwriting new bounds. Inactive
+vibration/trajectory/Draw workers suspend. Detached renderer/coordinator/text
+resources and closed model geometry/source/undo/previews are explicitly cleared.
+Parsed open-tab data remains in RAM. No session restore across app quit; explicit
+exports/calculation jobs retain their independent lifetime.
+
+Core ORCAInputParser supports ordinary *xyz, inline Angstrom/Bohr (including
+%coords Units option before star coordinates), D exponents, charge/spin and
+explicit *xyzfile. Native remote opening fetches companions to individual caches
+and supplies explicit filename mappings without rewriting source/directory paths.
+No-input-geometry templates/internal/%coords can open as Source with limitation
+messages. Extended/expressive atom rows and Bohr xyzfile are not converted.
+Multiple blocks retain first-block spin/charge with a warning; no input SCF energy
+is inferred. ParsedDocument adds optional charge/multiplicity.
+
+Final build31/0.10.9 arm64 strict signature, core41standalone+3migrated, Python45
+pass. Local swift test before/after still lacks XCTest (not a passing XCTest run).
+DOCUMENT_WORKSPACE_PASS:50switches/one renderer+mesh, independent state/undo,
+inactive timers, dirty close, actual Cmd-W, Source templates, Abstract restoration,
+detached resources and closed data cleanup. Smooth pointer/label/PNG/GIF regression
+passes. All persistent-label/skeletal/14-ring-formula/auto-preview/chiral transfer
+native tests pass. Live REMOTE_TREE_PASS verifies tree, child expansion, remote
+XYZ and ORCA xyzfile+companion in separate tabs, exact0.74Å synthetic H2/no inferred
+energies/no jobs. Test preferences restored; exact isolated remote fixture safely
+removed; existing user calculations/login untouched. Window captures inspected.
+
+Evidence: docs/document-workspace-2026-10-21.md and /private/tmp/chemviewer-0109-*
+logs; captures in Downloads document/remote evidence folders (excluded). Native
+checks caught and fixed stale direct-load camera snapshots and retained closed
+references before release. User AGENTS.md edits remain preserved/excluded. Previous
+0.10.8 CI completed successfully. No actual remote SLURM calculation validation
+was added; this is file/workspace/input-reader scope.

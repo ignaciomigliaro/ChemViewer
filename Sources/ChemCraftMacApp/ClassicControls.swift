@@ -18,7 +18,7 @@ struct ClassicMenuBar: View {
     var body: some View {
         HStack(spacing: 22) {
             Menu("File") {
-                Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }
+                Button("New Molecule") { workspace.startNewDocument() }
                 Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
                 Button(workspace.activeTab == "Draw" ? "Save Drawing…" : "Save Project…") { workspace.saveFromMenu() }
                 Button("Remote files & SLURM…") { RemoteConnection.shared.presented = true }

@@ -140,7 +140,10 @@ struct DrawView: View {
             }
             if let result = drawing.preview, let frame = drawing.previewFrame {
                 MoleculeMetalView(frame: frame, mode: nil, isAnimating: false, amplitude: 0, showDisplacementVectors: false,
-                                  style: workspace.renderingStyle, showHydrogens: workspace.showHydrogens, selectedAtomIndices: .constant([]))
+                                  style: workspace.renderingStyle, showHydrogens: workspace.showHydrogens, selectedAtomIndices: .constant([]),
+                                  documentID: workspace.documentIdentity,
+                                  viewportState: workspace.drawingViewportState.flatMap { $0.0 == drawing.previewVersion ? $0.1 : nil },
+                                  onSaveViewportState: { [workspace, version = drawing.previewVersion] in workspace.drawingViewportState = (version, $0) })
                     .frame(minHeight: 200).opacity(drawing.previewIsCurrent ? 1 : 0.35)
                 Text(result.formula ?? "").font(.title3.bold())
                 Text(result.smiles).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)

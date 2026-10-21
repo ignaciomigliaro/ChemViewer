@@ -2,8 +2,13 @@ import SwiftUI
 
 @main
 struct ChemViewerApp: App {
-    @StateObject private var workspace = WorkspaceStore()
+    @StateObject private var documents = DocumentTabs()
+    private var workspace: WorkspaceStore { documents.activeWorkspace }
 
+    private func binding<Value>(_ keyPath: ReferenceWritableKeyPath<WorkspaceStore, Value>) -> Binding<Value> {
+        let tabs = documents
+        return Binding(get: { tabs.activeWorkspace[keyPath: keyPath] }, set: { tabs.activeWorkspace[keyPath: keyPath] = $0 })
+    }
     var body: some Scene {
         WindowGroup("ChemViewer " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")) {
             ContentView()
@@ -13,9 +18,10 @@ struct ChemViewerApp: App {
         .defaultSize(width: 1100, height: 760)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("New Molecule") { workspace.newMolecule(); workspace.presentFragmentLibrary() }.keyboardShortcut("n")
+                Button("New Molecule") { workspace.startNewDocument() }.keyboardShortcut("n")
                 Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
                     .keyboardShortcut("o")
+                Button("Close Document Tab") { documents.requestCloseActive() }.keyboardShortcut("w")
             }
             CommandGroup(after: .newItem) {
                 Button("Remote files & SLURM…") { RemoteConnection.shared.presented = true }.keyboardShortcut("o", modifiers: [.command, .shift])
@@ -32,7 +38,8 @@ struct ChemViewerApp: App {
                 ForEach(Array(["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw"].enumerated()), id: \.offset) { index, tab in
                     Button(tab) { workspace.activeTab = tab }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }
-                Toggle("Result Explorer", isOn: $workspace.showExplorer)
+                Toggle("Remote File Explorer", isOn: Binding(get: { RemoteConnection.shared.explorerVisible }, set: { RemoteConnection.shared.explorerVisible = $0 }))
+                Toggle("Result Explorer", isOn: binding(\.showExplorer))
                 Divider()
                 Button("Fit and Center") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "reset") }
                 Button("Front View") { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "front") }
@@ -40,16 +47,16 @@ struct ChemViewerApp: App {
             CommandMenu("Build") {
                 Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
                 Button("Add Atom…") { workspace.presentAtomPicker() }.keyboardShortcut("a", modifiers: [.command, .shift])
-                Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible).keyboardShortcut("b", modifiers: [.command, .shift])
+                Toggle("Build & Edit Panel", isOn: binding(\.isBuilderVisible)).keyboardShortcut("b", modifiers: [.command, .shift])
                 Button("Finish Placement") { workspace.clearSelection() }
             }
             CommandMenu("Display") {
-                Picker("Drawing Style", selection: $workspace.renderingStyle) {
+                Picker("Drawing Style", selection: binding(\.renderingStyle)) {
                     ForEach(MolecularStyle.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
-                Toggle("Hydrogens", isOn: $workspace.showHydrogens)
-                Picker("Atom Captions", selection: $workspace.atomCaption) { ForEach(AtomCaption.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                Toggle("Displacement Vectors", isOn: $workspace.showDisplacementVectors)
+                Toggle("Hydrogens", isOn: binding(\.showHydrogens))
+                Picker("Atom Captions", selection: binding(\.atomCaption)) { ForEach(AtomCaption.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                Toggle("Displacement Vectors", isOn: binding(\.showDisplacementVectors))
             }
             CommandMenu("Tools") {
                 Button("Energy Landscape…") { workspace.isEnergyLandscapePresented = true }

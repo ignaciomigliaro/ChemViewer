@@ -13,6 +13,11 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             ClassicMenuBar()
+            if let documents = workspace.documents { DocumentTabStrip(documents: documents) }
+            if let warnings = workspace.document?.warnings, !warnings.isEmpty {
+                HStack { Image(systemName: "info.circle"); Text(warnings.joined(separator: " ")).font(.caption).lineLimit(2); Spacer() }
+                    .padding(5).background(Color.yellow.opacity(0.12)).help(warnings.joined(separator: "\n"))
+            }
             HStack(spacing: 5) {
                 ForEach(tabs, id: \.self) { tab in
                     Button { workspace.activeTab = tab } label: {
@@ -40,8 +45,11 @@ struct ContentView: View {
             }
             Divider()
             HSplitView {
-                if workspace.showExplorer && !["ChemRefine", "Draw"].contains(workspace.activeTab) {
-                    sidebar.frame(minWidth: 220, idealWidth: 255, maxWidth: 340)
+                if remote.explorerVisible || (workspace.showExplorer && !["ChemRefine", "Draw"].contains(workspace.activeTab)) {
+                    VSplitView {
+                        if remote.explorerVisible { RemoteExplorerView() }
+                        if workspace.showExplorer && !["ChemRefine", "Draw"].contains(workspace.activeTab) { sidebar.frame(minHeight: 160) }
+                    }.frame(minWidth: 230, idealWidth: 280, maxWidth: 380)
                 }
                 tabContent
                 if workspace.isBuilderVisible && !["ChemRefine", "Draw"].contains(workspace.activeTab) { BuilderPanel() }
@@ -54,6 +62,8 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--remote-tree-smoke-test") { await RemoteTreeSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--document-workspace-smoke-test") { await DocumentWorkspaceSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-navigation-smoke-test") { await RemoteNavigationSmokeTest.run() }
             if CommandLine.arguments.contains("--remote-session-smoke-test") { await RemoteSessionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-live-smoke-test") { await RemoteLiveSmokeTest.run(workspace: workspace) }
@@ -75,11 +85,11 @@ struct ContentView: View {
         .fileImporter(
             isPresented: $workspace.isImporterPresented,
             allowedContentTypes: [.plainText, .data],
-            allowsMultipleSelection: false
+            allowsMultipleSelection: true
         ) { result in
             switch result {
             case .success(let urls):
-                if let url = urls.first { workspace.open(url) }
+                for url in urls { if let documents = workspace.documents { documents.open(url) } else { workspace.open(url) } }
             case .failure(let error):
                 workspace.errorMessage = error.localizedDescription
             }
@@ -95,7 +105,7 @@ struct ContentView: View {
             }
         }
         .onOpenURL { url in
-            workspace.open(url)
+            if let documents = workspace.documents { documents.open(url) } else { workspace.open(url) }
         }
         .alert("ChemViewer error", isPresented: Binding(
             get: { workspace.errorMessage != nil },
@@ -325,7 +335,9 @@ struct ContentView: View {
                     onDragAtomIndices: { workspace.manipulationIndices },
                     onPreviewAtomDrag: workspace.previewAtomDrag,
                     onFinishAtomDrag: workspace.finishAtomDrag,
-                    onRenderingFailure: { workspace.errorMessage = $0 }
+                    onRenderingFailure: { workspace.errorMessage = $0 },
+                    documentID: workspace.documentIdentity, viewportEpoch: workspace.viewportEpoch, viewportState: workspace.viewportState,
+                    onSaveViewportState: { [workspace, epoch = workspace.viewportEpoch] state in if workspace.viewportEpoch == epoch { workspace.viewportState = state } }
                 )
                 Divider()
                 VStack(spacing: 7) {
@@ -488,6 +500,9 @@ struct SourceTextView: NSViewRepresentable {
         view.autoresizingMask = [.width]; view.isVerticallyResizable = true
         scroll.documentView = view
         return scroll
+    }
+    static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
+        (scroll.documentView as? NSTextView)?.string = ""
     }
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let view = scroll.documentView as? NSTextView else { return }

@@ -103,6 +103,8 @@ public struct ParsedDocument: Equatable, Sendable {
     public var thermochemistry: [ThermochemistryRecord]
     public var energyRecords: [EnergyRecord]
     public var warnings: [String]
+    public var charge: Int?
+    public var multiplicity: Int?
 
     public init(
         title: String,
@@ -113,8 +115,11 @@ public struct ParsedDocument: Equatable, Sendable {
         warnings: [String] = [],
         energyRecords: [EnergyRecord] = [],
         thermochemistry: [ThermochemistryRecord] = [],
-        nebProfile: NEBProfile? = nil
+        nebProfile: NEBProfile? = nil,
+        charge: Int? = nil,
+        multiplicity: Int? = nil
     ) {
+        self.charge = charge; self.multiplicity = multiplicity
         self.nebProfile = nebProfile
         self.title = title
         self.sourceFormat = sourceFormat

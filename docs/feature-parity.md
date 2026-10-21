@@ -321,3 +321,20 @@ file integrity/reconnection. Live ORCD same-process requests measured1282ms firs
 11ms warm and <1ms cached in one sample; folder/server conditions may differ.
 Authentication expiry still needs login. No new SLURM scientific execution
 validation is claimed; no jobs were submitted for these performance checks.
+
+## File workspace — 0.10.9
+
+Native-tested persistent remote tree with geometry/frequency explorer retained,
+XYZ/output/ORCA-input document tabs, local multi-file opening/dedup and remote
+host/path dedup.50loaded switches share one renderer/mesh while preserving
+camera/zoom/labels/selection and independent edits/undo/drawings. Inactive workers
+pause; detached GPU/text state and closed document data are cleared. Cmd-W closes
+the active tab; unsaved geometry/drawing close is guarded. Data remains in RAM
+for open tabs; tab/session restoration after quit is not implemented.
+
+ORCA *xyz Cartesian, inline Bohr conversion, charge/spin and explicit xyzfile
+companions are parsed. Live ORCD test opened remote XYZ and an input with its
+companion as separate tabs without a modal. Templates/internal/%coords can show
+Source; expression/annotated rows and Bohr xyzfile are not converted. Multi-input
+charge/spin apply to the first block with a visible warning. No input energies
+or real SLURM execution are inferred/claimed. See document-workspace-2026-10-21.md.

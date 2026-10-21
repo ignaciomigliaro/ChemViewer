@@ -12,6 +12,17 @@ enum MolecularStyle: String, CaseIterable {
     var shaderStyle: Float { self == .paton ? 2 : (self == .publication ? 1 : 0) }
 }
 
+struct MolecularViewportState {
+    var center: SIMD3<Float>
+    var fitScale: Float
+    var yaw: Float
+    var pitch: Float
+    var roll: Float
+    var zoom: Float
+    var pan: SIMD2<Float>
+    var labelOffsets: [String: CGPoint]
+}
+
 struct MoleculeMetalView: NSViewRepresentable {
     let frame: MoleculeFrame
     let mode: VibrationalMode?
@@ -36,6 +47,10 @@ struct MoleculeMetalView: NSViewRepresentable {
     var onPreviewAtomDrag: (Vector3) -> Void = { _ in }
     var onFinishAtomDrag: () -> Void = {}
     var onRenderingFailure: (String) -> Void = { _ in }
+    var documentID: UUID? = nil
+    var viewportEpoch = 0
+    var viewportState: MolecularViewportState? = nil
+    var onSaveViewportState: (MolecularViewportState) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -65,6 +80,8 @@ struct MoleculeMetalView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: MolecularMTKView, context: Context) {
+        let switched = context.coordinator.parent.documentID != documentID || context.coordinator.parent.viewportEpoch != viewportEpoch
+        if switched { context.coordinator.parent.onSaveViewportState(view.captureViewportState()) }
         context.coordinator.parent = self
         view.showMeasurementOverlay = showMeasurementOverlay
         view.measurementSelections = measurementSelections
@@ -82,12 +99,27 @@ struct MoleculeMetalView: NSViewRepresentable {
             showHydrogens: showHydrogens, atomCaption: atomCaption, vibrationSpeed: vibrationSpeed,
             geometryID: frame.id
         )
+        if switched || !context.coordinator.restoredViewport {
+            view.resetDocumentViewport()
+            if let viewportState { view.restoreViewportState(viewportState) }
+            context.coordinator.restoredViewport = true
+        }
+    }
+    static func dismantleNSView(_ view: MolecularMTKView, coordinator: Coordinator) {
+        coordinator.parent.onSaveViewportState(view.captureViewportState())
+        view.releaseDetachedResources()
+        coordinator.releaseCachedScene()
     }
 
     final class Coordinator {
         var parent: MoleculeMetalView
+        var restoredViewport = false
         private var bondedAtoms: [Atom] = []
         private var cachedBonds: [Bond] = []
+        func releaseCachedScene() {
+            bondedAtoms = []; cachedBonds = []
+            parent = MoleculeMetalView(frame: MoleculeFrame(id: 0, atoms: []), mode: nil, isAnimating: false, amplitude: 0, showDisplacementVectors: false, selectedAtomIndices: .constant([]))
+        }
         func bonds(for atoms: [Atom]) -> [Bond] {
             if atoms != bondedAtoms { bondedAtoms = atoms; cachedBonds = BondBuilder.inferBonds(atoms: atoms) }
             return cachedBonds
@@ -347,6 +379,26 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         pan.x += rotated.x * scale / aspect
         pan.y += rotated.y * scale
         center = next
+    }
+
+    func releaseDetachedResources() {
+        delegate = nil; isPaused = true; enableSetNeedsDisplay = false
+        scene = RenderScene(atoms: [], bonds: [], displacements: [], amplitude: 0, animate: false, showDisplacementVectors: false, selectedAtomIndices: [])
+        sphereMesh = nil; cylinderMesh = nil; commandQueue = nil
+        atomPipeline = nil; bondPipeline = nil; depthState = nil
+        releaseDrawables()
+    }
+    func captureViewportState() -> MolecularViewportState {
+        MolecularViewportState(center: center, fitScale: fitScale, yaw: yaw, pitch: pitch, roll: roll, zoom: zoom, pan: pan, labelOffsets: measurementOffsets)
+    }
+    func restoreViewportState(_ state: MolecularViewportState) {
+        center = state.center; fitScale = state.fitScale; yaw = state.yaw; pitch = state.pitch
+        roll = state.roll; zoom = state.zoom; pan = state.pan; measurementOffsets = state.labelOffsets
+        setNeedsDisplay(bounds)
+    }
+    func resetDocumentViewport() {
+        yaw = 0.45; pitch = -0.30; roll = 0; zoom = 1; pan = .zero
+        measurementOffsets.removeAll(); recalculateBounds(); setNeedsDisplay(bounds)
     }
 
     private func recalculateBounds() {

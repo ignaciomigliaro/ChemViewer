@@ -1,5 +1,6 @@
 import AppKit
 import CryptoKit
+import ChemCraftCore
 import Foundation
 import SwiftUI
 
@@ -18,6 +19,45 @@ struct RemoteProfile: Codable, Identifiable, Equatable {
 final class RemoteConnection: ObservableObject {
     static let shared = RemoteConnection()
     @Published var presented = false
+    @Published var explorerVisible = UserDefaults.standard.bool(forKey: "ChemViewerRemoteExplorerVisible") {
+        didSet { UserDefaults.standard.set(explorerVisible, forKey: "ChemViewerRemoteExplorerVisible") }
+    }
+    @Published var explorerRoot = ""
+    @Published var explorerNodes: [String:[Entry]] = [:]
+    @Published var expandedExplorerPaths: Set<String> = []
+    func clearExplorer() { explorerCancellation += 1; explorerRoot = ""; explorerNodes = [:]; expandedExplorerPaths = [] }
+    func toggleExplorerFolder(_ path: String, expanded: Bool) {
+        if expanded {
+            expandedExplorerPaths.insert(path)
+            if explorerNodes[path] == nil {
+                if !busy { loadExplorerFolder(path) }
+                else {
+                    let host = profile.host, cancellation = explorerCancellation
+                    Task {
+                        while busy { do { try await Task.sleep(nanoseconds: 50_000_000) } catch { return } }
+                        guard explorerCancellation == cancellation, profile.host == host, expandedExplorerPaths.contains(path), explorerNodes[path] == nil else { return }
+                        loadExplorerFolder(path)
+                    }
+                }
+            }
+        } else { expandedExplorerPaths.remove(path) }
+    }
+    func loadExplorerFolder(_ path: String, makeRoot: Bool = false, refresh: Bool = false) {
+        guard !busy else { return }; busy = true; serial += 1; let token = serial
+        let snapshot = profile
+        Task {
+            defer { if token == serial { busy = false } }
+            do {
+                let result = try await request(["action":"list", "path":path, "refresh":refresh], profile: snapshot)
+                guard token == serial else { return }
+                let entries = try JSONDecoder().decode([Entry].self, from: JSONSerialization.data(withJSONObject: result["entries"] ?? []))
+                let canonical = result["path"] as? String ?? path
+                explorerNodes[path] = entries; explorerNodes[canonical] = entries
+                if makeRoot || explorerRoot.isEmpty { explorerRoot = canonical; profile.directory = canonical; saveProfile() }
+                explorerVisible = true; status = "\(entries.count) entries · \(snapshot.host)"
+            } catch { if token == serial { status = error.localizedDescription } }
+        }
+    }
     @Published var profile = RemoteProfile()
     @Published var profiles: [RemoteProfile] = []
     @Published var busy = false
@@ -41,6 +81,7 @@ final class RemoteConnection: ObservableObject {
     private var channelBusy = false
     private var process: Process?
     private var serial = 0
+    private var explorerCancellation = 0
     struct Entry: Identifiable, Decodable {
         var id: String { path }
         let name: String
@@ -62,11 +103,11 @@ final class RemoteConnection: ObservableObject {
     }
     func selectProfile(_ id: UUID) {
         guard !busy, let saved = profiles.first(where: { $0.id == id }) else { return }
-        profile = saved; entries = []; selected = nil; editingPath = ""; editor = ""; runSummary = ""; log = ""
+        clearExplorer(); profile = saved; entries = []; selected = nil; editingPath = ""; editor = ""; runSummary = ""; log = ""
     }
-    func disconnect() { session?.close(); session = nil; sessionKey = ""; cachedFolders = [:]; connectionStatus = "Disconnected" }
+    func disconnect() { explorerCancellation += 1; session?.close(); session = nil; sessionKey = ""; cachedFolders = [:]; connectionStatus = "Disconnected" }
     func cancel() { serial += 1; disconnect(); process?.terminate(); process = nil; busy = false; status = "Request cancelled. A remote job already submitted continues on the cluster; refresh its status." }
-    func perform(_ action: String, path: String? = nil, workspace: WorkspaceStore? = nil, folder: String? = nil, refresh: Bool = false) {
+    func perform(_ action: String, path: String? = nil, workspace: WorkspaceStore? = nil, folder: String? = nil, refresh: Bool = false, reloadExisting: Bool = false) {
         guard !busy else { return }
         if action == "write", editingHost != profile.host { status = "Reopen the text file after changing hosts."; return }
         saveProfile(); busy = true; serial += 1; let token = serial
@@ -91,13 +132,30 @@ final class RemoteConnection: ObservableObject {
                     log = String(data: try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8) ?? ""
                 case "list":
                     entries = try JSONDecoder().decode([Entry].self, from: JSONSerialization.data(withJSONObject: result["entries"] ?? []))
+                    explorerVisible = true
+                    if explorerRoot.isEmpty { explorerRoot = result["path"] as? String ?? snapshot.directory }
+                    explorerNodes[result["path"] as? String ?? snapshot.directory] = entries
                     parentDirectory = result["parent"] as? String ?? "~"
                     profile.directory = result["path"] as? String ?? snapshot.directory; selected = nil; saveProfile()
                     status = "\(entries.count) entries · \(snapshot.host)" + (result["_cached"] as? Bool == true ? " · cached (Refresh folder for changes)" : "")
                 case "read":
                     if let local = result["local"] as? String, let workspace {
                         lastOpened = result["path"] as? String; lastOpenedHost = snapshot.host
-                        workspace.open(URL(fileURLWithPath: local)); presented = false
+                        let url = URL(fileURLWithPath: local)
+                        var companions: [String:URL] = [:]
+                        if ["inp", "in"].contains(url.pathExtension.lowercased()) {
+                            let text = try String(contentsOf: url, encoding: .utf8)
+                            for reference in Set(ORCAInputParser.externalXYZReferences(in: text)) {
+                                let base = URL(fileURLWithPath: (result["path"] as? String ?? path ?? "")).deletingLastPathComponent()
+                                let remotePath = reference.hasPrefix("/") || reference.hasPrefix("~") ? reference : URL(fileURLWithPath: reference, relativeTo: base).standardizedFileURL.path
+                                let companion = try await request(["action":"read", "path":remotePath], profile: snapshot)
+                                if let local = companion["local"] as? String { companions[reference] = URL(fileURLWithPath: local) }
+                            }
+                        }
+                        let origin = RemoteFileOrigin(profile: snapshot, path: result["path"] as? String ?? path ?? local)
+                        if let documents = workspace.documents { documents.open(url, origin: origin, companions: companions, reload: reloadExisting) }
+                        else { workspace.open(url, externalXYZFiles: companions) }
+                        explorerVisible = true; presented = false
                     }
                     status = "Opened cached copy from \(snapshot.host). Refresh remote file to retrieve updates."
                 case "edit":
@@ -140,7 +198,7 @@ final class RemoteConnection: ObservableObject {
     }
     func refreshOpened(_ workspace: WorkspaceStore) {
         guard let path = lastOpened, lastOpenedHost == profile.host else { return }
-        perform("read", path: path, workspace: workspace)
+        perform("read", path: path, workspace: workspace, reloadExisting: true)
     }
     func request(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
         if payload["action"] as? String == "authenticate" {
@@ -240,7 +298,7 @@ struct RemoteConnectionView: View {
                 Spacer()
                 Menu("Connections") {
                     ForEach(remote.profiles) { profile in Button(profile.name) { remote.selectProfile(profile.id) } }
-                    Divider(); Button("New connection") { remote.profile = RemoteProfile(); remote.entries = []; remote.selected = nil; remote.editingPath = ""; remote.editor = ""; remote.runSummary = ""; remote.log = "" }
+                    Divider(); Button("New connection") { remote.clearExplorer(); remote.profile = RemoteProfile(); remote.entries = []; remote.selected = nil; remote.editingPath = ""; remote.editor = ""; remote.runSummary = ""; remote.log = "" }
                 }.disabled(remote.busy)
                 Button("Save connection") { remote.saveProfile() }.disabled(remote.busy)
                 Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
@@ -303,6 +361,9 @@ struct RemoteConnectionView: View {
                 do { try await Task.sleep(nanoseconds: 10_000_000_000) } catch { break }
                 if remote.autoRefresh && !remote.busy && !remote.profile.config.isEmpty { remote.perform("status", path: remote.profile.config) }
             }
+        }
+        .onChange(of: remote.profile.host + "\0" + remote.profile.python + "\0" + remote.profile.setup) { _ in
+            remote.disconnect(); remote.clearExplorer(); remote.editingPath = ""
         }
         .alert("Run remote ChemRefine workflow?", isPresented: $confirmingRun) {
             Button("Run on SLURM") { remote.perform("run", path: remote.profile.config) }

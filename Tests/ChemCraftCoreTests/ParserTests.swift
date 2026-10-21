@@ -2,6 +2,73 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testORCAInputCartesianGeometryAndSpin() throws {
+        let document = try ParserRegistry.parse(text: "! PBE def2-SVP\n* xyz -1 2\nFe 0 0 0\nH 0 0 1.5\n*\n", fileName: "metal.inp")
+        XCTAssertEqual(document.sourceFormat, "ORCA input")
+        XCTAssertEqual(document.charge, -1); XCTAssertEqual(document.multiplicity, 2)
+        XCTAssertEqual(document.frames[0].atoms.map(\.element), ["Fe", "H"])
+        XCTAssertEqual(document.frames[0].atoms.map(\.id), [0, 1])
+        XCTAssertEqual(document.frames[0].atoms[1].position.z, 1.5, accuracy: 1e-6)
+        XCTAssertTrue(document.energyRecords.isEmpty && document.frames[0].energyHartree == nil)
+    }
+    func testORCAInputBohrAndFortranNumbers() throws {
+        for text in ["! Bohrs\n* xyz 0 1\nH 0 0 0\nH 0 0 2.0D0\n*\n", "%coords\n Units Bohrs\nend\n* xyz 0 1\nH 0 0 0\nH 0 0 2\n*\n"] {
+            let document = try ParserRegistry.parse(text: text, fileName: "bohr.inp")
+            XCTAssertEqual(document.frames[0].atoms[1].position.z, 1.058354421806, accuracy: 1e-6)
+        }
+    }
+    func testORCAInputQuotedXYZCompanion() throws {
+        let text = "! HF\n* xyzfile 1 2 \"geometry with spaces.xyz\" # source coordinates\n"
+        XCTAssertEqual(ORCAInputParser.externalXYZReferences(in: text), ["geometry with spaces.xyz"])
+        let document = try ORCAInputParser.parse(text: text, title: "external.inp", resolveXYZ: { name in
+            XCTAssertEqual(name, "geometry with spaces.xyz")
+            return "2\nE=-1.2345\nH 0 0 0\nH 0 0 0.74\n"
+        })
+        XCTAssertEqual(document.charge, 1); XCTAssertEqual(document.frames.count, 1)
+        XCTAssertTrue(document.energyRecords.isEmpty && document.frames[0].energyHartree == nil)
+        XCTAssertEqual(document.frames[0].atoms[1].position.z, 0.74, accuracy: 1e-6)
+    }
+    func testORCAInputTemplateAndUnsupportedInternalSource() throws {
+        for text in ["! XTB2 Opt\n", "! HF\n* int 0 1\nH 0 0 0 0 0 0\nH 1 0 0 .74 0 0\n*\n"] {
+            let document = try ParserRegistry.parse(text: text, fileName: "template.inp")
+            XCTAssertEqual(document.sourceFormat, "ORCA input")
+            XCTAssertTrue(document.frames.isEmpty && !document.warnings.isEmpty)
+        }
+    }
+    func testORCAInputRejectsMalformedAndAmbiguousUnits() throws {
+        for text in ["* xyz 0 0\nH 0 0 0\n*\n", "* xyz 0 1\nH nan 0 0\n*\n", "* xyz 0 1\nH 0 0 0\n", "! Bohrs\n* xyzfile 0 1 a.xyz\n"] {
+            var refused = false
+            do { _ = try ORCAInputParser.parse(text: text, title: "invalid.inp", resolveXYZ: { _ in "1\nfixture\nH 0 0 0\n" }) }
+            catch { refused = true }
+            XCTAssertTrue(refused)
+        }
+    }
+    func testORCAInputRelativeFileResolution() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-input-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appendingPathComponent("job.inp")
+        try "! HF\n* xyzfile 0 1 \"input geometry.xyz\"\n".write(to: url, atomically: true, encoding: .utf8)
+        try "2\nindependent H2 fixture\nH 0 0 0\nH 0 0 .74\n".write(to: folder.appendingPathComponent("input geometry.xyz"), atomically: true, encoding: .utf8)
+        let document = try ParserRegistry.parse(url: url)
+        XCTAssertEqual(document.frames[0].atoms.count, 2)
+        XCTAssertEqual(document.frames[0].atoms[1].position.z, 0.74, accuracy: 1e-6)
+    }
+    func testORCAInputMappedRemoteCompanion() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-cached-" + UUID().uuidString + ".xyz")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try "1\nindependent Pt fixture\nPt 1 2 3\n".write(to: file, atomically: true, encoding: .utf8)
+        let doc = try ParserRegistry.parse(text: "* xyzfile 0 1 ../../cluster-geometry.xyz\n", fileName: "remote.inp", externalXYZFiles: ["../../cluster-geometry.xyz":file])
+        XCTAssertEqual(doc.frames[0].atoms[0].element, "Pt")
+        XCTAssertEqual(doc.frames[0].atoms[0].position, Vector3(1,2,3))
+    }
+    func testORCAInputMultipleGeometriesHaveNoEnergies() throws {
+        let doc = try ParserRegistry.parse(text: "* xyz 0 1\nH 0 0 0\nH 0 0 .74\n*\n$new_job\n* xyz 0 1\nH 0 0 0\nH 0 0 .80\n*\n", fileName: "compound.inp")
+        XCTAssertEqual(doc.frames.count, 2)
+        XCTAssertEqual(doc.frames[1].atoms[1].position.z, 0.8, accuracy: 1e-6)
+        XCTAssertTrue(doc.energyRecords.isEmpty && doc.frames.allSatisfy { $0.energyHartree == nil })
+    }
+
     func testMultiFrameXYZ() throws {
         let text = """
         2

@@ -10,6 +10,8 @@ enum DrawingTool: String, CaseIterable {
 @MainActor
 final class MoleculeDrawingStore: ObservableObject {
     @Published private(set) var graph = MolecularSketch()
+    private var savedGraph = MolecularSketch()
+    var hasUnsavedChanges: Bool { graph != savedGraph }
     @Published var tool: DrawingTool = .bond
     @Published var element = "C"
     @Published var order = 1
@@ -81,6 +83,11 @@ final class MoleculeDrawingStore: ObservableObject {
         if let process, process.isRunning { process.terminate() }
         process = nil; busy = false
     }
+    func disposeClosedDrawing() {
+        cancel(); undoStack = []; redoStack = []; preview = nil
+        graph = MolecularSketch(); savedGraph = graph; selectedID = nil
+    }
+    func resumeAutomaticPreview() { schedulePreview() }
     private func schedulePreview() {
         debounce?.cancel(); debounce = nil; previewQueued = false; previewError = nil
         guard !graph.atoms.isEmpty else {
@@ -154,7 +161,7 @@ final class MoleculeDrawingStore: ObservableObject {
     func saveDrawing() {
         let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "drawing.json"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; try encoder.encode(graph).write(to: url, options: .atomic) }
+        do { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; try encoder.encode(graph).write(to: url, options: .atomic); savedGraph = graph; objectWillChange.send() }
         catch { status = error.localizedDescription }
     }
     func openDrawing() {
@@ -163,7 +170,7 @@ final class MoleculeDrawingStore: ObservableObject {
         do {
             let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             guard size < 2_000_000 else { throw ParseError.malformed("Drawing file exceeds 2 MB.") }
-            let next = try JSONDecoder().decode(MolecularSketch.self, from: Data(contentsOf: url)); try next.validate(); commit(next); fit()
+            let next = try JSONDecoder().decode(MolecularSketch.self, from: Data(contentsOf: url)); try next.validate(); commit(next); savedGraph = graph; objectWillChange.send(); fit()
         } catch { status = error.localizedDescription }
     }
 }

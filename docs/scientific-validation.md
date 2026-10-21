@@ -258,3 +258,25 @@ single live timing sample, not a universal performance bound. REMOTE_CONNECTION_
 checks the actual updated sheet; its window capture was inspected. Signed arm64
 build, 33 standalone core cases and three migrated suites pass; local XCTest is
 still unavailable under CLT. No scientific parser/model/conversion changed.
+
+## ORCA inputs and document isolation — 0.10.9
+
+Eight additional independent core cases cover Cartesian elements/indexing and
+charge/spin;2Bohr→1.058354421806Å (1e-6Float tolerance); Fortran exponents; quoted
+XYZ references; relative-file and explicit remote-cache mapping; source-only
+templates/internal forms; rejection of nonfinite/unclosed/invalid-spin/ambiguous
+units; and multiple input geometries without fabricated energies. Core41cases
+pass through the explicit standalone adapter, plus3migrated suites. Before/after
+swift test attempts still fail because local CLT lacks XCTest; these are not
+reported as successful XCTest runs.45Python cases pass.
+
+Native DOCUMENT_WORKSPACE_PASS covers50loaded switches with one renderer/mesh,
+view/selection/label restoration, inactive timers, independent edit/undo/drawing
+state, dirty-close refusal, actual Cmd-W dispatch, template Source, Abstract
+restoration and closed-document data cleanup. Existing smooth-pointer/label/
+PNG/GIF regression and full persistent-label/skeletal-drawing/auto-preview/chiral
+import regressions pass. Live REMOTE_TREE_PASS verifies persistent root/child
+listing and separate remote XYZ/input tabs with explicit companion retrieval,
+exact0.74Å synthetic H2 and no inferred energies. No jobs were submitted; real
+SLURM chemistry completion remains outside this validation. Detailed evidence:
+document-workspace-2026-10-21.md.

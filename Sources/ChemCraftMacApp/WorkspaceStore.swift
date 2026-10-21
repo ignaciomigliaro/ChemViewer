@@ -10,6 +10,37 @@ enum AtomPlacementMode: String, CaseIterable {
 
 @MainActor
 final class WorkspaceStore: ObservableObject {
+    let documentIdentity = UUID()
+    weak var documents: DocumentTabs?
+    var drawingViewportState: (Int, MolecularViewportState)?
+    var viewportState: MolecularViewportState?
+    private var viewportURL: URL?
+    private(set) var viewportEpoch = 0
+    private var savedGeometryRevision = 0
+    private var suspendedVibration: Bool?
+    private var suspendedTrajectory = false
+    var hasUnsavedDocumentChanges: Bool { (document != nil && geometryRevision != savedGeometryRevision && !(currentFrame?.atoms.isEmpty ?? true)) || drawing.hasUnsavedChanges }
+    func startNewDocument() {
+        if let documents { documents.newMolecule() }
+        else { newMolecule(); presentFragmentLibrary() }
+    }
+    func suspendFileTasks() {
+        finishAtomDrag(); suspendedVibration = isVibrating; suspendedTrajectory = isPlayingTrajectory
+        isVibrating = false; stopTrajectoryPlayback(); drawing.cancel()
+    }
+    func resumeFileTasks() {
+        if let suspendedVibration { isVibrating = suspendedVibration; self.suspendedVibration = nil }
+        if suspendedTrajectory { suspendedTrajectory = false; toggleTrajectoryPlayback() }
+        if activeTab == "Draw" { drawing.resumeAutomaticPreview() }
+    }
+    func cancelDocumentLoad() { loadGeneration += 1; isLoading = false }
+    func disposeClosedDocument() {
+        viewportEpoch += 1; cancelDocumentLoad(); drawing.disposeClosedDrawing()
+        document = nil; sourceText = ""; calculationFacts = []; modesByFrame = [:]
+        geometryUndoStacks = [:]; geometryRedoStacks = [:]; groupsByFrame = [:]
+        pinnedMeasurements = [:]; editedFrames = []; selectedAtomIndices = []; viewportState = nil; drawingViewportState = nil
+    }
+
     @Published var isBuilderVisible = false
     @Published var isFragmentLibraryPresented = false
     @Published var isPeriodicTablePresented = false
@@ -179,7 +210,9 @@ final class WorkspaceStore: ObservableObject {
     private var geometryUndoStacks: [Int: [Snapshot]] = [:]
     private var trajectoryTask: Task<Void, Never>?
 
-    func open(_ url: URL) {
+    func open(_ url: URL, externalXYZFiles: [String:URL] = [:]) {
+        if viewportURL?.standardizedFileURL != url.standardizedFileURL { viewportEpoch += 1; viewportState = nil }
+        viewportURL = url
         finishAtomDrag()
         fragmentBoundary = nil
         stopTrajectoryPlayback()
@@ -204,7 +237,7 @@ final class WorkspaceStore: ObservableObject {
                         let project = try JSONDecoder().decode(BuildingProject.self, from: data)
                         return (ParsedDocument(title: url.lastPathComponent, sourceFormat: "ChemViewer project", frames: [MoleculeFrame(id: 0, atoms: project.atoms, comment: "Editable project; calculation output and modes are not stored")]), "", Optional(project), [Int: [VibrationalMode]](), [CalculationFact]())
                     }
-                    var result = try ParserRegistry.parse(text: text, fileName: url.lastPathComponent)
+                    var result = try ParserRegistry.parse(text: text, fileName: url.lastPathComponent, baseURL: url, externalXYZFiles: externalXYZFiles)
                     if let profile = result.nebProfile { result.nebProfile = ORCANEBParser.loadCompanionStructures(profile: profile, outputURL: url) }
                     guard result.frames.count <= 2000, result.frames.allSatisfy({ $0.atoms.count <= 10_000 }), result.frames.reduce(0, { $0 + $1.atoms.count }) <= 500_000 else { throw ParseError.malformed("Trajectory exceeds the supported frame/atom limits.") }
                     let analysis = try? BuildingProject.analysis(text)
@@ -213,8 +246,8 @@ final class WorkspaceStore: ObservableObject {
                 guard generation == loadGeneration else { return }
                 document = parsed.0
                 modesByFrame = parsed.3; calculationFacts = parsed.4
-                charge = Int(parsed.4.last(where: { $0.label == "Charge" })?.value ?? "0") ?? 0
-                multiplicity = Int(parsed.4.last(where: { $0.label == "Multiplicity" })?.value ?? "1") ?? 1
+                charge = parsed.0.charge ?? Int(parsed.4.last(where: { $0.label == "Charge" })?.value ?? "0") ?? 0
+                multiplicity = parsed.0.multiplicity ?? Int(parsed.4.last(where: { $0.label == "Multiplicity" })?.value ?? "1") ?? 1
                 groupsByFrame = [:]; storedBondAxis = nil; geometryRedoStacks = [:]
                 if let project = parsed.2 { charge = project.charge; multiplicity = project.multiplicity; groupsByFrame[0] = project.groups }
                 geometryRevision += 1
@@ -224,6 +257,8 @@ final class WorkspaceStore: ObservableObject {
                 geometryUndoStacks.removeAll(); pinnedMeasurements = [:]; showMeasurementOverlay = false
                 sourceFocusLine = nil
                 applyXYZEnergyUnit()
+                savedGeometryRevision = geometryRevision
+                if parsed.0.frames.isEmpty { activeTab = "Source" }
                 selectedAtomIndices = parsed.2?.selection ?? []
                 selectedModeIndex = parsed.0.vibrationalModes.first(where: {
                     abs($0.frequencyCM1) > 1 && !$0.displacements.isEmpty
@@ -519,6 +554,7 @@ extension WorkspaceStore {
 
 extension WorkspaceStore {
     func newMolecule() {
+        viewportEpoch += 1; viewportURL = nil; viewportState = nil
         finishAtomDrag(); stopTrajectoryPlayback(); loadGeneration += 1; isLoading = false
         document = ParsedDocument(title: "Untitled molecule", sourceFormat: "Builder", frames: [MoleculeFrame(id: 0, atoms: [], comment: "Initial geometry approximation")])
         pinnedMeasurements = [:]; showMeasurementOverlay = false
@@ -629,6 +665,7 @@ extension WorkspaceStore {
             let panel = NSSavePanel(); panel.nameFieldStringValue = "molecule.cvproject"
             guard panel.runModal() == .OK, let url = panel.url else { return }
             try data.write(to: url, options: .atomic)
+            savedGeometryRevision = geometryRevision
         } catch { errorMessage = error.localizedDescription }
     }
     func requestXYZExport() {

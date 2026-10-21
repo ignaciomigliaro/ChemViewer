@@ -462,3 +462,39 @@ errors and remains available for later RPCs. Directory listing uses scandir and
 entry types rather than stat-ing every entry for file sizes. A bounded cache
 keeps listing results for 120 seconds; Refresh bypasses it and mutations clear
 it. The Parent button uses the returned parent path for cache reuse.
+
+## Document workspace and persistent explorer — 0.10.9
+
+DocumentTabs owns one WorkspaceStore per source identity (local URL or host/path).
+Only the active store is injected into ContentView and commands. Models retain
+per-file source/frames, undo/redo, selections, pinned measurements, appearance,
+drawing graph and view state. Menu bindings resolve the current store at use
+time rather than capturing a closed document. Opening an existing identity
+selects it; close guards unsaved geometry/drawing state and explicitly clears
+heavy data, including cached drawing results/history. Last-close leaves an empty
+workspace. Tab layout/state is not persisted across application quit.
+
+MoleculeMetalView compares document identity and viewport generation before
+swapping a shared scene: saves old camera/label placement and restores the new
+file's state. New source URLs reset initialization while same-file reload keeps
+the view. Captures from an obsolete load generation cannot overwrite a new
+file's state. Abstract follows the same file view; Draw has separately versioned
+preview state. Dismantled views clear delegate, buffers, pipelines, drawables and
+coordinator references; Source text previews clear detached text storage. Loaded
+Image tab switches reuse a Metal view/mesh, and inactive playback/trajectory/Draw
+workers are suspended. Parsed data/undo remain in RAM until close.
+
+RemoteExplorerView uses lazily fetched tree nodes on the existing persistent RPC
+channel. Folder expansion queues while another request owns the channel; cancel/
+profile changes invalidate queued or stale updates. Settings/SLURM remain in the
+existing sheet; file selection enters DocumentTabs directly. Remote xyzfile inputs
+fetch explicit companions through the same session and pass filename→cache URL
+mappings to the parser, avoiding source-path rewriting or directory traversal in
+cache writes. Source/geometry values are retained; no calculation is executed.
+
+ORCAInputParser lives in ChemCraftCore. It tokenizes quoted filenames/comments,
+reads ordinary Cartesian rows/Fortran exponents and explicit charge/spin, converts
+inline Bohr using0.529177210903Å and delegates XYZ parsing to the existing reader.
+ParsedDocument has optional charge/multiplicity. Unsupported coordinate forms
+are source-only or explicitly rejected, never fabricated. Input geometries do
+not inherit calculation energies from companion comment lines.

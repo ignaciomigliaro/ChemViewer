@@ -7,6 +7,9 @@ file-compatibility reference.
 
 ## Current working slice
 
+- Persistent remote SSH file explorer and independent document tabs.
+- ORCA Cartesian input and explicit XYZ companion reading.
+
 - Native SwiftUI macOS interface with a calculation, geometry, and frequency tree.
 - Metal renderer for element-colored atoms and inferred bonds.
 - Mouse and right-drag rotation, Option-drag panning, and scroll zoom.
@@ -22,10 +25,9 @@ file-compatibility reference.
 - Background parsing so large text files do not block the UI.
 - Swift unit tests plus an independent Python regression oracle.
 
-This is Milestone 3's first application slice, not feature parity. Molecular
-orbitals, volumetric surfaces, internal-coordinate editing, Raman/UV-visible spectra, and
-most file formats are still pending and are tracked in
-`docs/feature-parity.md`.
+This is an expanding independent implementation rather than full feature parity.
+The released-feature sections below and `docs/feature-parity.md` record supported
+behavior, validation evidence and remaining gaps.
 
 ## Build on Apple Silicon
 
@@ -308,3 +310,38 @@ A read-only packaged-app test on ORCD measured 1,282 ms for the initial request,
 11 ms for the next uncached request on the same remote process, and under 1 ms
 for a cached return. These are individual home-directory measurements, not a
 guarantee for every folder or server load.
+
+## Remote explorer and document tabs — 0.10.9
+
+After connecting/browsing once, **Remote Files** stays in the main window's left
+sidebar. Expand folders and click `.xyz`, `.out`, `.log` or ORCA `.inp`/`.in`
+files to open them directly. The geometry/frequency explorer remains below it.
+The gear opens connection/SLURM settings; normal file navigation needs no modal.
+**View → Remote File Explorer** shows/hides it; Go changes the root folder,
+Refresh reloads its listing and Show all files exposes workflow/template files.
+
+Each opened file gets a document tab above Image/Abstract/Source/etc. File → Open
+accepts multiple files. Selecting an already-open local/remote file activates
+its existing tab. Camera, zoom, labels, selection, geometry edits/undo and drawing
+state are isolated. X or Cmd-W closes a tab, with a save/discard guard for modified
+geometry/drawings. Project saves preserve original calculation/input files.
+
+Loaded Image documents share one active Metal renderer. Inactive normal playback,
+trajectory timers and automatic drawing-preview work stop; detached views release
+renderer/text resources. Parsed data and undo history stay in memory for fast
+switching, and closed documents explicitly clear their data. This reduces idle
+CPU/GPU work; it does not unload every inactive document or restore tabs after quit.
+Explicit calculation/export jobs retain their independent execution lifetimes.
+
+ORCA input reading supports ordinary `* xyz` Cartesian blocks (Angstrom or Bohr),
+charge/multiplicity and explicit `* xyzfile` companions. Remote companions are
+fetched through the same SSH session and mapped to their own caches without
+rewriting source paths/files. Templates with no coordinates and internal/%coords
+forms open as original Source with a limitation message. Expressions, annotated
+atom rows and Bohr xyzfile companions are not converted; unsupported/malformed
+forms produce a clear message. Multiple Cartesian blocks are read as geometries,
+with a warning that tab charge/spin describe the first block. No input energies
+are inferred. Format reference: [ORCA coordinate manual](https://www.faccts.de/docs/orca/6.1/manual/contents/essentialelements/coordinates.html).
+
+See [workspace validation](docs/document-workspace-2026-10-21.md) for native, parser
+and live remote evidence and the supported scope.

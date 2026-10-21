@@ -137,7 +137,9 @@ struct CalculationAbstractView: View {
                             onManipulationSelection: { _ = workspace.selectManipulationSeed($0) },
                             onBeginAtomDrag: workspace.beginAtomDrag,
                     onDragAtomIndices: { workspace.manipulationIndices }, onPreviewAtomDrag: workspace.previewAtomDrag,
-                            onFinishAtomDrag: workspace.finishAtomDrag, onRenderingFailure: { workspace.errorMessage = $0 })
+                            onFinishAtomDrag: workspace.finishAtomDrag, onRenderingFailure: { workspace.errorMessage = $0 },
+                            documentID: workspace.documentIdentity, viewportEpoch: workspace.viewportEpoch, viewportState: workspace.viewportState,
+                            onSaveViewportState: { [workspace, epoch = workspace.viewportEpoch] state in if workspace.viewportEpoch == epoch { workspace.viewportState = state } })
                             .frame(minWidth: 180, idealWidth: 280)
                     }
                 }
