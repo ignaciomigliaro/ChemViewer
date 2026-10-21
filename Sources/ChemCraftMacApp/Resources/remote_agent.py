@@ -62,7 +62,7 @@ def execute(request):
             if os.path.exists(temp):
                 os.unlink(temp)
         return dict(path=str(path), sha256=hashlib.sha256(data).hexdigest(), saved=True)
-    if action == 'upload':
+    if action in ('upload', 'create-workflow'):
         # New exclusive directory: never merge into or overwrite an existing workflow.
         import uuid
         root = path / ('ChemViewer-workflow-' + uuid.uuid4().hex[:12])
@@ -90,7 +90,7 @@ def execute(request):
             shutil.rmtree(root)
             raise
         return dict(path=str(root), config=str(root / 'input.yaml'), count=len(decoded))
-    if action in ('check', 'status', 'run', 'resume'):
+    if action in ('check', 'status', 'run', 'resume', 'rebuild-cache', 'rebuild-nms', 'rerun', 'rerun-errors'):
         from chemrefine import agent_tools
         if action == 'status':
             result = agent_tools.run_status(str(path), log_tail_lines=60)
@@ -115,7 +115,7 @@ def execute(request):
             raise ValueError(json.dumps(report.to_json()))
         if action == 'check':
             return dict(ok=True, python=sys.executable, config=str(path), validation=report.to_json())
-        return agent_tools.start_run(str(path), action=action)
+        return agent_tools.start_run(str(path), action=action, **({'target': request['target']} if request.get('target') is not None else {}))
     raise ValueError('Unknown remote action: ' + action)
 
 

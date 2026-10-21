@@ -46,7 +46,7 @@ struct RemoteExplorerView: View {
             HStack {
                 Label("REMOTE FILES", systemImage: "network").font(.caption.bold())
                 Spacer()
-                Button { remote.presented = true } label: { Image(systemName: "gearshape") }.help("Connection and SLURM settings")
+                Button { remote.presented = true } label: { Image(systemName: "gearshape") }.help("SSH connection settings")
                 Button { remote.loadExplorerFolder(remote.explorerRoot.isEmpty ? remote.profile.directory : remote.explorerRoot, makeRoot: true, refresh: true) } label: { Image(systemName: "arrow.clockwise") }.help("Refresh remote explorer")
                 Button { remote.explorerVisible = false } label: { Image(systemName: "sidebar.left") }.help("Hide remote explorer")
             }.buttonStyle(.plain)
@@ -123,7 +123,7 @@ private struct RemoteExplorerRow: View {
                 if supported { Button("Open in document tab") { remote.perform("read", path: entry.path, workspace: workspace) } }
                 Button("Edit remote text…") { remote.perform("edit", path: entry.path); remote.presented = true }
                 if entry.name.hasSuffix(".yaml") || entry.name.hasSuffix(".yml") {
-                    Button("Use ChemRefine workflow") { remote.profile.config = entry.path; remote.saveProfile(); remote.presented = true }
+                    Button("Use ChemRefine workflow") { remote.profile.config = entry.path; remote.saveProfile(); remote.workflowRemoteSelected = true; workspace.activeTab = "ChemRefine"; RemoteWorkflowRuntime.shared.open(config: entry.path) }
                 }
             }
         }

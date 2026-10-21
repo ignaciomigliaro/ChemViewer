@@ -342,3 +342,27 @@ missing nodes: reload. Directories and ordinary text files are initially visible
 Home and Parent navigate without another authentication prompt while the master
 is valid. Empty folders and filtered-only files have explanatory messages.
 Native regression flag: --remote-explorer-smoke-test (isolated loopback).
+
+## Unified ChemRefine destination — 0.10.11
+
+CV-SSH-WORKFLOW-001: Connect once, select ChemRefine. SSH/SLURM destination follows
+new connection; explicit This Mac selection remains available. Open/New use a
+remote picker, including parent/home navigation. Create from independent structure:
+new remote folder, relative seed/templates, dispatch:slurm, no Mac ORCA/UMA paths.
+CV-SSH-WORKFLOW-002: Remote editor file buttons browse cluster files; modify form
+and template then Save. Native and embedded Run/Resume save drafts and share the
+remote scheduler/file/dispatch gate. Change a synthetic workflow to local dispatch:
+both must refuse without launch. Status refresh must not save drafts. No real
+job is required for this acceptance; scheduler science is a separate gate.
+CV-SSH-WORKFLOW-003: Switch This Mac/SSH and Image/ChemRefine without losing editor
+state. Profile change/tunnel loss closes old editor and permits reopening. Close
+editor releases only its own GUI/tunnel; user SSH master and detached jobs survive.
+Settings sheet has profiles/authentication/environment controls, no submission
+panel. Upload local inputs belongs to ChemRefine More menu.
+
+--remote-workflow-smoke-test is opt-in live ORCD acceptance: creates only synthetic
+inputs and rejects local dispatch, never submits SLURM jobs. Guarded cleanup uses
+Downloads/chemviewer-remote-evidence/live-workflow-test.json (not committed).
+--workflow-runner-smoke-test checks the retained local runtime/dashboard against
+actual isolated H2/PySCF. --remote-connection-smoke-test captures simplified settings;
+--remote-explorer-smoke-test retains busy/loading/identity regression coverage.

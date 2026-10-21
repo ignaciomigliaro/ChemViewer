@@ -345,3 +345,12 @@ Sidebar initialization now waits for busy connection requests and follows
 connection identity changes. All files default visible; parent/home controls
 and loading/empty/filter states added. Native regression covers busy mount,
 missing cached nodes, empty child, connection changes and helper reuse.
+
+## Unified SSH workflow destination — 0.10.11
+
+Remote ChemRefine generation, editing, cluster file/template pickers, upload,
+SLURM preflight/Run/Resume/status and step-result copying now live in ChemRefine.
+Local execution/editor remains available through the same tab's Run on selector.
+SSH settings is a compact connection-only sheet. Live remote GUI, remote drafts,
+creation and non-SLURM rejection tested; local actual PySCF workflow/dashboard
+regression passes. A real SLURM calculation is still not scientifically validated.

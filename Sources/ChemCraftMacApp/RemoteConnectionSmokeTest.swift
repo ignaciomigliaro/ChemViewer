@@ -40,7 +40,7 @@ enum RemoteConnectionSmokeTest {
             remote.presented = true
             try await Task.sleep(nanoseconds: 800_000_000)
             guard let sheet = NSApp.windows.first(where: { $0.isVisible && $0.sheetParent != nil }), let content = sheet.contentView else { throw ParseError.malformed("Remote browser sheet did not open") }
-            try require(sheet.frame.width >= 1000 && sheet.frame.height >= 650, "Remote controls sheet is clipped")
+            try require(sheet.frame.width >= 680 && sheet.frame.height >= 430, "Remote controls sheet is clipped")
             let folder = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/chemviewer-remote-evidence")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             if let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(sheet.windowNumber), [.boundsIgnoreFraming, .bestResolution]), let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {

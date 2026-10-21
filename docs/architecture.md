@@ -508,3 +508,30 @@ once per task. Failed requests keep an explicit manual Browse/Refresh retry;
 there is no indefinite reconnect loop. Recursive rows share their root model.
 All-file default, Home/Parent navigation and minimum list height avoid hidden
 files and collapsed folder contents. Existing persistent SSH/cache is reused.
+
+## Unified remote workflow editor — 0.10.11
+
+LocalWorkflowView is the ChemRefine destination shell, preserving the local
+runtime/browser and embedding RemoteWorkflowView for SSH execution. Connection
+settings now contain only profiles/authentication/environment/text editing;
+submission, status and upload actions moved to ChemRefine. Successful first RPC
+on a newly established channel selects SSH mode, without overriding subsequent
+explicit local selection on every request. File-menu workflow actions route to
+remote path pickers while SSH mode is selected.
+
+RemoteWorkflowRuntime owns a foreground SSH GUI wrapper, an SSH -N loopback-only
+forward and a separately cached WKWebView. The wrapper passes an explicit config
+to `python -m chemrefine gui --no-browser --port 0`; its stdin EOF terminates only
+its own GUI child. Token URLs remain in private temporary logs/browser state,
+not console/status/settings. Tunnel/server failure invalidates the editor;
+profile identity changes stop its processes. Existing system SSH multiplexing
+and host-key checks remain in force. No remote server installation is needed.
+
+Remote folder/file pickers share persistent JSON RPC with the explorer. Creating
+from a structure sends inputs to a new exclusive remote directory with SLURM,
+relative paths and no Mac executable defaults. Upload retains its dedicated
+local chooser by explicit name. Remote web /api/run requests are intercepted
+and routed through native save + remote dispatch/scheduler/file preflight for
+all supported launch actions/targets. Native Run/Resume follows the same path;
+status reads saved results without saving pending drafts. Actual form/template
+save runs against the remote GUI API, never the local chemistry runtime.

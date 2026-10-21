@@ -33,6 +33,7 @@ final class ChemistryRuntime: ObservableObject {
     private var guiProcess: Process?
     private var previousWorkflowServers: [Process] = []
     func newWorkflow(_ workspace: WorkspaceStore) {
+        if routeRemote(workspace, picker: .folder) { return }
         if let guiProcess, guiProcess.isRunning { previousWorkflowServers.append(guiProcess) }
         guiProcess = nil; guiURL = nil; openWorkflow(workspace)
     }
@@ -94,6 +95,7 @@ final class ChemistryRuntime: ObservableObject {
     }
 
     func openWorkflow(_ workspace: WorkspaceStore, destination: URL? = nil) {
+        if destination == nil && routeRemote(workspace, picker: .folder) { return }
         if let guiProcess, guiProcess.isRunning, guiURL != nil { workspace.activeTab = "ChemRefine"; return }
         guard let frame = workspace.currentFrame, !frame.atoms.isEmpty else { workspace.errorMessage = "Build or open a structure first."; return }
         guard !frame.atoms.contains(where: { $0.element == "X" }) else { workspace.errorMessage = "Remove unused X sites before creating a calculation workflow."; return }
@@ -136,7 +138,12 @@ final class ChemistryRuntime: ObservableObject {
             startWorkflowEditor(configURL: folder.appendingPathComponent("input.yaml"), workspace: workspace)
         } catch { workspace.errorMessage = error.localizedDescription }
     }
+    private func routeRemote(_ workspace: WorkspaceStore, picker: RemoteWorkflowPicker.Kind) -> Bool {
+        guard RemoteConnection.shared.workflowRemoteSelected else { return false }
+        workspace.activeTab = "ChemRefine"; RemoteWorkflowRuntime.shared.requestedPicker = picker; return true
+    }
     func openExistingWorkflow(_ workspace: WorkspaceStore) {
+        if routeRemote(workspace, picker: .workflow) { return }
         let panel = NSOpenPanel(); panel.allowedContentTypes = [.plainText, .data]
         panel.message = "Choose an existing ChemRefine input.yaml."
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -144,6 +151,7 @@ final class ChemistryRuntime: ObservableObject {
         guiProcess = nil; guiURL = nil; startWorkflowEditor(configURL: url, workspace: workspace)
     }
     func startWorkflowEditor(configURL: URL, workspace: WorkspaceStore) {
+        RemoteConnection.shared.workflowRemoteSelected = false
         do {
             let folder = configURL.deletingLastPathComponent()
             workflowDirectory = folder
@@ -218,14 +226,30 @@ final class ChemistryRuntime: ObservableObject {
 struct LocalWorkflowView: View {
     var embedded = false
     @ObservedObject private var runtime = ChemistryRuntime.shared
+    @ObservedObject private var remote = RemoteConnection.shared
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var workspace: WorkspaceStore
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("ChemRefine · Local workflow").font(.headline)
+                Text("ChemRefine").font(.headline)
+                Picker("Run on", selection: $remote.workflowRemoteSelected) {
+                    Text("This Mac").tag(false)
+                    Text(remote.profile.host.isEmpty ? "SSH / SLURM" : "SSH / SLURM · " + remote.profile.host).tag(true)
+                }.pickerStyle(.segmented).frame(maxWidth: 390)
                 Spacer()
-                Button("Remote / SLURM…") { RemoteConnection.shared.presented = true }
+                Button("SSH settings…") { remote.presented = true }
+            }.padding(10)
+            Divider()
+            if remote.workflowRemoteSelected { RemoteWorkflowView() }
+            else { localContent }
+        }.frame(minWidth: embedded ? 400 : 1000, minHeight: embedded ? 300 : 700)
+    }
+    private var localContent: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Local workflow").font(.headline)
+                Spacer()
                 Button("Open workflow…") { runtime.openExistingWorkflow(workspace) }
                 if runtime.guiURL != nil {
                     Button("New workflow…") { runtime.newWorkflow(workspace) }

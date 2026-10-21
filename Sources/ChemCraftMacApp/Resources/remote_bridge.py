@@ -92,6 +92,39 @@ def run(request):
         agent = Path(__file__).with_name('remote_agent.py').read_bytes()
         arguments = ssh_arguments(profile, agent, persistent=True)
         return dict(arguments=arguments)
+    if payload['action'] == 'gui-command':
+        # stdin EOF owns the editor lifetime. The GUI never detaches or submits work.
+        config = payload.get('path', '')
+        program = """import os,sys,subprocess,threading
+from pathlib import Path
+config = CONFIG
+args = [sys.executable, '-m', 'chemrefine', 'gui']
+if config: args.append(str(Path(config).expanduser().absolute()))
+args += ['--no-browser', '--port', '0']
+env = dict(os.environ, PYTHONUNBUFFERED='1')
+child = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
+def output():
+    for line in child.stdout:
+        sys.stdout.buffer.write(line); sys.stdout.buffer.flush()
+    os._exit(child.wait())
+threading.Thread(target=output, daemon=True).start()
+try: sys.stdin.buffer.read()
+finally:
+    child.terminate()
+    try: child.wait(timeout=5)
+    except subprocess.TimeoutExpired: child.kill(); child.wait()
+""".replace('CONFIG', repr(config), 1)
+        return dict(arguments=ssh_arguments(profile, program.encode()))
+    if payload['action'] == 'tunnel-command':
+        import socket
+        remote_port = int(payload['port'])
+        if not 1 <= remote_port <= 65535: raise ValueError('Invalid remote port.')
+        with socket.socket() as sock:
+            sock.bind(('127.0.0.1', 0))
+            local_port = sock.getsockname()[1]
+        arguments = ssh_arguments(profile, b'')[:-1]
+        arguments[-1:-1] = ['-N', '-o', 'ExitOnForwardFailure=yes', '-L', f'127.0.0.1:{local_port}:127.0.0.1:{remote_port}']
+        return dict(arguments=arguments, port=local_port)
     if payload['action'] == 'prepare-upload':
         return dict(files=collect_workflow(request['folder']))
     if payload['action'] == 'authenticate':

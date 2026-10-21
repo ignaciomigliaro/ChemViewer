@@ -24,7 +24,7 @@ struct ChemViewerApp: App {
                 Button("Close Document Tab") { documents.requestCloseActive() }.keyboardShortcut("w")
             }
             CommandGroup(after: .newItem) {
-                Button("Remote files & SLURM…") { RemoteConnection.shared.presented = true }.keyboardShortcut("o", modifiers: [.command, .shift])
+                Button("SSH connection…") { RemoteConnection.shared.presented = true }.keyboardShortcut("o", modifiers: [.command, .shift])
             }
             CommandGroup(replacing: .undoRedo) {
                 Button(workspace.activeTab == "Draw" ? "Undo Drawing Edit" : "Undo Geometry Edit") {

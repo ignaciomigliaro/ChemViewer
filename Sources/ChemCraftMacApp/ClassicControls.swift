@@ -21,7 +21,7 @@ struct ClassicMenuBar: View {
                 Button("New Molecule") { workspace.startNewDocument() }
                 Button(workspace.activeTab == "Draw" ? "Open Drawing…" : "Open…") { workspace.openFromMenu() }
                 Button(workspace.activeTab == "Draw" ? "Save Drawing…" : "Save Project…") { workspace.saveFromMenu() }
-                Button("Remote files & SLURM…") { RemoteConnection.shared.presented = true }
+                Button("SSH connection…") { RemoteConnection.shared.presented = true }
                 Button("Export XYZ…") { workspace.requestXYZExport() }
                 Button("Export ORCA Geometry…") { workspace.exportORCAGeometry() }
                 Button("Export PNG…") { action("export") }

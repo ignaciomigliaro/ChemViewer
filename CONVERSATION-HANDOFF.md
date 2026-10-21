@@ -819,3 +819,33 @@ Evidence: /private/tmp/chemviewer-0110-final-build.log, *-python.log,
 *-explorer-final.log, *-session-final.log and *-live.log; scoped window captures
 in Downloads/chemviewer-remote-evidence/{explorer-loading-regression,live-explorer-0110}.png.
 User AGENTS.md edits preserved/excluded. Quit/reopen needed for installed update.
+
+## Unified SSH/ChemRefine validation — 0.10.11 (2026-10-21)
+
+Signed arm64 build33:41 standalone core regression cases plus3 migrated suites
+pass. Full XCTest remains unavailable with the selected CLT toolchain; core
+code was not changed. Python48 passes, including exclusive remote creation,
+loopback forwarding/quoting, GUI bootstrap/EOF-owned shutdown, all six launch
+actions using supported mocked APIs, and non-SLURM/missing-resource rejection.
+
+Native live REMOTE_WORKFLOW_PASS: an exclusive synthetic water workflow created
+on ORCD opens inside ChemRefine with dispatch:slurm, relative paths and no Mac
+ORCA injection; remote GUI browse sees its files; form/template drafts are saved
+remotely. Native Run and intercepted embedded Resume reject dispatch:local
+before submission. Remote native file-picker and GUI window captures inspected.
+No actual SLURM job submitted; scientific remote execution remains unvalidated.
+Exact synthetic remote folder removed after seed-hash/home/prefix checks and
+verification its own GUI process exited. Existing login/calculations untouched.
+
+Local WORKFLOW_RUNNER_PASS and DASHBOARD_ACTIONS_PASS retain actual detached
+two-step ChemRefine/PySCF H2 execution, saved draft/template handling, Run/Resume/
+targeted rebuild/rerun, recovery monitoring and energy table. HF/STO-3G reported
+-1.1167593074Eh. UMA environment/per-step controls and centered labels regressions
+pass. Simplified SSH settings REMOTE_CONNECTION_PASS and explorer recovery
+REMOTE_EXPLORER_PASS also pass on this Mac.
+
+Evidence: /private/tmp/chemviewer-0111-final-release-build.log, *-python-all.log,
+*-remote-final.log, *-local-final.log, *-settings-final.log, *-explorer-final.log;
+Downloads/chemviewer-remote-evidence/{remote-chemrefine-tab,remote-workflow-picker,
+remote-browser}.png. Local calculation evidence path is recorded in local-final.
+User AGENTS.md changes preserved and excluded from release commits.

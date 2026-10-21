@@ -18,6 +18,8 @@ struct RemoteProfile: Codable, Identifiable, Equatable {
 @MainActor
 final class RemoteConnection: ObservableObject {
     static let shared = RemoteConnection()
+    @Published var workflowRemoteSelected = false
+    var isConnected: Bool { session != nil && !sessionKey.isEmpty }
     @Published var presented = false
     @Published var explorerVisible = UserDefaults.standard.bool(forKey: "ChemViewerRemoteExplorerVisible") {
         didSet { UserDefaults.standard.set(explorerVisible, forKey: "ChemViewerRemoteExplorerVisible") }
@@ -74,7 +76,7 @@ final class RemoteConnection: ObservableObject {
     @Published var profile = RemoteProfile() {
         didSet {
             if oldValue.host != profile.host || oldValue.python != profile.python || oldValue.setup != profile.setup {
-                disconnect(); clearExplorer(); entries = []; selected = nil; editingPath = ""
+                RemoteWorkflowRuntime.shared.stop(); disconnect(); clearExplorer(); entries = []; selected = nil; editingPath = ""
             }
         }
     }
@@ -186,6 +188,7 @@ final class RemoteConnection: ObservableObject {
                 case "upload":
                     profile.directory = result["path"] as? String ?? snapshot.directory; profile.config = result["config"] as? String ?? ""; saveProfile()
                     status = "Uploaded \(result["count"] ?? 0) input files to a new workflow folder. Edit input.yaml and headers for cluster paths and dispatch: slurm, then Check."
+                    workflowRemoteSelected = true; RemoteWorkflowRuntime.shared.open(config: profile.config)
                 case "check": status = "Remote workflow validates; SLURM commands found. Python: \(result["python"] ?? "")"
                 case "run", "resume": status = "Remote controller launched (PID \(result["pid"] ?? "?")). Click Refresh status for SLURM progress. Closing ChemViewer leaves it running."; log = "Log: \(result["log"] ?? "")"
                 case "status":
@@ -254,6 +257,7 @@ final class RemoteConnection: ObservableObject {
         do { response = try await current.exchange(actual) }
         catch { if session === current { disconnect() }; throw error }
         guard session === current else { throw RemoteError.message("SSH request cancelled.") }
+        if current.requests == 1 { workflowRemoteSelected = true }
         if let transport = response["transport"] as? [String: Any] {
             connectionStatus = "Connected · persistent SSH channel · request \(transport["requests"] ?? "") · \(transport["milliseconds"] ?? "") ms"
         }
@@ -274,10 +278,10 @@ final class RemoteConnection: ObservableObject {
             if cachedFolders.count >= 100 { cachedFolders.removeAll() }
             cachedFolders[cacheKey] = (Date(), result)
             if let canonical = result["path"] as? String { cachedFolders[canonical] = (Date(), result) }
-        } else if action == "write" || action == "upload" { cachedFolders.removeAll() }
+        } else if action == "write" || action == "upload" || action == "create-workflow" { cachedFolders.removeAll() }
         return result
     }
-    private func localRequest(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
+    func localRequest(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
 
         guard let script = Bundle.module.url(forResource: "remote_bridge", withExtension: "py") else { throw RemoteError.message("Missing SSH helper.") }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-ssh-" + UUID().uuidString)
@@ -308,84 +312,51 @@ enum RemoteError: LocalizedError { case message(String); var errorDescription: S
 
 struct RemoteConnectionView: View {
     @ObservedObject private var remote = RemoteConnection.shared
-    @EnvironmentObject private var workspace: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
-    @State private var confirmingRun = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Remote files & ChemRefine · SSH / SLURM").font(.title2)
+                Text("SSH connection").font(.title2)
                 Spacer()
                 Menu("Connections") {
                     ForEach(remote.profiles) { profile in Button(profile.name) { remote.selectProfile(profile.id) } }
-                    Divider(); Button("New connection") { remote.clearExplorer(); remote.profile = RemoteProfile(); remote.entries = []; remote.selected = nil; remote.editingPath = ""; remote.editor = ""; remote.runSummary = ""; remote.log = "" }
+                    Divider()
+                    Button("New connection") { remote.clearExplorer(); remote.profile = RemoteProfile() }
                 }.disabled(remote.busy)
-                Button("Save connection") { remote.saveProfile() }.disabled(remote.busy)
                 Button("Done") { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack { TextField("Connection name", text: $remote.profile.name); TextField("SSH alias or user@host", text: $remote.profile.host); TextField("Remote Python or environment folder", text: $remote.profile.python) }
-                HStack { Text("Directory"); TextField("~", text: $remote.profile.directory).onSubmit { remote.perform("list") }; Button("Authenticate in Terminal") { remote.perform("authenticate") }; Button("Browse") { remote.perform("list") }; Button("Check environment") { remote.perform("info") } }
-                DisclosureGroup("Environment commands (optional; executed remotely with Bash)") { TextEditor(text: $remote.profile.setup).font(.system(.caption, design: .monospaced)).frame(height: 60); Text("For example: module load python or source ~/env/bin/activate. Compute-node activation also belongs in the workflow’s SLURM headers.").font(.caption) }
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 10) {
+                GridRow { Text("Name"); TextField("Connection name", text: $remote.profile.name) }
+                GridRow { Text("SSH host"); TextField("Alias from ~/.ssh/config or user@host", text: $remote.profile.host) }
+                GridRow { Text("Starting folder"); TextField("~", text: $remote.profile.directory) }
+                GridRow { Text("ChemRefine Python"); TextField("Python executable or environment folder", text: $remote.profile.python) }
+            }.disabled(remote.busy)
+            DisclosureGroup("Environment commands") {
+                TextEditor(text: $remote.profile.setup).font(.system(.caption, design: .monospaced)).frame(height: 70)
+                Text("Executed remotely before Python starts. Compute-node activation belongs in the workflow’s SLURM headers.").font(.caption).foregroundStyle(.secondary)
+            }.disabled(remote.busy)
+            HStack {
+                Button("Save") { remote.saveProfile() }
+                Button("Authenticate in Terminal") { remote.perform("authenticate") }
+                Button("Connect / Browse") { remote.perform("list") }
+                Button("Check environment") { remote.perform("info") }
             }.disabled(remote.busy)
             Text(remote.status).font(.callout).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-            HSplitView {
-                VStack(alignment: .leading) {
-                    HStack {
-                        Button("Parent") { remote.perform("list", path: remote.parentDirectory) }
-                        Button("Refresh folder") { remote.perform("list", refresh: true) }
-                    }.disabled(remote.busy)
-                    HStack {
-                        Button("Open in viewer") { if let path = remote.selected { remote.perform("read", path: path, workspace: workspace) } }.disabled(selectedDirectory != false)
-                        Button("Use workflow") { if let path = remote.selected { remote.profile.config = path; remote.saveProfile() } }.disabled(!(remote.selected?.hasSuffix(".yaml") == true || remote.selected?.hasSuffix(".yml") == true))
-                        Button("Edit text…") { if let path = remote.selected { remote.perform("edit", path: path) } }.disabled(selectedDirectory != false)
-                    }.disabled(remote.busy)
-                    List(selection: $remote.selected) {
-                        ForEach(remote.entries) { entry in
-                            HStack { Image(systemName: entry.directory ? "folder" : "doc.text"); Text(entry.name); Spacer(); if !entry.directory && entry.size > 0 { Text(ByteCountFormatter.string(fromByteCount: entry.size, countStyle: .file)).foregroundStyle(.secondary).font(.caption) } }
-                                .tag(entry.path).contentShape(Rectangle()).onTapGesture(count: 2) { remote.perform(entry.directory ? "list" : "read", path: entry.path, workspace: workspace) }
-                        }
-                    }
-                    Text("Remote files open as automatic cached copies (up to 100 MB). Refresh retrieves changed contents; source files remain remote.").font(.caption).foregroundStyle(.secondary)
-                }.frame(minWidth: 320)
-                VStack(alignment: .leading) {
-                    HStack { Text("ChemRefine on this computer").font(.headline); Spacer(); Button("Upload workflow inputs…") { remote.upload() }.disabled(remote.busy) }
-                    TextField("Remote input.yaml path", text: $remote.profile.config).disabled(remote.busy)
-                    HStack {
-                        Button("Check workflow") { remote.perform("check", path: remote.profile.config) }
-                        Button("Run on SLURM…") { confirmingRun = true }
-                        Button("Resume") { remote.perform("resume", path: remote.profile.config) }
-                        Button("Refresh status") { remote.perform("status", path: remote.profile.config) }
-                        Toggle("Auto", isOn: $remote.autoRefresh).toggleStyle(.checkbox)
-                    }.disabled(remote.busy || remote.profile.config.isEmpty)
-                    Button("Copy step results") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(remote.runSummary, forType: .string) }.disabled(remote.runSummary.isEmpty)
-                    Text("Requires remote ChemRefine, dispatch: slurm, cluster executable/Python paths and CPU/GPU SLURM headers. Jobs continue after disconnection. Results below show up to 20 conformers per step.").font(.caption)
-                    if !remote.editingPath.isEmpty {
-                        Text(remote.editingPath).font(.caption).textSelection(.enabled)
-                        TextEditor(text: $remote.editor).font(.system(.caption, design: .monospaced)).frame(minHeight: 130)
-                        Button("Save remote text file") { remote.perform("write", path: remote.editingPath) }.disabled(remote.busy)
-                    }
-                    ScrollView([.horizontal, .vertical]) { Text(remote.runSummary.replacingOccurrences(of: "\t", with: "    ") + "\n\n" + remote.log).font(.system(.caption, design: .monospaced)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading) }.frame(minHeight: 100)
-                }.frame(minWidth: 460)
+            if !remote.editingPath.isEmpty {
+                Divider()
+                Text(remote.editingPath).font(.caption).textSelection(.enabled)
+                TextEditor(text: $remote.editor).font(.system(.caption, design: .monospaced)).frame(minHeight: 130)
+                Button("Save remote text file") { remote.perform("write", path: remote.editingPath) }.disabled(remote.busy)
             }
+            Spacer(minLength: 0)
+            Divider()
+            Text("Browse files in the left explorer. Build and submit calculations in the ChemRefine tab.").font(.caption).foregroundStyle(.secondary)
             HStack {
                 Text(remote.connectionStatus).font(.caption).foregroundStyle(.secondary)
-                Button("Disconnect") { remote.disconnect() }.disabled(remote.busy)
-                if remote.busy { ProgressView().controlSize(.small); Button("Cancel request") { remote.cancel() } }
                 Spacer()
-                if let file = remote.lastOpened, remote.lastOpenedHost == remote.profile.host { Text("Last opened: " + file).font(.caption).lineLimit(1); Button("Refresh remote file") { remote.refreshOpened(workspace) }.disabled(remote.busy) }
+                if remote.busy { ProgressView().controlSize(.small); Button("Cancel request") { remote.cancel() } }
+                Button("Disconnect") { RemoteWorkflowRuntime.shared.stop(); remote.disconnect() }.disabled(remote.busy)
             }
-        }.padding(16).background(Color(nsColor: .windowBackgroundColor)).frame(minWidth: 1020, minHeight: 700)
-        .task {
-            while !Task.isCancelled {
-                do { try await Task.sleep(nanoseconds: 10_000_000_000) } catch { break }
-                if remote.autoRefresh && !remote.busy && !remote.profile.config.isEmpty { remote.perform("status", path: remote.profile.config) }
-            }
-        }
-        .alert("Run remote ChemRefine workflow?", isPresented: $confirmingRun) {
-            Button("Run on SLURM") { remote.perform("run", path: remote.profile.config) }
-            Button("Cancel", role: .cancel) { }
-        } message: { Text("Host: \(remote.profile.host)\nWorkflow: \(remote.profile.config)\nRun may replace cached results. Use Resume to continue a previous calculation.") }
+        }.padding(20).frame(minWidth: 680, idealWidth: 760, minHeight: 430)
     }
-    private var selectedDirectory: Bool? { remote.entries.first(where: { $0.path == remote.selected })?.directory }
 }

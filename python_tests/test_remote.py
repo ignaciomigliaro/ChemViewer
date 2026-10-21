@@ -33,6 +33,57 @@ class RemoteTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_owned_remote_editor_exits_on_stdin_eof(self):
+        import re, select, shlex, time, urllib.request, urllib.parse, socket
+        profile = dict(host='synthetic-gui-test', python=sys.executable, setup='')
+        with patch.object(bridge, 'control_path', return_value=self.root/'socket'):
+            prepared = bridge.run(dict(profile=profile, request=dict(action='gui-command', path='')))
+        # Execute the exact quoted bootstrap through local Bash; no SSH or jobs.
+        child = subprocess.Popen(shlex.split(prepared['arguments'][-1]), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        port = None
+        try:
+            deadline = time.monotonic()+20
+            while time.monotonic() < deadline:
+                if not select.select([child.stdout],[],[],1)[0]: continue
+                line = child.stdout.readline()
+                match = re.search(rb'http://127\.0\.0\.1:(\d+)/\?token=([A-Za-z0-9_-]+)', line)
+                if match:
+                    port=int(match[1]);token=match[2].decode();break
+                if child.poll() is not None: break
+            self.assertIsNotNone(port, 'Owned GUI did not publish a loopback URL')
+            request=urllib.request.Request(f'http://127.0.0.1:{port}/api/bootstrap',headers={'X-ChemRefine-Token':token})
+            self.assertIn('host',json.load(urllib.request.urlopen(request,timeout=5)))
+            child.stdin.close();child.wait(timeout=8)
+            with socket.socket() as sock:
+                self.assertNotEqual(sock.connect_ex(('127.0.0.1',port)),0,'GUI listener survived owned channel EOF')
+        finally:
+            if child.poll() is None:child.kill();child.wait()
+            if not child.stdin.closed:child.stdin.close()
+            child.stdout.close()
+
+    def test_remote_editor_commands_are_loopback_and_reuse_saved_ssh(self):
+        profile = dict(host='synthetic-gui-test', python='~/env/bin/python', setup='')
+        with patch.object(bridge, 'control_path', return_value=self.root/'socket'):
+            gui = bridge.run(dict(profile=profile, request=dict(action='gui-command', path='/remote/a file;touch BAD.yaml')))
+            forward = bridge.run(dict(profile=profile, request=dict(action='tunnel-command', port=43210)))
+        self.assertEqual(gui['arguments'][-2], profile['host'])
+        self.assertIn('BatchMode=yes', gui['arguments'])
+        self.assertNotIn('-fN', gui['arguments']) # GUI lifetime is owned by stdin EOF.
+        self.assertIn('ExitOnForwardFailure=yes', forward['arguments'])
+        self.assertIn(f"127.0.0.1:{forward['port']}:127.0.0.1:43210", forward['arguments'])
+        self.assertIn('-N', forward['arguments'])
+        self.assertEqual(forward['arguments'][-1], profile['host'])
+        with self.assertRaisesRegex(ValueError, 'Invalid remote port'):
+            bridge.run(dict(profile=profile, request=dict(action='tunnel-command', port=65536)))
+
+    def test_create_remote_workflow_is_exclusive_and_preserves_inputs(self):
+        files = {'input.yaml':base64.b64encode(b'dispatch: slurm\n').decode(), 'seed.xyz':base64.b64encode(b'2\nH2\nH 0 0 0\nH 0 0 .74\n').decode()}
+        a = agent.execute(dict(action='create-workflow', path=str(self.root), files=files))
+        b = agent.execute(dict(action='create-workflow', path=str(self.root), files=files))
+        self.assertNotEqual(a['path'], b['path'])
+        self.assertEqual(Path(a['config']).read_text(), 'dispatch: slurm\n')
+        self.assertEqual((Path(a['path'])/'seed.xyz').read_bytes(), base64.b64decode(files['seed.xyz']))
+
     def test_persistent_helper_reuses_process_after_error(self):
         child = subprocess.Popen([sys.executable, str(ROOT/'remote_agent.py'), '--chemviewer-serve'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
@@ -192,6 +243,9 @@ class RemoteTests(unittest.TestCase):
             path = self.config('slurm')
             with patch.object(agent.shutil,'which',return_value=None), self.assertRaisesRegex(ValueError, 'SLURM commands'):
                 agent.execute(dict(action='run',path=str(path)))
+            for action in ('resume','rebuild-cache','rebuild-nms','rerun','rerun-errors'):
+                with self.assertRaisesRegex(ValueError, 'dispatch: slurm'):
+                    agent.execute(dict(action=action,path=str(self.config('local'))))
             launch.assert_not_called()
 
     def test_remote_check_and_dispatch_use_supported_api(self):
@@ -199,7 +253,7 @@ class RemoteTests(unittest.TestCase):
         with patch.object(agent.shutil,'which',return_value='/cluster/bin/sbatch'), patch('chemrefine.agent_tools.start_run',return_value={'pid':123,'log':'test.log'}) as launch:
             report = agent.execute(dict(action='check',path=str(path)))
             self.assertTrue(report['ok']); launch.assert_not_called()
-            for action in ('run','resume'):
+            for action in ('run','resume','rebuild-cache','rebuild-nms','rerun','rerun-errors'):
                 agent.execute(dict(action=action,path=str(path)))
                 launch.assert_called_with(str(path), action=action)
         # /usr/bin/true is never executed: this tests orchestration only, not ORCA science.

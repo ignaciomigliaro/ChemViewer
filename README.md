@@ -352,3 +352,25 @@ The sidebar waits for an ongoing connection request before loading and reloads
 after connection changes. All files are visible by default; Home/Parent buttons,
 a minimum folder-list height and explicit loading/empty/filter hints make
 navigation clearer. Quit and reopen the installed app to use the update.
+
+## Unified SSH / ChemRefine — 0.10.11
+
+Connect from **SSH connection…**, then use the **ChemRefine** tab. The **Run on**
+selector offers **This Mac** and **SSH / SLURM · host**; a newly established SSH
+channel selects the remote destination automatically. You can switch back to
+This Mac explicitly.
+
+In SSH mode, **Open workflow…** selects cluster YAML files and **New from
+structure…** selects a cluster parent directory. New workflows have relative
+structure/template paths and `dispatch: slurm`; set cluster ORCA/MLIP paths and
+review the generated SLURM header for account, partition, time and environment
+setup. **Check workflow**, **Run on SLURM**, **Resume** and **Refresh status** live
+in this tab. **More → Upload local workflow inputs…** transfers an existing Mac
+workflow to a new remote folder and opens it for editing.
+
+The full remote ChemRefine GUI runs through a private loopback SSH tunnel, so
+its file buttons, template editor and saving access the cluster filesystem.
+It requires `chemrefine[gui]` in the configured remote Python environment.
+Closing the editor stops its own GUI process; submitted calculations have an
+independent lifetime. A lost tunnel shows a reconnect message. Existing local
+editor/run controls remain separate and available.
