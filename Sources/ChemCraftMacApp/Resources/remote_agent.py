@@ -24,14 +24,16 @@ def execute(request):
         return dict(python=sys.executable, chemrefine=version('chemrefine'), directory=str(path), exists=path.is_dir(), sbatch=shutil.which('sbatch'), squeue=shutil.which('squeue'), supported=find_spec('chemrefine.agent_tools') is not None)
     if action == 'list':
         entries = []
-        for item in path.iterdir():
-            try:
-                stat = item.stat()
-                entries.append(dict(name=item.name, path=str(item), directory=item.is_dir(), size=stat.st_size))
-            except OSError:
-                continue
-            if len(entries) > 10000:
-                raise ValueError('Directory exceeds 10,000 entries. Choose a more specific path.')
+        with os.scandir(path) as listing:
+            for item in listing:
+                try:
+                    # d_type avoids an NFS metadata lookup for ordinary entries.
+                    directory = item.is_dir(follow_symlinks=True)
+                    entries.append(dict(name=item.name, path=item.path, directory=directory, size=0))
+                except OSError:
+                    continue
+                if len(entries) > 10000:
+                    raise ValueError('Directory exceeds 10,000 entries. Choose a more specific path.')
         return dict(path=str(path), parent=str(path.parent), entries=sorted(entries, key=lambda x: (not x['directory'], x['name'].casefold())))
     if action == 'read':
         if path.stat().st_size > LIMIT:
@@ -117,11 +119,23 @@ def execute(request):
     raise ValueError('Unknown remote action: ' + action)
 
 
-if __name__ == '__main__':
+def response(request):
     try:
-        request = json.loads(sys.stdin.read())
-        result = execute(request)
-        print('CHEMVIEWER_JSON:' + json.dumps(dict(ok=True, result=result), allow_nan=False, default=str))
+        return dict(ok=True, result=execute(request), server_pid=os.getpid())
     except Exception as error:
-        print('CHEMVIEWER_JSON:' + json.dumps(dict(ok=False, error=str(error))))
-        sys.exit(1)
+        return dict(ok=False, error=str(error), server_pid=os.getpid())
+
+
+if __name__ == '__main__':
+    if '--chemviewer-serve' in sys.argv:
+        # One authenticated channel, many requests; imports stay warm between calls.
+        for line in sys.stdin:
+            try:
+                reply = response(json.loads(line))
+            except Exception as error:
+                reply = dict(ok=False, error=str(error))
+            print('CHEMVIEWER_JSON:' + json.dumps(reply, allow_nan=False, default=str), flush=True)
+    else:
+        reply = response(json.loads(sys.stdin.read()))
+        print('CHEMVIEWER_JSON:' + json.dumps(reply, allow_nan=False, default=str), flush=True)
+        sys.exit(0 if reply['ok'] else 1)

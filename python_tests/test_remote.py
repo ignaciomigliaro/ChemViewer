@@ -33,6 +33,43 @@ class RemoteTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_persistent_helper_reuses_process_after_error(self):
+        child = subprocess.Popen([sys.executable, str(ROOT/'remote_agent.py'), '--chemviewer-serve'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            requests = [dict(action='list',path=str(self.root)),dict(action='list',path=str(self.root/'absent')),dict(action='list',path=str(self.root))]
+            replies=[]
+            for request in requests:
+                child.stdin.write(json.dumps(request)+'\n'); child.stdin.flush()
+                replies.append(json.loads(child.stdout.readline().split('CHEMVIEWER_JSON:',1)[1]))
+            self.assertEqual([x['ok'] for x in replies],[True,False,True])
+            self.assertEqual({x['server_pid'] for x in replies},{child.pid})
+            child.stdin.close(); child.wait(timeout=5)
+        finally:
+            if child.poll() is None: child.kill();child.wait()
+            child.stdout.close();child.stderr.close()
+
+    def test_actual_ssh_command_enters_persistent_mode_without_eof(self):
+        import select
+        profile=dict(host='synthetic',python=sys.executable)
+        arguments=bridge.run(dict(profile=profile,request=dict(action='connection-command')))['arguments']
+        child=subprocess.Popen(['/bin/bash','-c',arguments[-1]],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        try:
+            for _ in range(2):
+                child.stdin.write(json.dumps(dict(action='list',path=str(self.root))).encode()+b'\n');child.stdin.flush()
+                self.assertTrue(select.select([child.stdout],[],[],5)[0], 'Persistent request waited for stdin EOF')
+                reply=json.loads(child.stdout.readline().split(b'CHEMVIEWER_JSON:',1)[1])
+                self.assertTrue(reply['ok'])
+            child.stdin.close();child.wait(timeout=5)
+        finally:
+            if child.poll() is None:child.kill();child.wait()
+            child.stdout.close();child.stderr.close()
+
+    def test_connection_preparation_does_not_execute_ssh(self):
+        with patch.object(bridge,'ssh_exchange') as exchange:
+            result=bridge.run(dict(profile=dict(host='synthetic'),request=dict(action='connection-command')))
+            self.assertIn('--chemviewer-serve',result['arguments'][-1])
+            exchange.assert_not_called()
+
     def test_alias_options_and_shell_injection_refused(self):
         for host in ('-oProxyCommand=id', 'a;touch /tmp/pwn', 'a\nwhoami', 'a host', ''):
             with self.assertRaises(ValueError):

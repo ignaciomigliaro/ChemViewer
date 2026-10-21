@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Foundation
 import SwiftUI
 
@@ -32,6 +33,12 @@ final class RemoteConnection: ObservableObject {
     @Published var runSummary = ""
     @Published var lastOpened: String?
     @Published var lastOpenedHost: String?
+    @Published var connectionStatus = "Disconnected · authenticate once, then browse"
+    @Published var parentDirectory = "~"
+    private var session: RemoteSSHSession?
+    private var sessionKey = ""
+    private var cachedFolders: [String: (Date, [String: Any])] = [:]
+    private var channelBusy = false
     private var process: Process?
     private var serial = 0
     struct Entry: Identifiable, Decodable {
@@ -41,7 +48,9 @@ final class RemoteConnection: ObservableObject {
         let directory: Bool
         let size: Int64
     }
-    init() {
+    private let makeSession: ([String]) throws -> RemoteSSHSession
+    init(makeSession: @escaping ([String]) throws -> RemoteSSHSession = { try RemoteSSHSession(arguments: $0) }) {
+        self.makeSession = makeSession
         if let data = UserDefaults.standard.data(forKey: "ChemViewerSSHProfiles"), let saved = try? JSONDecoder().decode([RemoteProfile].self, from: data) {
             profiles = saved; if let first = saved.first { profile = first }
         }
@@ -55,14 +64,16 @@ final class RemoteConnection: ObservableObject {
         guard !busy, let saved = profiles.first(where: { $0.id == id }) else { return }
         profile = saved; entries = []; selected = nil; editingPath = ""; editor = ""; runSummary = ""; log = ""
     }
-    func cancel() { serial += 1; process?.terminate(); process = nil; busy = false; status = "Request cancelled. A remote job already submitted continues on the cluster; refresh its status." }
-    func perform(_ action: String, path: String? = nil, workspace: WorkspaceStore? = nil, folder: String? = nil) {
+    func disconnect() { session?.close(); session = nil; sessionKey = ""; cachedFolders = [:]; connectionStatus = "Disconnected" }
+    func cancel() { serial += 1; disconnect(); process?.terminate(); process = nil; busy = false; status = "Request cancelled. A remote job already submitted continues on the cluster; refresh its status." }
+    func perform(_ action: String, path: String? = nil, workspace: WorkspaceStore? = nil, folder: String? = nil, refresh: Bool = false) {
         guard !busy else { return }
         if action == "write", editingHost != profile.host { status = "Reopen the text file after changing hosts."; return }
         saveProfile(); busy = true; serial += 1; let token = serial
         let snapshot = profile
         status = action == "run" || action == "resume" ? "Checking and submitting on \(snapshot.host)…" : "\(action.capitalized) · \(snapshot.host)…"
         var payload: [String: Any] = ["action": action, "path": path ?? snapshot.directory]
+        if refresh { payload["refresh"] = true }
         if action == "write" { payload["data"] = Data(editor.utf8).base64EncodedString(); payload["sha256"] = editorHash }
         Task {
             defer { if token == serial { busy = false; process = nil } }
@@ -80,8 +91,9 @@ final class RemoteConnection: ObservableObject {
                     log = String(data: try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8) ?? ""
                 case "list":
                     entries = try JSONDecoder().decode([Entry].self, from: JSONSerialization.data(withJSONObject: result["entries"] ?? []))
+                    parentDirectory = result["parent"] as? String ?? "~"
                     profile.directory = result["path"] as? String ?? snapshot.directory; selected = nil; saveProfile()
-                    status = "\(entries.count) entries · \(snapshot.host)"
+                    status = "\(entries.count) entries · \(snapshot.host)" + (result["_cached"] as? Bool == true ? " · cached (Refresh folder for changes)" : "")
                 case "read":
                     if let local = result["local"] as? String, let workspace {
                         lastOpened = result["path"] as? String; lastOpenedHost = snapshot.host
@@ -131,6 +143,64 @@ final class RemoteConnection: ObservableObject {
         perform("read", path: path, workspace: workspace)
     }
     func request(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
+        if payload["action"] as? String == "authenticate" {
+            disconnect()
+            return try await localRequest(payload, profile: profile)
+        }
+        let keyData = try JSONSerialization.data(withJSONObject: [profile.host, profile.python, profile.setup])
+        let key = SHA256.hash(data: keyData).map { String(format: "%02x", $0) }.joined()
+        if key != sessionKey { disconnect(); sessionKey = key }
+        let action = payload["action"] as? String ?? ""
+        let cacheKey = payload["path"] as? String ?? "~"
+        if action == "list", payload["refresh"] as? Bool != true, let cached = cachedFolders[cacheKey], Date().timeIntervalSince(cached.0) < 120 {
+            var result = cached.1; result["_cached"] = true; return result
+        }
+        guard !channelBusy else { throw RemoteError.message("A remote request is already in progress.") }
+        channelBusy = true; defer { channelBusy = false }
+        var actual = payload
+        if edit { actual["action"] = "read" }
+        if action == "upload" {
+            let prepared = try await localRequest(["action":"prepare-upload"], profile: profile, folder: folder)
+            actual["files"] = prepared["files"]
+        }
+        if session == nil {
+            connectionStatus = "Opening persistent SSH channel…"
+            do {
+                let prepared = try await localRequest(["action":"connection-command"], profile: profile)
+                guard let arguments = prepared["arguments"] as? [String] else { throw RemoteError.message("Missing SSH command.") }
+                session = try makeSession(arguments)
+            } catch { disconnect(); throw error }
+        }
+        guard let current = session else { throw RemoteError.message("No SSH channel.") }
+        let response: [String: Any]
+        do { response = try await current.exchange(actual) }
+        catch { if session === current { disconnect() }; throw error }
+        guard session === current else { throw RemoteError.message("SSH request cancelled.") }
+        if let transport = response["transport"] as? [String: Any] {
+            connectionStatus = "Connected · persistent SSH channel · request \(transport["requests"] ?? "") · \(transport["milliseconds"] ?? "") ms"
+        }
+        guard response["ok"] as? Bool == true else { throw RemoteError.message(response["error"] as? String ?? "Remote request failed.") }
+        var result = response["result"] as? [String: Any] ?? [:]
+        result["_transport"] = response["transport"]; result["_server_pid"] = response["server_pid"]
+        if actual["action"] as? String == "read", !edit {
+            guard let encoded = result.removeValue(forKey: "data") as? String, let bytes = Data(base64Encoded: encoded), let path = result["path"] as? String else { throw RemoteError.message("Invalid remote file data.") }
+            let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+            guard digest == result["sha256"] as? String else { throw RemoteError.message("Remote checksum mismatch.") }
+            let fileKey = SHA256.hash(data: Data((profile.host + "\0" + path).utf8)).map { String(format: "%02x", $0) }.joined()
+            let cache = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Caches/org.cleanroom.ChemViewer/remote/" + fileKey)
+            try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            let target = cache.appendingPathComponent(URL(fileURLWithPath: path).lastPathComponent)
+            try bytes.write(to: target, options: .atomic); result["local"] = target.path
+        }
+        if action == "list" {
+            if cachedFolders.count >= 100 { cachedFolders.removeAll() }
+            cachedFolders[cacheKey] = (Date(), result)
+            if let canonical = result["path"] as? String { cachedFolders[canonical] = (Date(), result) }
+        } else if action == "write" || action == "upload" { cachedFolders.removeAll() }
+        return result
+    }
+    private func localRequest(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
+
         guard let script = Bundle.module.url(forResource: "remote_bridge", withExtension: "py") else { throw RemoteError.message("Missing SSH helper.") }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-ssh-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -184,14 +254,17 @@ struct RemoteConnectionView: View {
             HSplitView {
                 VStack(alignment: .leading) {
                     HStack {
-                        Button("Parent") { remote.perform("list", path: remote.profile.directory + "/..") }
+                        Button("Parent") { remote.perform("list", path: remote.parentDirectory) }
+                        Button("Refresh folder") { remote.perform("list", refresh: true) }
+                    }.disabled(remote.busy)
+                    HStack {
                         Button("Open in viewer") { if let path = remote.selected { remote.perform("read", path: path, workspace: workspace) } }.disabled(selectedDirectory != false)
                         Button("Use workflow") { if let path = remote.selected { remote.profile.config = path; remote.saveProfile() } }.disabled(!(remote.selected?.hasSuffix(".yaml") == true || remote.selected?.hasSuffix(".yml") == true))
                         Button("Edit text…") { if let path = remote.selected { remote.perform("edit", path: path) } }.disabled(selectedDirectory != false)
                     }.disabled(remote.busy)
                     List(selection: $remote.selected) {
                         ForEach(remote.entries) { entry in
-                            HStack { Image(systemName: entry.directory ? "folder" : "doc.text"); Text(entry.name); Spacer(); if !entry.directory { Text(ByteCountFormatter.string(fromByteCount: entry.size, countStyle: .file)).foregroundStyle(.secondary).font(.caption) } }
+                            HStack { Image(systemName: entry.directory ? "folder" : "doc.text"); Text(entry.name); Spacer(); if !entry.directory && entry.size > 0 { Text(ByteCountFormatter.string(fromByteCount: entry.size, countStyle: .file)).foregroundStyle(.secondary).font(.caption) } }
                                 .tag(entry.path).contentShape(Rectangle()).onTapGesture(count: 2) { remote.perform(entry.directory ? "list" : "read", path: entry.path, workspace: workspace) }
                         }
                     }
@@ -218,6 +291,8 @@ struct RemoteConnectionView: View {
                 }.frame(minWidth: 460)
             }
             HStack {
+                Text(remote.connectionStatus).font(.caption).foregroundStyle(.secondary)
+                Button("Disconnect") { remote.disconnect() }.disabled(remote.busy)
                 if remote.busy { ProgressView().controlSize(.small); Button("Cancel request") { remote.cancel() } }
                 Spacer()
                 if let file = remote.lastOpened, remote.lastOpenedHost == remote.profile.host { Text("Last opened: " + file).font(.caption).lineLimit(1); Button("Refresh remote file") { remote.refreshOpened(workspace) }.disabled(remote.busy) }

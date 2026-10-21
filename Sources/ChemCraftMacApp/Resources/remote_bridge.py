@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 
-def ssh_arguments(profile, agent):
+def ssh_arguments(profile, agent, persistent=False):
     host = profile.get('host', '').strip()
     if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@:-]*', host):
         raise ValueError('Use an SSH alias or user@hostname, without options or spaces. Configure ports/jump hosts in ~/.ssh/config.')
@@ -21,7 +21,7 @@ def ssh_arguments(profile, agent):
         raise ValueError('Invalid remote Python path.')
     # expanduser inside remote Python is unavailable before it launches: shell expands only leading ~/.
     command = ('"$HOME"/' + shlex.quote(python[2:])) if python.startswith('~/') else shlex.quote(python)
-    bootstrap = "import base64;exec(compile(base64.b64decode(" + repr(base64.b64encode(agent).decode()) + "),'<chemviewer-remote>','exec'))"
+    bootstrap = "import base64,sys;" + ("sys.argv.append('--chemviewer-serve');" if persistent else "") + "exec(compile(base64.b64decode(" + repr(base64.b64encode(agent).decode()) + "),'<chemviewer-remote>','exec'))"
     setup = profile.get('setup', '').strip()
     # Setup is deliberately executable user-authored shell, not inferred from any file.
     shell = 'set -e\n' + (setup + '\n' if setup else '') + 'chemviewer_remote_python=' + command + '\nif [ -d \"$chemviewer_remote_python\" ]; then chemviewer_remote_python=\"$chemviewer_remote_python/bin/python\"; fi\nexec \"$chemviewer_remote_python\" -c ' + shlex.quote(bootstrap)
@@ -88,6 +88,12 @@ def ssh_exchange(args, payload):
 def run(request):
     profile = request['profile']
     payload = request['request']
+    if payload['action'] == 'connection-command':
+        agent = Path(__file__).with_name('remote_agent.py').read_bytes()
+        arguments = ssh_arguments(profile, agent, persistent=True)
+        return dict(arguments=arguments)
+    if payload['action'] == 'prepare-upload':
+        return dict(files=collect_workflow(request['folder']))
     if payload['action'] == 'authenticate':
         ssh_arguments(profile, b'')
         command = ['/usr/bin/ssh', '-M', '-S', str(control_path(profile['host'].strip())), '-o', 'ControlPersist=8h', '-o', 'ControlMaster=auto', '-fN', profile['host'].strip()]

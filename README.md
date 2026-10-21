@@ -290,3 +290,21 @@ because it can invalidate cached results; Resume continues a previous run.
 
 See [remote connection validation](docs/remote-connections-2026-10-20.md) for
 verified scope and remaining live scheduler validation.
+
+## Faster remote browsing — 0.10.8
+
+The SSH browser now keeps one SSH channel **and one remote Python helper** alive
+between folder changes. Changing folders no longer launches another remote
+command or repeats environment setup. Recent folder listings are cached for two
+minutes; **Refresh folder** retrieves current contents. Directory sizes are not
+fetched during navigation, reducing metadata work on cluster storage.
+
+The footer shows connection reuse and request timing. **Disconnect** closes this
+app's helper channel; it leaves detached ChemRefine jobs and the shared SSH
+authentication session alone. Network/authentication expiry can still require
+reconnection, but ordinary folder changes reuse the existing channel.
+
+A read-only packaged-app test on ORCD measured 1,282 ms for the initial request,
+11 ms for the next uncached request on the same remote process, and under 1 ms
+for a cached return. These are individual home-directory measurements, not a
+guarantee for every folder or server load.

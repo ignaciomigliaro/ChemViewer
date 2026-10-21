@@ -238,3 +238,23 @@ checks persisted profiles, bundled authentication helper and invalid-host errors
 Core33 plus three migrated suites and all 42 Python chemistry/drawing/workflow/
 remote cases pass; strict signed ARM64 packaging passes. Live ORCD evidence and
 limits are in remote-connections-2026-10-20.md. No user calculations were rerun.
+
+## Persistent remote transport — 0.10.8
+
+All 45 Python regressions pass (16 remote). New cases exercise multiple requests
+and error recovery in one actual helper process, and execute the exact generated
+SSH shell command locally without sending stdin EOF. This catches passing the
+serve flag to Bash rather than Python. Native REMOTE_SESSION_PASS verifies one
+process for parent/child/error/read, exact XYZ bytes and basename in the native
+cache, cache-only returns, explicit refresh after directory changes, and
+disconnect/reconnect. The real native pipe test caught a length-buffered read
+stall during development; release uses immediate POSIX pipe reads.
+
+Packaged REMOTE_NAVIGATION_PASS on authenticated ORCD measured initial1282ms,
+warm uncached11ms and cached0ms (integer timing), with identical remote helper PID
+and exactly two network requests. It listed the saved starting directory only;
+no jobs, chemistry calculations or remote file writes were performed. This is a
+single live timing sample, not a universal performance bound. REMOTE_CONNECTION_PASS
+checks the actual updated sheet; its window capture was inspected. Signed arm64
+build, 33 standalone core cases and three migrated suites pass; local XCTest is
+still unavailable under CLT. No scientific parser/model/conversion changed.

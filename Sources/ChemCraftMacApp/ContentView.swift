@@ -54,6 +54,8 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--remote-navigation-smoke-test") { await RemoteNavigationSmokeTest.run() }
+            if CommandLine.arguments.contains("--remote-session-smoke-test") { await RemoteSessionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-live-smoke-test") { await RemoteLiveSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-connection-smoke-test") { await RemoteConnectionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--workflow-runner-smoke-test") { await Task { @MainActor in await WorkflowRunnerSmokeTest.run(workspace: workspace) }.value }

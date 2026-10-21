@@ -311,3 +311,13 @@ See remote-connections-2026-10-20.md for final transfer evidence and limitations
 No actual SLURM calculation has been submitted/validated by this release; cluster
 headers, engine paths and dependencies remain user-configured. This is cached
 file access, not a mounted remote filesystem, and companion files are not synced.
+
+## Remote navigation responsiveness — 0.10.8
+
+Tested persistent SSH/Python RPC channel, two-minute recent-folder cache with
+explicit Refresh, reduced directory metadata work, connection/timing indicator
+and explicit Disconnect. Native tests verify reuse/error recovery/cache/refresh/
+file integrity/reconnection. Live ORCD same-process requests measured1282ms first,
+11ms warm and <1ms cached in one sample; folder/server conditions may differ.
+Authentication expiry still needs login. No new SLURM scientific execution
+validation is claimed; no jobs were submitted for these performance checks.

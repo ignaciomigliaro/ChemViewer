@@ -437,3 +437,28 @@ remote controller survives disconnects and owns the pipeline lock; canceling a
 viewer request does not promise cancellation of submitted calculations. Request
 and cleanup deadlines bound unresponsive SSH processes; no cluster-wide cancel
 or scancel action is exposed.
+
+## Persistent remote channel — 0.10.8
+
+RemoteSSHSession owns one OpenSSH child with persistent stdin/stdout. The fixed
+bootstrap enables remote_agent's newline-framed --chemviewer-serve loop inside
+Python's argv, not as an argument to the outer Bash command. Directory changes
+and workflow operations are serialized RPCs; Python imports/environment setup
+remain warm. No additional remote service, port or package is installed.
+
+RemoteConnection invokes the local helper only to prepare the initial SSH
+arguments, interactive authentication or an upload manifest. It decodes remote
+file contents, checks SHA-256 and atomically replaces its native cache. Session
+identity includes host/Python/setup, excludes directory, and changes only when
+connection settings change or the channel is explicitly closed/lost. No failed
+mutation is automatically replayed. Cancellation closes only the owned channel;
+stale replies cannot replace a new session. A 90-second watchdog closes the
+child, with bounded termination escalation for that child only.
+
+Pipe reads use POSIX read so short responses return immediately rather than
+waiting for a length-sized FileHandle read to fill. A background dispatch queue
+keeps stream IO/JSON decoding off the main thread. The helper catches per-request
+errors and remains available for later RPCs. Directory listing uses scandir and
+entry types rather than stat-ing every entry for file sizes. A bounded cache
+keeps listing results for 120 seconds; Refresh bypasses it and mutations clear
+it. The Parent button uses the returned parent path for cache reuse.

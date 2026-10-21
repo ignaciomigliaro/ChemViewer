@@ -298,3 +298,17 @@ Automated flags: --remote-connection-smoke-test (native sheet/bundled helper,
 no login) and --remote-live-smoke-test (opt-in staged synthetic fixture metadata
 in Downloads/chemviewer-remote-evidence/live-fixture.json). Final synthetic
 fixture was removed after validation; recreate it deliberately before rerunning.
+
+## Persistent remote navigation — 0.10.8
+
+CV-REMOTE-004: Authenticate once; navigate parent/child folders repeatedly. The
+footer must retain the same channel while its request count increases. Return
+to a recently visited folder: no network request. Create/change a controlled
+fixture locally in loopback acceptance; Refresh folder must reveal it. A failed
+folder request must not break later requests. Disconnect and Browse must create
+a new helper without canceling detached calculations.
+
+Automated --remote-session-smoke-test exercises native persistent streams and
+cache/refresh/reconnect with a local synthetic helper; --remote-navigation-smoke-test
+is opt-in read-only live timing using the saved authenticated connection. The
+existing --remote-connection-smoke-test covers the native sheet.

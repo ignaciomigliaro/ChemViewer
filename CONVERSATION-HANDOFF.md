@@ -721,3 +721,31 @@ works. No user calculation changed or existing SSH session terminated.
 Source tests RemoteConnectionSmokeTest/RemoteLiveSmokeTest are opt-in; live fixture
 metadata/evidence resides only in Downloads, not repo. User's AGENTS.md change
 remains preserved/excluded. See docs/remote-connections-2026-10-20.md and README.
+
+## 0.10.8 — seamless SSH folder navigation
+
+User reported folder changes slow/requesting new connection. Code diagnosis:
+0.10.7 reused authentication/master but spawned local+SSH+remote Python command
+for every operation; listing also stat-ed entries for sizes. Replaced app path
+with RemoteSSHSession persistent framed RPC and remote_agent --chemviewer-serve
+loop. Environment/imports stay warm; key host/Python/setup, not directory.
+Native file cache retains basename/SHA-256/atomic replacement. Cached listings
+last120s; explicit Refresh folder, Parent path reuse, metadata-light scandir,
+connection timings/Disconnect added. No remote service/package installed.
+
+45 Python cases pass; native REMOTE_SESSION_PASS validates reuse, per-request
+error recovery, exact cached XYZ, cache/forced refresh and explicit reconnect.
+REMOTE_CONNECTION_PASS native sheet captured/inspected. REMOTE_NAVIGATION_PASS
+on ORCD measured first1282ms,warm11ms,cached0ms; identical remote PID,2network
+requests, no scientific jobs/writes. User authenticated once in Terminal after
+yesterday's master expired. The underlying master remains available to the user.
+
+Development acceptance caught/fixed FileHandle length-oriented pipe blocking
+and serve argv mistakenly placed outside Bash code. Exact-shell protocol test
+now guards flag placement; POSIX read handles short replies. No automatic
+mutation replay; stale replies guarded;90sdeadline+bounded child termination.
+Strict signed ARM64 build30, core33/migrated3 pass. Previous0.10.7 CI success.
+Evidence /private/tmp/chemviewer-0108-{python-final,validated-build,session-final,
+navigation-final,sheet}.log; final native rechecks below use release-specific
+filenames. User AGENTS.md edit is preserved/excluded from release. Real SLURM
+calculation completion remains untested; this release changes transport only.
