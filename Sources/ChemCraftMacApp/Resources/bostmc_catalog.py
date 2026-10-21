@@ -117,7 +117,7 @@ class BosTMCCatalog:
         status=cls.status(request)
         if status['phase']=='indexing': return status
         code = globals().get('_BOSTMC_SOURCE') or Path(__file__).read_text()
-        bootstrap='import base64,json;exec(compile(base64.b64decode('+repr(base64.b64encode(code.encode()).decode())+'),"<bostmc-index>","exec"));getattr(os,"nice",lambda _:None)(10);BosTMCCatalog.build(json.loads(base64.b64decode('+repr(base64.b64encode(json.dumps(request).encode()).decode())+')))' 
+        bootstrap='import base64,json;exec(compile(base64.b64decode('+repr(base64.b64encode(code.encode()).decode())+'),"<bostmc-index>","exec"));getattr(os,"nice",lambda _:None)(10);BosTMCCatalog.build(json.loads(base64.b64decode('+repr(base64.b64encode(json.dumps(request).encode()).decode())+')))'
         log=(cache/'index.log').open('ab')
         child=subprocess.Popen([sys.executable,'-c',bootstrap],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True);log.close()
         return dict(phase='indexing',rows=0,pid=child.pid,fingerprint=fingerprint)
