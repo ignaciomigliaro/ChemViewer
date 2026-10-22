@@ -448,3 +448,32 @@ both handles passed in two consecutive native runs (release2/release3 logs).
 No success is inferred from the earlier failed run. Local source/filter/graph
 checks passed in that run as well. The final live SSH resolver check exceeded
 20 seconds; local XYZ selection/filtering needs no SSH and remained functional.
+
+## SSH timeout diagnosis / recovery — 0.11.2 / build37 (2026-10-22)
+
+Independent read-only probes reproduced 8–10 s trivial-command timeouts through both
+ChemViewer's private master and the user's configured master. Both masters answered
+local -O check; debug logs reached mux session IDs without remote command output.
+A nonmultiplexed connection reached the server and required keyboard-interactive
+MFA, so a new interactive master was prepared. Its successful authentication marker
+was published; nevertheless plain printf timed out 10 s and SFTP pwd timed out 12 s.
+No ChemViewer helper, CSV, Python environment or calculation is needed to reproduce
+these stalls. This local evidence does not establish a cluster-wide outage or
+identify the exact remote service/filesystem cause. The longer plain printf probe also timed out after95 seconds; remote browsing
+success remains unverified.
+
+The product defect fixed here is explicit authentication reusing a stalled socket.
+Python 73 tests pass: new oracles verify conditional/atomic active-socket publication,
+failed-auth rollback, preservation of the old socket, matching future SSH arguments,
+keepalive arguments and rejection of unsafe markers. Native REMOTE_SESSION_PASS
+verifies persistent helper reuse, error recovery, cache refresh and exact XYZ bytes.
+Mandatory signed arm64 build retains 41 standalone core checks plus 3 migrated suites;
+XCTest is unavailable under selected CLT. Scientific parsers/calculations unchanged.
+No remote jobs or user masters were stopped, and no run was resubmitted.
+
+Private evidence: /private/tmp/chemviewer-ssh-probe-{custom,configured,independent}.log,
+chemviewer-ssh-recovery-{live,python,native,build}.log and
+chemviewer-ssh-session-startup-long.log. Credentials/keys are never stored by the
+recovery mechanism. Official reference for keepalive/control semantics:
+https://man.openbsd.org/ssh_config . ORCD escalation reference:
+https://orcd-docs.mit.edu/accessing-orcd/ssh-troubleshooting/ .

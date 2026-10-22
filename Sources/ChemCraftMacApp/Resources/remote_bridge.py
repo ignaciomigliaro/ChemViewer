@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import uuid
 
 
 def remote_agent_source():
@@ -34,13 +35,42 @@ def ssh_arguments(profile, agent, persistent=False):
     return ['/usr/bin/ssh', '-S', str(control), '-o', 'ControlMaster=auto', '-o', 'ControlPersist=8h', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=12', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=2', host, '/bin/bash -c ' + shlex.quote(shell)]
 
 
-def control_path(host):
+def control_directory():
     directory = Path('/private/tmp') / ('chemviewer-ssh-' + str(os.getuid()))
     directory.mkdir(mode=0o700, exist_ok=True)
     stat = directory.lstat()
     if directory.is_symlink() or stat.st_uid != os.getuid() or stat.st_mode & 0o077:
         raise ValueError('SSH control directory must be private and owned by you.')
-    return directory / hashlib.sha256(host.encode()).hexdigest()[:20]
+    return directory
+
+
+def control_path(host):
+    directory=control_directory();key=hashlib.sha256(host.encode()).hexdigest()[:20]
+    active=directory/(key+'.active')
+    if active.is_symlink(): raise ValueError('SSH active connection marker must not be a symlink.')
+    if active.exists():
+        name=active.read_text().strip()
+        if not re.fullmatch(re.escape(key)+r'-[a-f0-9]{12}',name): raise ValueError('Invalid SSH active connection marker.')
+        return directory/name
+    return directory/key
+
+
+def authentication_script(profile):
+    host=profile['host'].strip()
+    old=control_path(host)  # Validate the private directory/marker before creating a fresh connection.
+    key=hashlib.sha256(host.encode()).hexdigest()[:20]
+    fresh=old.parent/(key+'-'+uuid.uuid4().hex[:12]);active=old.parent/(key+'.active')
+    fd,pending=tempfile.mkstemp(prefix=key+'.pending-',dir=old.parent);os.close(fd)
+    command=['/usr/bin/ssh','-M','-S',str(fresh),'-o','ControlMaster=yes','-o','ControlPersist=8h','-o','ConnectTimeout=12','-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2','-fN',host]
+    # Publish only after successful interactive authentication. Existing masters,
+    # tunnels, jobs and the user's ~/.ssh/config are never closed or modified.
+    script='#!/bin/bash\nset -e\ntrap '+shlex.quote('rm -f '+shlex.quote(pending))+' EXIT\n'
+    script+='echo '+shlex.quote('Opening a fresh SSH connection. Complete authentication here; older connections are left running.')+'\n'
+    script+=shlex.join(command)+'\n'
+    script+='/usr/bin/printf '+shlex.quote('%s\n')+' '+shlex.quote(fresh.name)+' > '+shlex.quote(pending)+'\n'
+    script+='/bin/mv -f '+shlex.quote(pending)+' '+shlex.quote(str(active))+'\n'
+    script+='echo '+shlex.quote('Fresh SSH authentication complete. Return to ChemViewer and click Browse. Remote commands are checked there.')+'\n'
+    return script, str(fresh)
 
 
 def collect_workflow(folder):
@@ -138,12 +168,12 @@ finally:
         return dict(files=collect_workflow(request['folder']))
     if payload['action'] == 'authenticate':
         ssh_arguments(profile, b'')
-        command = ['/usr/bin/ssh', '-M', '-S', str(control_path(profile['host'].strip())), '-o', 'ControlPersist=8h', '-o', 'ControlMaster=auto', '-fN', profile['host'].strip()]
+        script, fresh = authentication_script(profile)
         fd, name = tempfile.mkstemp(prefix='chemviewer-ssh-', suffix='.command')
         with os.fdopen(fd, 'w') as stream:
-            stream.write('#!/bin/bash\n' + shlex.join(command) + '\n')
+            stream.write(script)
         os.chmod(name, 0o700)
-        return dict(terminal=name)
+        return dict(terminal=name, control=fresh)
     if payload['action'] == 'upload':
         payload['files'] = collect_workflow(request['folder'])
     agent = remote_agent_source()

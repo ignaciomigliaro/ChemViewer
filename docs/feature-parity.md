@@ -396,3 +396,13 @@ locally. Native slider drags and GUI/graph acceptance are recorded in validation
 New hybrid file resolution is tested with synthetic spin-folder files; this release
 does not claim an authenticated lookup of the actual BosTMC HPC output folders,
 whose saved root was found but whose live SSH request timed out. Source-only Psi4 inspection remains unchanged.
+
+## SSH stalled-master recovery — 0.11.2
+
+Fixed explicit Authenticate reusing the same stalled master. Fresh private socket
+publication is conditional on successful authentication; cancellation preserves
+previous selection. Master-level keepalives are explicit. Existing jobs, masters
+and SSH configuration are unchanged. Native persistent transport/cache regression
+and 73 Python tests pass, including successful/failed publication and old socket
+preservation. Actual connection authenticated, but trivial commands and SFTP still
+stalled outside the application; successful live remote browsing is not claimed.

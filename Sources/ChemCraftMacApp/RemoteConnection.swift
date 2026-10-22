@@ -175,7 +175,7 @@ final class RemoteConnection: ObservableObject {
                     if let path = result["terminal"] as? String {
                         let opener = Process(); opener.executableURL = URL(fileURLWithPath: "/usr/bin/open"); opener.arguments = ["-a", "Terminal", path]; try opener.run()
                     }
-                    status = "Complete SSH authentication in Terminal, then click Browse. The connection can be reused for 8 hours."
+                    status = "Complete fresh SSH authentication in Terminal, then click Browse. The old connection is left running; submitted jobs are unaffected."
                 case "info":
                     status = "Remote Python: \(result["python"] ?? "") · ChemRefine \(result["chemrefine"] ?? "")"
                     log = String(data: try JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8) ?? ""

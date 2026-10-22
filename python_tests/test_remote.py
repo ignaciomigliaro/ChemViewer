@@ -81,6 +81,44 @@ class RemoteTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Invalid remote port'):
             bridge.run(dict(profile=profile, request=dict(action='tunnel-command', port=65536)))
 
+    def test_authentication_rotates_only_after_success_and_preserves_old_master(self):
+        profile=dict(host='synthetic-recovery')
+        with patch.object(bridge,'control_directory',return_value=self.root):
+            old=bridge.control_path(profile['host']);old.write_text('old master remains untouched')
+            with patch.object(bridge.shlex,'join',return_value='/usr/bin/true'):
+                prepared=bridge.run(dict(profile=profile,request=dict(action='authenticate')))
+            try:
+                self.assertEqual(bridge.control_path(profile['host']),old,'Preparing Terminal must not change the active connection')
+                subprocess.run(['/bin/bash',prepared['terminal']],capture_output=True,check=True)
+                fresh=bridge.control_path(profile['host'])
+                self.assertEqual(str(fresh),prepared['control']);self.assertNotEqual(fresh,old)
+                self.assertEqual(old.read_text(),'old master remains untouched')
+                self.assertEqual(bridge.ssh_arguments(profile,b'')[2],str(fresh))
+            finally:Path(prepared['terminal']).unlink(missing_ok=True)
+            with patch.object(bridge.shlex,'join',return_value='/usr/bin/false'):
+                failed=bridge.run(dict(profile=profile,request=dict(action='authenticate')))
+            try:
+                result=subprocess.run(['/bin/bash',failed['terminal']],capture_output=True)
+                self.assertNotEqual(result.returncode,0)
+                self.assertEqual(bridge.control_path(profile['host']),fresh,'Failed MFA must not replace a working connection')
+                self.assertEqual(list(self.root.glob('*.pending-*')),[])
+            finally:Path(failed['terminal']).unlink(missing_ok=True)
+
+    def test_fresh_authentication_master_has_keepalives_and_no_old_socket_reuse(self):
+        profile=dict(host='synthetic-recovery')
+        with patch.object(bridge,'control_directory',return_value=self.root):
+            old=bridge.control_path(profile['host'])
+            script,fresh=bridge.authentication_script(profile)
+            self.assertNotEqual(str(old),fresh)
+            self.assertIn('ControlMaster=yes',script);self.assertNotIn('ControlMaster=auto',script)
+            self.assertIn('ServerAliveInterval=15',script);self.assertIn('ServerAliveCountMax=2',script)
+            self.assertNotIn('-O exit',script);self.assertNotIn('StrictHostKeyChecking=no',script)
+            key=hashlib.sha256(profile['host'].encode()).hexdigest()[:20]
+            marker=self.root/(key+'.active');marker.write_text('../outside')
+            with self.assertRaisesRegex(ValueError,'Invalid SSH active'):bridge.control_path(profile['host'])
+            marker.unlink();marker.symlink_to(self.root/'other')
+            with self.assertRaisesRegex(ValueError,'symlink'):bridge.control_path(profile['host'])
+
     def test_create_remote_workflow_is_exclusive_and_preserves_inputs(self):
         files = {'input.yaml':base64.b64encode(b'dispatch: slurm\n').decode(), 'seed.xyz':base64.b64encode(b'2\nH2\nH 0 0 0\nH 0 0 .74\n').decode()}
         a = agent.execute(dict(action='create-workflow', path=str(self.root), files=files))

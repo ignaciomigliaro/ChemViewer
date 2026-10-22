@@ -437,3 +437,17 @@ change. Orbital levels preserve separate α/β Eh values; dipole component signs
 D values match source. Properties retains source precision. Source CSV size/mtime
 must remain unchanged. Native flag `--bostmc-local-smoke-test` exercises the actual
 user-supplied catalog; `--bostmc-smoke-test` retains synthetic compatibility checks.
+
+## SSH recovery — 0.11.2
+
+CV-SSH-RECOVERY-001: With a stalled private master, select Authenticate in Terminal.
+Confirm a new socket rather than reuse of the old one. Complete authentication,
+then Browse. Repeated folders still use one helper. A failed/cancelled login must
+leave the previous selected socket unchanged. Existing editor/master/job lifetimes
+must be preserved; do not resubmit calculations to test recovery.
+
+CV-SSH-RECOVERY-002: A completed MFA is not sufficient for browsing success: test
+a trivial command, then the configured Python/listing. If both ordinary SSH and
+SFTP stall, retain an explicit external-session blocker rather than claiming an
+app regression fixed the remote service. Hermetic publication/failure tests and
+native transport regression pass; actual live browsing is currently blocked.

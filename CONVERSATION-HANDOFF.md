@@ -967,3 +967,33 @@ drag; test harness now explicitly activates/layouts its window before events.
 Live resolver log: /private/tmp/bostmc-hybrid-live-resolve.log timed out20s. Source
 CSV checksum/content not rewritten; independent scanner verifies all raw fields at
 three IDs and exact combined8042 matches. Source index remains ready for the user.
+
+## 0.11.2 / build37 — SSH timeout investigation / fresh master recovery
+
+User reports SSH timeouts after previous successful use. Trivial printf through
+both the app's private master and ~/.ssh configured master times out, despite
+local -O check reporting masters alive. Direct nonmultiplexed SSH reaches auth and
+requires MFA. Opened a fresh Terminal authentication with the new helper; `.active`
+marker/socket were published after successful login. Even that new master timed
+out on printf 10 s and SFTP pwd 12 s, before any app/Python/catalog action. The95s plain printf probe also timed out; see
+/private/tmp/chemviewer-ssh-session-startup-long.log. Do not claim this proves
+a cluster-wide outage; exact remote session/filesystem cause is unknown.
+
+Fixed real app recovery issue: Authenticate previously reused the old socket and
+inherited long-lived master keepalive settings. It now prepares a random socket,
+uses explicit master-level keepalives, and atomically publishes a validated .active
+marker only after successful authentication. Failure preserves old selection.
+Old masters, tunnels, user SSH config and jobs remain untouched; no automatic job
+replay. control_path reads the selected marker across helper processes. Existing
+unmarked sockets remain compatible. User was asked asynchronously to complete
+fresh authentication; successful published marker already provided independent
+evidence of completion, but no reply is required for read-only diagnostics.
+
+Validation: 73 Python tests; native REMOTE_SESSION_PASS; signed arm64/core 41+3.
+Evidence /private/tmp/chemviewer-ssh-recovery-*.log, ssh-probe-*.log, long probe log.
+No successful live listing yet. Preserve AGENTS.md user edits outside commits.
+
+User replied Authenticated after the first long probe; final post-confirmation
+probe is /private/tmp/chemviewer-ssh-after-confirmation.log. Sanitized report:
+~/Downloads/ChemViewer-SSH-diagnostic.txt (not committed). Never send it or contact
+support on the user's behalf without explicit authorization.

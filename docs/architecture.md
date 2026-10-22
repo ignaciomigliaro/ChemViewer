@@ -612,3 +612,20 @@ Graphs always identify the full-catalog population and selected raw descriptor;
 orbital α/β levels and dipole components have separate units/plots. A native
 Canvas avoids additional plotting or database dependencies. UI labels/grouping
 are display metadata; filtering/export keys and raw values are unchanged.
+
+## SSH master recovery without session destruction — 0.11.2
+
+`remote_bridge.control_path` reads a validated per-host `.active` marker inside
+the existing private owner-only control directory. Absent a marker, the original
+stable socket is used, preserving compatibility. The marker admits only the
+host-hash plus a 12-digit random hex suffix; symlinks/path traversal are refused.
+
+Explicit authentication allocates a fresh socket, uses ControlMaster=yes,
+ControlPersist=8h, ConnectTimeout=12, ServerAliveInterval=15 and CountMax=2.
+A private pending file is atomically published as `.active` only after ssh -fN
+success. Failure/cancellation cleans the pending file and leaves the previous
+selection unchanged. Old sockets/masters are neither unlinked nor terminated.
+Existing editor forwarding cancellation retains its originally prepared arguments.
+Normal directory requests continue reusing one persistent helper. No remote action
+or submitted calculation is replayed during recovery. The user SSH config is not
+modified, and authentication remains exclusively interactive in Terminal.

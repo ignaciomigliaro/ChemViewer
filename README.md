@@ -456,3 +456,20 @@ into a 283 MB index. Direct backend calls took about 4 ms for the first page, 10
 for tested filters and 29 ms for a histogram; these exclude GUI/process startup and
 SSH transfers. First import remains a full streaming CSV pass. Large cells stay
 in the original CSV and are read only when needed, so keep that source available.
+
+## SSH recovery — 0.11.2
+
+**Authenticate in Terminal** now opens a fresh private SSH master instead of
+reusing a potentially stalled one. It enables master-level keepalives and switches
+ChemViewer to the new socket only after authentication succeeds. Cancelling or
+failing authentication keeps the previous connection selected. Existing SSH
+masters, editor tunnels, submitted jobs and `~/.ssh/config` are left untouched.
+Return to ChemViewer and click **Browse** after the Terminal reports success.
+Authentication alone does not establish that remote commands are responsive.
+
+The October 22 investigation reproduced a session-startup stall with trivial
+OpenSSH commands and SFTP, outside ChemViewer and before Python/CSV operations,
+including on a newly authenticated connection. The recovery change fixes reuse
+of a stalled connection; it does not claim to repair that external session stall.
+For continuing failures, see the official ORCD troubleshooting guide:
+https://orcd-docs.mit.edu/accessing-orcd/ssh-troubleshooting/ .
