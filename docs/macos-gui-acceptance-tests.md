@@ -414,3 +414,26 @@ the current selection. Switch ordinary document tabs and confirm camera/edits.
 Automated native fixture acceptance and synthetic real-SSH acceptance pass for
 this release; actual BosTMC record checks and large production-catalog timing
 remain pending the real source paths. Native test flag: `--bostmc-smoke-test`.
+
+## BossTMC hybrid sources and graph controls — 0.11.1
+
+CV-BOSTMC-004: Choose a local CSV with Structure/output files on SSH enabled.
+Index and filter while SSH is disconnected: local descriptors/embedded XYZ and
+graphs must work. Set remote root and connection, then Find SSH outputs; no remote
+copy of the CSV is required. For filename-only CSV rows verify XYZ fetch from the
+correct spin/refcode folder. Original all-local/remote-CSV modes must still work.
+
+CV-BOSTMC-005: Menus show readable scalar names/units and category dropdowns; no
+XYZ/MOL2 or full-molecule lists in filter menus. Move both range handles separately,
+verify the typed limits and no query until Apply. Set exact one-sided/negative
+limits and invalid/reversed values; validate expected records/errors. Export keeps
+all original columns/strings. Geometry choices come from the catalog, not a fixed
+list of assumed geometries.
+
+CV-BOSTMC-006: Select a row and inspect Graphs. Histogram counts must sum to the
+finite full-catalog population; selected-property line must match the CSV scalar.
+Switch property, missing-value record, then source: no stale graph survives source
+change. Orbital levels preserve separate α/β Eh values; dipole component signs and
+D values match source. Properties retains source precision. Source CSV size/mtime
+must remain unchanged. Native flag `--bostmc-local-smoke-test` exercises the actual
+user-supplied catalog; `--bostmc-smoke-test` retains synthetic compatibility checks.

@@ -933,3 +933,37 @@ synthetic HPC fixture timed out after45seconds; that initial fixture/cache may
 remain. The final explicitly tracked test fixture was successfully cleaned.
 Do not remove any user workflow directories to address this; only an exact
 synthetic CSV/seed match and verified cache metadata may be removed.
+
+## 0.11.1 / build36 — local BosTMC, SSH files, clean filters and graphs (2026-10-22)
+
+User approved local downloaded CSV plus SSH files, removing full-molecule list/
+XYZ/MOL2/geometric detail filters, readable labels, two-ended ranges and selected-
+molecule property graphs. Actual source: ~/Documents/BosTMC/BOSTMC-complete.csv,
+2.7 GB, 43 columns, 263,235 records. XYZ is embedded, so local native previews work
+without SSH. New independent filesRemote toggle keeps remote source lookup only
+on demand; native dropdowns and sliders use cached source-derived options/ranges.
+Graphs show full-catalog histograms with selected marker, separate α/β orbital
+levels in Eh, and dipole components in D. Scalar metal charge/spin fields retained.
+
+Compact schema-v2 SQLite stores scalar columns and raw source record offsets;
+bulky cells read by seek on selection/export, preserving all 43 original fields.
+Do not remove/change the original CSV; reindex if changed. Import 33 s /283 MB;
+backend first page 4 ms, tested filters 100–130 ms, histogram 29 ms. No Python analytical
+package or new database dependency. Local mode suggests actual CSV when present.
+
+Validation: 71 Python tests; mandatory signed arm64/core 41+3; actual-catalog native
+acceptance, independent full CSV count/filter/raw-field/coordinate/dipole oracles,
+synthetic native catalog charge/spin/source regression and persistent-session check.
+Evidence in /private/tmp/bostmc-* and chemviewer-bostmc-hybrid-release36-final.log;
+actual data and captures remain local, not committed. No HPC calculation submitted.
+Saved BossTMCRoot points to /orcd/data/hjkulik/001/OpenTMC/gather_outputs/outputs_for_group.
+A read-only live resolver request timed out after20s; actual HPC-output lookup is
+not claimed. No source changes or scheduler submissions were made.
+Existing AGENTS.md user edits must remain excluded from release commits.
+
+Final native evidence: /private/tmp/bostmc-hybrid-actual-release3.log (also release2)
+passes actual data plus both slider drags. Earlier release.log missed a synthetic
+drag; test harness now explicitly activates/layouts its window before events.
+Live resolver log: /private/tmp/bostmc-hybrid-live-resolve.log timed out20s. Source
+CSV checksum/content not rewritten; independent scanner verifies all raw fields at
+three IDs and exact combined8042 matches. Source index remains ready for the user.

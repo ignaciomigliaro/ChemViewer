@@ -586,3 +586,29 @@ and whitelisted columns. Array aggregates parse JSON/Python literals and exclude
 known atom/index keys from structured records; ambiguous structures need explicit
 dataset validation. Filtered exports stream batches of 500 and retain all raw columns.
 Associated Psi4 outputs are displayed as text, not parsed scientific results.
+
+## BossTMC hybrid source and compact catalog — 0.11.1
+
+CSV location and structure-file location are independent. `remote` selects the
+catalog transport; `filesRemote` selects structure/output transport for a local
+catalog. Local descriptors, statistics, filters and graphs never require SSH.
+Embedded XYZ is parsed immediately from the selected CSV record; associated source
+lookup is explicit. Filename-based geometries use `bostmc-resolve` with a small
+refcode/multiplicity/filename record on the SSH host, requiring no remote CSV or
+remote catalog index. The existing persistent transport/checksum cache is reused.
+
+Schema fingerprint v2 stores scalar strings/numeric indexes in a compact candidates
+table and source byte offsets/lengths in `payloads`. A binary-line CSV iterator
+tracks multiline UTF8/CRLF records correctly. Large XYZ/MOL2/list cells remain in
+the read-only source CSV; detail/export reconstruct the complete raw record through
+a bounded seek. This avoids duplicating gigabytes of molecular content inside
+SQLite pages used for queries. Source fingerprint checks reject a changed CSV.
+Existing schema-v1 indexes are retained but not reused by v2.
+
+Import collects finite numeric ranges/counts and categorical options once. Text
+indexes use matching NOCASE comparisons; default refcode ordering uses its index.
+Histogram requests aggregate 24 bins locally and are cached per source/property.
+Graphs always identify the full-catalog population and selected raw descriptor;
+orbital α/β levels and dipole components have separate units/plots. A native
+Canvas avoids additional plotting or database dependencies. UI labels/grouping
+are display metadata; filtering/export keys and raw values are unchanged.

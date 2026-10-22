@@ -380,3 +380,19 @@ and real SSH transfer/index/query/export. No actual BosTMC scientific record or
 large production CSV has been validated: SSH CSV/root paths are still pending.
 Psi4 scientific-output parsing, catalytic-activity prediction, automatic
 mechanistic ranking and dataset-specific semantic interpretation are not claimed.
+
+## BossTMC local descriptors / remote structures — 0.11.1
+
+Implemented independent local CSV/SSH file sources, compact offset-backed indexing,
+NOCASE index-aligned text filters, cached scalar histograms, scalar-only grouped
+filter menus, dataset-derived category dropdowns, two-ended numeric sliders with
+exact limits, and selected-molecule distribution/orbital/dipole graphs. Removed
+whole-molecule lists, XYZ/MOL2 and geometry details from filter/table UI; preserved
+all source values in copy/export and retained metal-only scalar charge/spin fields.
+Embedded XYZ previews work offline; SSH output discovery is explicit/on demand.
+
+Actual supplied 263,235-record/2.7 GB catalog and synthetic compatibility tests pass
+locally. Native slider drags and GUI/graph acceptance are recorded in validation.
+New hybrid file resolution is tested with synthetic spin-folder files; this release
+does not claim an authenticated lookup of the actual BosTMC HPC output folders,
+whose saved root was found but whose live SSH request timed out. Source-only Psi4 inspection remains unchanged.

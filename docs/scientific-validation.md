@@ -409,3 +409,42 @@ Limits: the actual BosTMC CSV/root paths are pending. No real catalyst descripto
 has been independently checked; production-scale timing/quota behavior and exact
 array encodings remain unvalidated. Screening criteria select records, not proven
 catalytic activity. Psi4 `.dat` is source inspection only.
+
+## Local BosTMC actual-catalog validation — 0.11.1 / build36 (2026-10-22)
+
+The user's explicitly provided `~/Documents/BosTMC/BOSTMC-complete.csv` contains
+263,235 rows, 43 headers, complete embedded XYZ, and MOL2/per-atom lists (2.7 GB).
+A streaming v2 import took 33.085s and produced 283.3 MB of SQLite data. Direct Python
+backend measurements: first page 0.0037s; square-planar filter 0.1295s (72,751 matches);
+gap 1–3 eV filter 0.1041s (47,618); first raw detail 0.0007s; gap histogram 0.0294s.
+These are single-run backend timings on this Mac, not GUI/SSH latency promises.
+
+An independent complete CSV scan verifies 263,235 rows and 8,042 combined square-
+planar/gap 1–3 eV matches, all 43 raw fields at first/middle/last sampled IDs, first
+36-atom XYZ with Ni x=-1.0222118919Å, and the first dipole vector norm against its
+CSV magnitude. Native actual-catalog acceptance covers local filtering, category
+choices/ranges, embedded preview without SSH, orbital descriptors, histogram count,
+two slider-handle drags, and unchanged source size/mtime. Synthetic native catalog
+regression retains exact coordinates/energies and independent charge/spin documents.
+
+Python 71 tests pass (previous 66 plus 5 compact-index, statistics/histogram, UTF8/
+multiline raw-offset/export, no-remote-CSV resolution and query-plan oracles).
+Mandatory signed arm64 build retains 41 standalone core assertions plus 3 migrated
+suites; selected CLT lacks XCTest and no core parser changed. Private evidence:
+`/private/tmp/bostmc-local-performance.log`, `bostmc-local-independent.log`,
+`bostmc-hybrid-python-final.log`, `bostmc-hybrid-actual-release3.log`,
+`bostmc-hybrid-synthetic-release.log`, `bostmc-local-native.png`, and
+`chemviewer-bostmc-hybrid-release36-final.log`. Actual CSV/data/captures are not shipped.
+
+Graphs preserve CSV units and values; histogram population is the full catalog,
+missing/nonfinite values are excluded, no cross-property normalization/activity
+ranking is inferred. New actual remote BosTMC output lookup remains unvalidated
+because the live SSH request timed out; synthetic resolver and persistent-session
+regression cover the wire path. Source CSV must remain available for deferred cells.
+
+One repeated synthetic slider drag was missed before explicit test-window
+activation. The harness now activates/layouts its own window before delivery;
+both handles passed in two consecutive native runs (release2/release3 logs).
+No success is inferred from the earlier failed run. Local source/filter/graph
+checks passed in that run as well. The final live SSH resolver check exceeded
+20 seconds; local XYZ selection/filtering needs no SSH and remained functional.

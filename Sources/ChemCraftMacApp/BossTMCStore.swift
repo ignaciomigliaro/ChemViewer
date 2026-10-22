@@ -27,8 +27,22 @@ final class BossTMCStore: ObservableObject {
             return result
         }
     }
-    @Published var remote = true
-    @Published var csvPath = UserDefaults.standard.string(forKey:"BossTMCCSV") ?? ""
+    @Published var remote = UserDefaults.standard.bool(forKey:"BossTMCCatalogRemote")
+    @Published var filesRemote = UserDefaults.standard.object(forKey:"BossTMCFilesRemote") as? Bool ?? true
+    @Published var summary: [String:[String:Double]] = [:]
+    @Published var categories: [String:[String]] = [:]
+    struct HistogramBin: Identifiable {var id:Double{lower};let lower:Double;let upper:Double;let count:Double}
+    @Published var histogram: [HistogramBin] = []
+    @Published var graphProperty = "energetic_gap_eV"
+    @Published var graphStatus = ""
+    private var graphGeneration = 0
+    private var graphCache: [String:[HistogramBin]] = [:]
+    @Published var csvPath: String = {
+        let defaults=UserDefaults.standard,saved=UserDefaults.standard.string(forKey:"BossTMCCSV") ?? ""
+        if !saved.isEmpty && (defaults.bool(forKey:"BossTMCCatalogRemote") || FileManager.default.fileExists(atPath:saved)){return saved}
+        let local=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents/BosTMC/BOSTMC-complete.csv").path
+        return FileManager.default.fileExists(atPath:local) ? local:saved
+    }()
     @Published var rootPath = UserDefaults.standard.string(forKey:"BossTMCRoot") ?? ""
     @Published var cachePath = UserDefaults.standard.string(forKey:"BossTMCCache") ?? ""
     @Published var headers: [String] = []
@@ -63,6 +77,7 @@ final class BossTMCStore: ObservableObject {
     func invalidate() {
         generation += 1; selectionGeneration += 1; polling?.cancel(); polling = nil
         headers=[];rows=[];details=[:];frame=nil;files=[];xyzURL=nil;xyzOrigin=nil;selectedID=nil;busy=false;selecting=false
+        summary=[:];categories=[:];histogram=[];graphCache=[:];graphGeneration += 1
         status="Dataset location changed. Index CSV to load its catalog."
     }
     func request(_ action: String, extras: [String:Any] = [:]) async throws -> [String:Any] {
@@ -92,6 +107,7 @@ final class BossTMCStore: ObservableObject {
     func index() {
         guard !busy,!csvPath.isEmpty else{return}
         invalidate();busy=true;let token=generation,identity=key
+        UserDefaults.standard.set(remote,forKey:"BossTMCCatalogRemote");UserDefaults.standard.set(filesRemote,forKey:"BossTMCFilesRemote")
         UserDefaults.standard.set(csvPath,forKey:"BossTMCCSV");UserDefaults.standard.set(rootPath,forKey:"BossTMCRoot");UserDefaults.standard.set(cachePath,forKey:"BossTMCCache")
         status="Starting a streaming index on \(remote ? RemoteConnection.shared.profile.host : "this Mac")…"
         polling=Task {
@@ -100,11 +116,13 @@ final class BossTMCStore: ObservableObject {
                 while token==generation && identity==key && !Task.isCancelled {
                     switch result["phase"] as? String {
                     case "ready":
+                        summary=(result["summary"] as? [String:[String:Any]] ?? [:]).mapValues{raw in raw.compactMapValues{($0 as? NSNumber)?.doubleValue}}
+                        categories=(result["categories"] as? [String:[[String:Any]]] ?? [:]).mapValues{$0.compactMap{$0["value"] as? String}}
                         headers=result["headers"] as? [String] ?? [];total=result["total"] as? Int ?? 0
                         columns=columns.filter{headers.contains($0)};if columns.isEmpty{columns=Array(headers.prefix(6))}
                         filters=filters.filter{headers.contains($0.property)};loadedKey=identity;busy=false
                         status="Indexed \(total.formatted()) records. Source values and units are preserved."
-                        query(reset:true);return
+                        query(reset:true);loadGraph();return
                     case "error":throw ParseError.malformed(result["error"] as? String ?? "Indexing failed.")
                     default:status="Indexing CSV on source host · \((result["rows"] as? Int ?? 0).formatted()) records…"
                     }
@@ -138,7 +156,10 @@ final class BossTMCStore: ObservableObject {
             do {
                 let result=try await request("bostmc-detail",extras:["id":id]);guard token==selectionGeneration,identity==key else{return}
                 details=result["values"] as? [String:String] ?? [:]
-                let found=try await request("bostmc-files",extras:["id":id]);guard token==selectionGeneration,identity==key else{return}
+                let found: [String:Any]
+                if let inline=details["xyz"],inline.trimmingCharacters(in:.whitespacesAndNewlines).first?.isNumber==true,inline.contains("\n"){found=["inline_xyz":inline,"files":[]]}
+                else{found=try await resolveFiles(id:id)}
+                guard token==selectionGeneration,identity==key else{return}
                 files=(found["files"] as? [[String:String]] ?? []).compactMap{d in guard let name=d["name"],let path=d["path"],let kind=d["kind"] else{return nil};return CatalogFile(name:name,path:path,kind:kind)}
                 let url: URL
                 if let inline=found["inline_xyz"] as? String {
@@ -151,7 +172,7 @@ final class BossTMCStore: ObservableObject {
                 }
                 let parsed=try await Task.detached{try ParserRegistry.parse(url:url)}.value
                 guard token==selectionGeneration,identity==key else{return}
-                if remote,found["inline_xyz"] == nil,let xyz=files.first(where:{$0.kind=="xyz"}){xyzOrigin=RemoteFileOrigin(profile:RemoteConnection.shared.profile,path:xyz.path)}
+                if (remote || filesRemote),found["inline_xyz"] == nil,let xyz=files.first(where:{$0.kind=="xyz"}){xyzOrigin=RemoteFileOrigin(profile:RemoteConnection.shared.profile,path:xyz.path)}
                 xyzURL=url;frame=parsed.frames.first;selectionStatus="\(details["refcode"] ?? "") · geometry from XYZ; descriptors from CSV." + (files.filter{$0.kind=="xyz"}.count>1 ? " Multiple XYZ files: use XYZ geometry to choose.":"")
             }catch{if token==selectionGeneration{selectionStatus=error.localizedDescription}}
         }
@@ -162,13 +183,47 @@ final class BossTMCStore: ObservableObject {
             defer{if token==selectionGeneration{selecting=false}}
             do{let url=try await cachedFile(file.path);let document=try await Task.detached{try ParserRegistry.parse(url:url)}.value
                 guard token==selectionGeneration,identity==key else{return};frame=document.frames.first;xyzURL=url;previewSelection=[]
-                xyzOrigin=remote ? RemoteFileOrigin(profile:RemoteConnection.shared.profile,path:file.path):nil
+                xyzOrigin=(remote || filesRemote) ? RemoteFileOrigin(profile:RemoteConnection.shared.profile,path:file.path):nil
                 selectionStatus="Previewing \(file.name) · descriptor values remain from the selected CSV record."
             }catch{if token==selectionGeneration{selectionStatus=error.localizedDescription}}
         }
     }
+    func resolveFiles(id: Int) async throws -> [String:Any] {
+        if (remote || filesRemote) && rootPath.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty{throw ParseError.malformed("Choose the remote dataset root containing the spin-state folders before locating SSH files.")}
+        if remote || !filesRemote{return try await request("bostmc-files",extras:["id":id])}
+        let xyz=details["xyz"] ?? ""
+        let record=["refcode":details["refcode"] ?? "","spinmult":details["spinmult"] ?? "","xyz":xyz.contains("\n") ? "":xyz]
+        return try await remoteFilesRequest(["action":"bostmc-resolve","record":record,"root":rootPath])
+    }
+    private func remoteFilesRequest(_ payload: [String:Any]) async throws -> [String:Any] {
+        let connection=RemoteConnection.shared,profile=RemoteConnection.shared.profile
+        guard !profile.host.isEmpty else{throw ParseError.malformed("Choose an SSH connection for structure/output files.")}
+        while connection.busy{try await Task.sleep(nanoseconds:50_000_000)}
+        guard profile.host==connection.profile.host,profile.python==connection.profile.python,profile.setup==connection.profile.setup else{throw ParseError.malformed("SSH connection changed.")}
+        connection.busy=true;defer{connection.busy=false}
+        return try await connection.request(payload,profile:profile)
+    }
+    func findAssociatedFiles() {
+        guard let id=selectedID,!selecting else{return};let token=selectionGeneration;selecting=true
+        Task{defer{if token==selectionGeneration{selecting=false}}
+            do{let found=try await resolveFiles(id:id);guard token==selectionGeneration else{return}
+                files=(found["files"] as? [[String:String]] ?? []).compactMap{d in guard let name=d["name"],let path=d["path"],let kind=d["kind"] else{return nil};return CatalogFile(name:name,path:path,kind:kind)}
+                selectionStatus=files.isEmpty ? "No associated files found. Check the structure root.":"Located \(files.count) associated source files."
+            }catch{if token==selectionGeneration{selectionStatus=error.localizedDescription}}
+        }
+    }
+    func loadGraph() {
+        graphGeneration += 1;let token=graphGeneration,property=graphProperty
+        if let cached=graphCache[property]{histogram=cached;graphStatus="Full catalog · finite values only";return}
+        histogram=[];graphStatus="Loading distribution…"
+        guard validCatalog,Self.numericProperties.contains(property) else{return}
+        Task{do{let result=try await request("bostmc-histogram",extras:["property":property]);guard token==graphGeneration else{return}
+            histogram=(result["bins"] as? [[String:Double]] ?? []).compactMap{d in guard let lo=d["lower"],let hi=d["upper"],let n=d["count"] else{return nil};return HistogramBin(lower:lo,upper:hi,count:n)}
+            graphCache[property]=histogram;graphStatus="Full catalog · \(Int(result["count"] as? Double ?? 0).formatted()) finite values"
+        }catch{if token==graphGeneration{graphStatus=error.localizedDescription}}}
+    }
     func cachedFile(_ path: String) async throws -> URL {
-        if !remote{return URL(fileURLWithPath:(path as NSString).expandingTildeInPath)}
+        if !remote && !filesRemote{return URL(fileURLWithPath:(path as NSString).expandingTildeInPath)}
         let connection=RemoteConnection.shared,profile=RemoteConnection.shared.profile
         while connection.busy{try await Task.sleep(nanoseconds:50_000_000)}
         guard profile.host == connection.profile.host && profile.python == connection.profile.python && profile.setup == connection.profile.setup else{throw ParseError.malformed("SSH settings changed.")}

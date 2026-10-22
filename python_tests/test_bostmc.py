@@ -99,4 +99,44 @@ class BosTMCTests(unittest.TestCase):
   result=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
   response=json.loads(result.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['rows'][0]['refcode'],'CO_TEST')
 
+class LocalCatalogTests(unittest.TestCase):
+ setUp=BosTMCTests.setUp
+ tearDown=BosTMCTests.tearDown
+ write=BosTMCTests.write
+ query=BosTMCTests.query
+ def test_compact_index_keeps_large_cells_in_read_only_source(self):
+  db,m=Catalog.connect(self.request)
+  self.assertEqual(db.execute('SELECT mulliken_charges FROM candidates WHERE __id=1').fetchone()[0],'')
+  self.assertEqual(Catalog.detail(dict(self.request,id=1))['values']['mulliken_charges'],'[0.2,-0.1]');db.close()
+ def test_summary_categories_and_histogram_numeric_oracles(self):
+  s=Catalog.status(self.request)
+  self.assertEqual(s['summary']['energetic_gap_eV'],dict(min=.5,max=2.0,count=3))
+  self.assertEqual({v['value'] for v in s['categories']['metal']},{'Fe','Co','Ni'})
+  h=Catalog.histogram(dict(self.request,property='energetic_gap_eV'))
+  self.assertEqual(sum(b['count'] for b in h['bins']),3)
+  self.assertEqual(h['bins'][0]['count'],1);self.assertEqual(h['bins'][-1]['count'],1)
+ def test_utf8_multiline_record_offsets_and_export_roundtrip(self):
+  self.records[0][1]='2\nα molecule\nH 0 0 0\nH 0 0 .74\n';self.records[1][-1]='Unicode β, CRLF\r\nand newline\n'
+  self.write();Catalog.build(self.request)
+  self.assertEqual(Catalog.detail(dict(self.request,id=1))['values']['xyz'],self.records[0][1])
+  exported=Catalog.export(self.request)['csv'];rows=list(csv.reader(io.StringIO(exported,newline='')))
+  self.assertEqual(rows[1:],self.records)
+ def test_hybrid_file_resolution_needs_no_remote_csv(self):
+  folder=self.root/'dataset/quartets/REMOTE';folder.mkdir(parents=True);(folder/'calc.dat').write_text('Synthetic source')
+  r=Catalog.execute(dict(action='bostmc-resolve',root=str(self.root/'dataset'),record=dict(refcode='REMOTE',spinmult='4',xyz='')))
+  self.assertEqual(r['files'][0]['name'],'calc.dat')
+  bridge_spec=importlib.util.spec_from_file_location('bridge_hybrid',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(bridge_spec);bridge_spec.loader.exec_module(bridge)
+  payload=dict(action='bostmc-resolve',root=str(self.root/'dataset'),record=dict(refcode='REMOTE',spinmult='4',xyz=''))
+  code="import sys;sys.argv=['-c'];exec(compile("+repr(bridge.remote_agent_source().decode())+",'<chemviewer-remote>','exec'))"
+  wire=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['files'][0]['name'],'calc.dat')
+
+ def test_categorical_index_and_ordering_do_not_require_full_scan_sort(self):
+  db,m=Catalog.connect(self.request)
+  where,args=Catalog.selection(dict(filters=[dict(property='metal',mode='exact',text='Fe')]),m)
+  plan=' '.join(r[3] for r in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates'+where,args))
+  self.assertIn('SEARCH',plan)
+  plan=' '.join(r[3] for r in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates ORDER BY refcode COLLATE NOCASE,__id LIMIT 50'))
+  self.assertNotIn('TEMP B-TREE',plan);db.close()
+
 if __name__=='__main__':unittest.main()

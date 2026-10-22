@@ -7,9 +7,10 @@ enum BossTMCSmokeTest {
     static func run(workspace: WorkspaceStore) async {
         guard !started else{return};started=true
         let model=BossTMCStore.shared,defaults=UserDefaults.standard
+        let oldCatalogRemote=defaults.object(forKey:"BossTMCCatalogRemote"),oldFilesRemote=defaults.object(forKey:"BossTMCFilesRemote")
         let oldCSV=defaults.object(forKey:"BossTMCCSV"),oldRoot=defaults.object(forKey:"BossTMCRoot"),oldCache=defaults.object(forKey:"BossTMCCache")
         let directory=FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-bostmc-"+UUID().uuidString)
-        func restore(){model.invalidate();if let oldCSV{defaults.set(oldCSV,forKey:"BossTMCCSV")}else{defaults.removeObject(forKey:"BossTMCCSV")};if let oldRoot{defaults.set(oldRoot,forKey:"BossTMCRoot")}else{defaults.removeObject(forKey:"BossTMCRoot")};if let oldCache{defaults.set(oldCache,forKey:"BossTMCCache")}else{defaults.removeObject(forKey:"BossTMCCache")}}
+        func restore(){model.invalidate();for (key,value) in [("BossTMCCatalogRemote",oldCatalogRemote),("BossTMCFilesRemote",oldFilesRemote)]{if let value{defaults.set(value,forKey:key)}else{defaults.removeObject(forKey:key)}};if let oldCSV{defaults.set(oldCSV,forKey:"BossTMCCSV")}else{defaults.removeObject(forKey:"BossTMCCSV")};if let oldRoot{defaults.set(oldRoot,forKey:"BossTMCRoot")}else{defaults.removeObject(forKey:"BossTMCRoot")};if let oldCache{defaults.set(oldCache,forKey:"BossTMCCache")}else{defaults.removeObject(forKey:"BossTMCCache")}}
         func pause() async {try? await Task.sleep(nanoseconds:100_000_000)}
         func require(_ value:Bool,_ message:String) throws {if !value{throw ParseError.malformed(message)}}
         defer{restore();try? FileManager.default.removeItem(at:directory)}
@@ -23,7 +24,7 @@ enum BossTMCSmokeTest {
             }
             let csv="refcode,xyz,spinmult,metal,charge,geometry,coordination_number,electronic_energy_Eh,energetic_gap_eV,metal_ligand_bond_lengths\nHUNJAE_comp_0,structure.xyz,1,Fe,2,octahedral,6,-100.123456789012,1.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\nHUNJAE_comp_0,structure.xyz,3,Fe,2,octahedral,6,-100.0,0.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\n"
             let file=directory.appendingPathComponent("catalog.csv");try csv.write(to:file,atomically:true,encoding:.utf8)
-            model.remote=false;model.csvPath=file.path;model.rootPath=directory.path;model.cachePath=directory.appendingPathComponent("index-cache").path;workspace.activeTab="BossTMC"
+            model.remote=false;model.filesRemote=false;model.csvPath=file.path;model.rootPath=directory.path;model.cachePath=directory.appendingPathComponent("index-cache").path;workspace.activeTab="BossTMC"
             for _ in 0..<4{await pause()};model.index()
             for _ in 0..<300{if !model.busy && model.validCatalog && model.rows.count==2{break};await pause()}
             try require(model.rows.count==2 && model.matched==2,"Native catalog failed to index/query: "+model.status)

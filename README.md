@@ -420,3 +420,39 @@ The supplied 43-column schema, synthetic local catalog, native preview, document
 metadata, and synthetic SSH workflow are tested. The user's actual BosTMC CSV,
 array encodings, folder names, and large-catalog performance require validation
 against the real dataset paths.
+
+## Local BossTMC catalog with SSH structures — 0.11.1
+
+Choose **BossTMC → Local CSV** and select your downloaded property catalog.
+The supplied `~/Documents/BosTMC/BOSTMC-complete.csv` is suggested when present.
+Enable **Structure/output files on SSH**, select the SSH connection, and set
+**Root** to the remote folder containing the spin-state directories. **Index CSV**
+prepares a compact local index once; subsequent opens reuse it while the source
+path/size/modification time are unchanged. CSV changes require reindexing.
+
+Filtering uses local descriptors and does not require an SSH connection. Embedded
+XYZ coordinates, when present, provide an immediate preview. **Find SSH outputs**
+locates associated output files only when requested. If the CSV contains an XYZ
+filename instead, its selected structure is located and fetched from the configured
+remote root. Remote CSV mode and all-local files remain available.
+
+The filter menu groups readable scalar property names with units. Geometry, metal,
+charge, oxidation state, multiplicity and coordination number use dropdowns from
+actual catalog values. Continuous descriptors have two-ended sliders and precise
+editable minimum/maximum boxes. Move either handle, then **Apply filters**; no
+network/query request is sent on every drag movement. Molecular list fields,
+XYZ/MOL2 content, geometry details and internal atom indices are omitted from
+filter/table menus; all source columns remain intact in candidate CSV exports.
+Metal-only charge/spin scalar descriptors remain available.
+
+Select a molecule and use **Graphs** for a chosen property distribution with the
+selected value marked, separate α/β orbital energy levels (Eh), and dipole
+components (D), where supplied by the CSV. Distributions describe the full catalog,
+not only current matches. **Properties** shows readable scalar values with source
+precision. Missing values are not invented, and no catalytic score is inferred.
+
+On this Mac, the actual 2.7 GB/263,235-record catalog indexed in about 33 seconds
+into a 283 MB index. Direct backend calls took about 4 ms for the first page, 100–130 ms
+for tested filters and 29 ms for a histogram; these exclude GUI/process startup and
+SSH transfers. First import remains a full streaming CSV pass. Large cells stay
+in the original CSV and are read only when needed, so keep that source available.

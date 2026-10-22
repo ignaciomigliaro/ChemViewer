@@ -9,26 +9,28 @@ struct BossTMCView: View {
     @State private var picker: RemoteWorkflowPicker.Kind?
     @State private var pickingRoot = false
     @State private var configuration = true
-    private let modes=[("range","Numeric range"),("exact","Exact text"),("contains","Text contains"),("present","Has a value"),("missing","Missing value"),("any","Any array value"),("all","All array values"),("mean","Array mean"),("min","Array minimum"),("max","Array maximum")]
+    @State private var inspector = "Graphs"
+
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
             HStack {
                 Label("BossTMC · Catalyst candidates",systemImage:"line.3.horizontal.decrease.circle").font(.headline)
                 Spacer()
-                Picker("Data source",selection:$catalog.remote){Text("SSH / HPC").tag(true);Text("This Mac").tag(false)}.pickerStyle(.segmented).frame(width:220).disabled(catalog.busy)
+                Picker("CSV location",selection:$catalog.remote){Text("Remote CSV").tag(true);Text("Local CSV").tag(false)}.pickerStyle(.segmented).labelsHidden().frame(width:220).disabled(catalog.busy)
                 Button("Dataset settings"){configuration.toggle()}
                 Button("Export candidates…"){catalog.export()}.disabled(!catalog.validCatalog || catalog.busy)
             }.padding(10)
             if configuration {
                 VStack(spacing:7) {
                     HStack {
-                        Text(catalog.remote ? "SSH: \(connection.profile.host.isEmpty ? "not configured" : connection.profile.host)":"Local CSV index").font(.caption)
-                        if catalog.remote{Button("SSH settings…"){connection.presented=true}}
+                        Toggle("Structure/output files on SSH",isOn:$catalog.filesRemote).toggleStyle(.checkbox).disabled(catalog.remote)
+                        Text((catalog.remote || catalog.filesRemote) ? "SSH: \(connection.profile.host.isEmpty ? "not configured" : connection.profile.host)":"Local CSV index").font(.caption)
+                        if catalog.remote || catalog.filesRemote{Button("SSH settings…"){connection.presented=true}}
                         Spacer()
-                        Text("The source dataset is read-only. Only the CSV index and selected files are cached.").font(.caption).foregroundStyle(.secondary)
+                        Text("Local descriptors · XYZ preview from CSV when available · SSH outputs on demand").font(.caption).foregroundStyle(.secondary)
                     }
                     HStack{Text("CSV").frame(width:50,alignment:.leading);TextField("Full path to the property CSV",text:$catalog.csvPath);Button("Browse…"){choose(root:false)}}
-                    HStack{Text("Index cache").font(.caption).frame(width:70,alignment:.leading);TextField("Optional directory on the source host; default ~/.cache/ChemViewer/BossTMC",text:$catalog.cachePath)}
+                    HStack{Text("Index cache").font(.caption).frame(width:70,alignment:.leading);TextField("Optional index directory; defaults to ~/.cache/ChemViewer/BossTMC",text:$catalog.cachePath)}
                     HStack{Text("Root").frame(width:50,alignment:.leading);TextField("Folder containing singlets, doublets, triplets, quartets, quintets, sextets",text:$catalog.rootPath);Button("Browse…"){choose(root:true)};Button("Index CSV"){catalog.index()}.buttonStyle(.borderedProminent).disabled(catalog.csvPath.isEmpty)}
                 }.padding(.horizontal,10).padding(.bottom,10).disabled(catalog.busy)
             }
@@ -54,7 +56,9 @@ struct BossTMCView: View {
         .onChange(of:catalog.rootPath){_ in catalog.invalidate()}
         .onChange(of:catalog.cachePath){_ in catalog.invalidate()}
         .onChange(of:catalog.remote){_ in catalog.invalidate()}
-        .onChange(of:connection.explorerIdentity){_ in if catalog.remote{catalog.invalidate()}}
+        .onChange(of:catalog.filesRemote){_ in catalog.invalidate()}
+        .onChange(of:catalog.graphProperty){_ in catalog.loadGraph()}
+        .onChange(of:connection.explorerIdentity){_ in if catalog.remote || catalog.filesRemote{catalog.invalidate()}}
         .sheet(item:$picker){kind in
             RemoteWorkflowPicker(kind:kind, title:pickingRoot ? "Choose BosTMC dataset root":"Choose BosTMC property CSV",buttonTitle:pickingRoot ? "Use folder":"Use CSV") {path in
                 if pickingRoot{catalog.rootPath=path}else{catalog.csvPath=path}
@@ -68,20 +72,27 @@ struct BossTMCView: View {
         VStack(alignment:.leading,spacing:10) {
             Text("PROPERTY CRITERIA").font(.caption.bold())
             TextField("Refcode, formula, metal or geometry",text:$catalog.search).textFieldStyle(.roundedBorder).onSubmit{catalog.query(reset:true)}
-            Menu("Add property filter") {
-                ForEach(catalog.headers,id:\.self){field in Button(field){catalog.filters.append(.init(property:field,mode:BossTMCStore.numericProperties.contains(field) ? "range":"contains"))}}
+            Menu("Add property") {
+                ForEach(["Composition","Coordination geometry","Electronic structure","Spin-state & atomization energies","Data quality"],id:\.self){group in
+                    Menu(group){ForEach(catalog.headers.filter{!BossTMCProperties.hidden.contains($0) && BossTMCProperties.group($0)==group},id:\.self){field in
+                        Button(BossTMCProperties.title(field)){addFilter(field)}
+                    }}
+                }
             }.disabled(catalog.filters.count>=32)
-            ScrollView {
-                VStack(spacing:12){ForEach($catalog.filters){$criterion in
-                    VStack(alignment:.leading,spacing:6){
-                        HStack{Text(criterion.property).font(.caption.bold()).lineLimit(2);Spacer();Button{catalog.filters.removeAll{$0.id==criterion.id}}label:{Image(systemName:"xmark")}.buttonStyle(.plain)}
-                        Picker("Comparison",selection:$criterion.mode){ForEach(modes,id:\.0){mode in Text(mode.1).tag(mode.0)}}.labelsHidden()
-                        if ["contains","exact"].contains(criterion.mode){TextField("Value",text:$criterion.text)}
-                        else if !["present","missing"].contains(criterion.mode){HStack{TextField("Minimum",text:$criterion.lower);Text("to");TextField("Maximum",text:$criterion.upper)}}
-                    }.padding(8).background(Color(nsColor:.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius:6))
-                }}
-            }
-            Text("All criteria use AND. Ranges are inclusive and use source CSV units. Numeric filters exclude missing/nonfinite values. Array filters apply to numeric entries in lists or dictionary values.").font(.caption).foregroundStyle(.secondary)
+            ScrollView {VStack(spacing:12){ForEach($catalog.filters){$criterion in
+                VStack(alignment:.leading,spacing:7){
+                    HStack{Text(BossTMCProperties.title(criterion.property)).font(.caption.bold()).help(criterion.property);Spacer();Button{catalog.filters.removeAll{$0.id==criterion.id}}label:{Image(systemName:"xmark")}.buttonStyle(.plain)}
+                    if BossTMCProperties.categorical.contains(criterion.property),let values=catalog.categories[criterion.property]{
+                        Picker("Value",selection:$criterion.text){Text("Choose…").tag("");ForEach(values,id:\.self){Text($0).tag($0)}}.labelsHidden()
+                    }else if BossTMCStore.numericProperties.contains(criterion.property){
+                        if let stat=catalog.summary[criterion.property],let low=stat["min"],let high=stat["max"],high>low{
+                            BossTMCRangeSlider(lower:$criterion.lower,upper:$criterion.upper,minimum:low,maximum:high)
+                        }
+                        HStack{VStack(alignment:.leading){Text("Minimum").font(.caption2).foregroundStyle(.secondary);TextField("Unbounded",text:$criterion.lower)};Text("–");VStack(alignment:.leading){Text("Maximum").font(.caption2).foregroundStyle(.secondary);TextField("Unbounded",text:$criterion.upper)}}
+                    }else{TextField("Contains text",text:$criterion.text)}
+                }.padding(10).background(Color(nsColor:.controlBackgroundColor)).clipShape(RoundedRectangle(cornerRadius:8))
+            }}}
+            Text("Combine criteria with AND. Sliders use catalog bounds; type exact limits below. Apply filters when ready. Missing numeric values are excluded.").font(.caption).foregroundStyle(.secondary)
             HStack{Button("Apply filters"){catalog.query(reset:true)}.buttonStyle(.borderedProminent);Button("Clear"){catalog.filters=[];catalog.search="";catalog.query(reset:true)}}.disabled(catalog.busy)
         }.padding(10)
     }
@@ -90,14 +101,14 @@ struct BossTMCView: View {
             HStack {
                 Text("\(catalog.matched.formatted()) matching candidates").font(.headline)
                 Spacer()
-                Menu("Columns") {ForEach(catalog.headers,id:\.self){h in Button((catalog.columns.contains(h) ? "✓ ":"")+h){if catalog.columns.contains(h){if catalog.columns.count>1{catalog.columns.removeAll{$0==h}}}else{catalog.columns.append(h)};catalog.query()}}}
-                Picker("Sort",selection:$catalog.sort){ForEach(catalog.headers,id:\.self){Text($0).tag($0)}}.frame(maxWidth:240)
+                Menu("Columns") {ForEach(catalog.headers.filter{!BossTMCProperties.hidden.contains($0)},id:\.self){h in Button((catalog.columns.contains(h) ? "✓ ":"")+BossTMCProperties.title(h)){if catalog.columns.contains(h){if catalog.columns.count>1{catalog.columns.removeAll{$0==h}}}else{catalog.columns.append(h)};catalog.query()}}}
+                Picker("Sort",selection:$catalog.sort){ForEach(catalog.headers.filter{!BossTMCProperties.hidden.contains($0)},id:\.self){Text(BossTMCProperties.name($0)).tag($0)}}.frame(maxWidth:240)
                 Toggle("Descending",isOn:$catalog.descending).toggleStyle(.checkbox)
                 Button("Sort"){catalog.query(reset:true)}.disabled(catalog.busy)
             }
             ScrollView(.horizontal){
                 VStack(alignment:.leading,spacing:0){
-                    HStack(spacing:0){ForEach(catalog.columns,id:\.self){column in Text(column).font(.caption.bold()).lineLimit(2).frame(width:column=="refcode" ? 175:140,height:35,alignment:.leading)}}.padding(.horizontal,8).background(Color(nsColor:.controlBackgroundColor))
+                    HStack(spacing:0){ForEach(catalog.columns,id:\.self){column in Text(BossTMCProperties.title(column)).font(.caption.bold()).help(column).lineLimit(2).frame(width:column=="refcode" ? 175:140,height:35,alignment:.leading)}}.padding(.horizontal,8).background(Color(nsColor:.controlBackgroundColor))
                     ScrollView(.vertical){LazyVStack(spacing:0){ForEach(catalog.rows){row in
                         Button{catalog.select(row.id)}label:{HStack(spacing:0){ForEach(catalog.columns,id:\.self){column in Text(row.values[column].flatMap{$0.isEmpty ? nil:$0} ?? "—").font(.system(size:12,design:.monospaced)).lineLimit(1).frame(width:column=="refcode" ? 175:140,height:29,alignment:.leading).help(row.values[column] ?? "")}}.padding(.horizontal,8).contentShape(Rectangle())}.buttonStyle(.plain).background(catalog.selectedID==row.id ? Color.accentColor.opacity(0.16):Color.clear)
                         Divider()
@@ -117,14 +128,27 @@ struct BossTMCView: View {
             }.padding(10).frame(minWidth:270)
             VStack(alignment:.leading,spacing:8){
                 HStack{Text("CSV DESCRIPTORS").font(.caption.bold());Spacer();Button("Copy record"){NSPasteboard.general.clearContents();NSPasteboard.general.setString(catalog.headers.map{$0+"\t"+(catalog.details[$0] ?? "")}.joined(separator:"\n"),forType:.string)}.disabled(catalog.details.isEmpty)}
-                ScrollView{LazyVStack(alignment:.leading,spacing:6){ForEach(catalog.headers,id:\.self){key in if let value=catalog.details[key]{VStack(alignment:.leading,spacing:2){Text(key).font(.caption).foregroundStyle(.secondary);Text(value.isEmpty ? "—":value).font(.caption.monospaced()).textSelection(.enabled)};Divider()}}}}
-                if !catalog.files.isEmpty{Menu("Associated XYZ / Psi4 / MOL2 files"){ForEach(catalog.files){file in Button(file.name+" · source"){catalog.openSource(file)}}}}
+                Picker("Inspector",selection:$inspector){Text("Graphs").tag("Graphs");Text("Properties").tag("Properties")}.pickerStyle(.segmented).labelsHidden()
+                if inspector=="Graphs"{BossTMCGraphs(catalog:catalog)}else{
+                    ScrollView{LazyVStack(alignment:.leading,spacing:6){ForEach(catalog.headers.filter{!BossTMCProperties.hidden.contains($0)},id:\.self){key in if let value=catalog.details[key]{VStack(alignment:.leading,spacing:2){Text(BossTMCProperties.title(key)).font(.caption).foregroundStyle(.secondary).help(key);Text(value.isEmpty ? "—":value).font(.caption.monospaced()).textSelection(.enabled)};Divider()}}}}
+                }
+                HStack{
+                    Button(catalog.filesRemote || catalog.remote ? "Find SSH outputs":"Find associated files"){catalog.findAssociatedFiles()}.disabled(catalog.selectedID==nil || catalog.selecting)
+                    if !catalog.files.isEmpty{Menu("Source files"){ForEach(catalog.files){file in Button(file.name){catalog.openSource(file)}}}}
+                }
+
             }.padding(10).frame(minWidth:280,idealWidth:360)
         }
     }
+    private func addFilter(_ field:String){
+        var criterion=BossTMCStore.Criterion(property:field,mode:BossTMCProperties.categorical.contains(field) ? "exact":BossTMCStore.numericProperties.contains(field) ? "range":"contains")
+        if let values=catalog.categories[field],let first=values.first{criterion.text=first}
+        if let stat=catalog.summary[field]{criterion.lower=stat["min"].map{String($0)} ?? "";criterion.upper=stat["max"].map{String($0)} ?? ""}
+        catalog.filters.append(criterion)
+    }
     private func choose(root: Bool){
         pickingRoot=root
-        if catalog.remote{picker=root ? .folder:.catalogCSV}
+        if (root && (catalog.remote || catalog.filesRemote)) || (!root && catalog.remote){picker=root ? .folder:.catalogCSV}
         else{let panel=NSOpenPanel();panel.canChooseDirectories=root;panel.canChooseFiles = !root;panel.message=root ? "Choose the dataset root":"Choose the BossTMC CSV";if panel.runModal() == .OK,let url=panel.url{if root{catalog.rootPath=url.path}else{catalog.csvPath=url.path}}}
     }
 }

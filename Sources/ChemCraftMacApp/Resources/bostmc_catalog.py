@@ -16,6 +16,8 @@ import time
 
 class BosTMCCatalog:
     numeric = set('charge spinmult electronic_energy_Eh dipole_magnitude_debye alpha_HOMO_Eh beta_HOMO_Eh alpha_LUMO_Eh beta_LUMO_Eh alpha_gap_Eh beta_gap_Eh spin_contamination mw natoms ox_state metal_lowdin_charge metal_lowdin_spin metal_mulliken_charge metal_mulliken_spin energetic_gap_eV IS-LS_VSSE_kcal_mol HS-LS_VSSE_kcal_mol HS-IS_VSSE_kcal_mol atomization_energy_Eh relative_AE_kcal_g csd_r_factor metal_index coordination_number'.split())
+    bulky = set('xyz mol2 mulliken_charges lowdin_charges mulliken_spins lowdin_spins geometry_details bond_lengths metal_ligand_bond_lengths dipole_moment_debye coordinating_atoms'.split())
+    categorical = set('metal geometry charge spinmult ox_state coordination_number'.split())
     missing = {'', 'none', 'null', 'nan', 'na', 'n/a', '--'}
     @staticmethod
     def number(value):
@@ -50,7 +52,7 @@ class BosTMCCatalog:
     def location(request):
         source = Path(request['csv']).expanduser().absolute()
         info = source.stat()
-        fingerprint = hashlib.sha256((str(source)+'\0'+str(info.st_size)+'\0'+str(info.st_mtime_ns)+'\0v1').encode()).hexdigest()
+        fingerprint = hashlib.sha256((str(source)+'\0'+str(info.st_size)+'\0'+str(info.st_mtime_ns)+'\0v2').encode()).hexdigest()
         cache = Path(request.get('cache_dir') or Path.home()/'.cache/ChemViewer/BossTMC').expanduser().absolute()/fingerprint
         cache.mkdir(parents=True, exist_ok=True, mode=0o700)
         return source, cache, fingerprint
@@ -76,8 +78,14 @@ class BosTMCCatalog:
             db = None
             try:
                 csv.field_size_limit(50_000_000)
-                with source.open(encoding='utf-8-sig', newline='') as stream:
-                    reader = csv.reader(stream, strict=True)
+                with source.open('rb') as stream:
+                    class Lines:
+                        def __iter__(self): return self
+                        def __next__(self):
+                            at=stream.tell();line=stream.readline()
+                            if not line: raise StopIteration
+                            return line.decode('utf-8-sig' if at==0 else 'utf-8')
+                    reader = csv.reader(Lines(), strict=True)
                     headers = next(reader)
                     if len(headers) != len(set(headers)) or not 1 <= len(headers) <= 200: raise ValueError('CSV headers must be unique (maximum 200).')
                     if not {'refcode','xyz','spinmult'}.issubset(headers): raise ValueError('CSV needs refcode, xyz and spinmult columns.')
@@ -88,19 +96,30 @@ class BosTMCCatalog:
                     db.execute('PRAGMA journal_mode=OFF'); db.execute('PRAGMA synchronous=OFF')
                     definitions = ['__id INTEGER PRIMARY KEY']+[quote(h)+' TEXT' for h in headers]+['"__n'+str(i)+'" REAL' for i in range(len(numeric))]
                     db.execute('CREATE TABLE candidates ('+','.join(definitions)+')')
+                    db.execute('CREATE TABLE payloads (id INTEGER PRIMARY KEY, offset INTEGER, length INTEGER)')
                     insert = 'INSERT INTO candidates VALUES ('+','.join('?' for _ in definitions)+')'
                     count=0
-                    for values in reader:
+                    while True:
+                        begin=stream.tell()
+                        try: values=next(reader)
+                        except StopIteration: break
+                        end=stream.tell()
                         if not values: continue
                         if len(values)!=len(headers): raise ValueError('CSV record '+str(reader.line_num)+' has '+str(len(values))+' cells; expected '+str(len(headers))+'.')
                         count+=1; row=dict(zip(headers,values))
-                        db.execute(insert,[count]+values+[cls.number(row[h]) for h in numeric])
+                        db.execute(insert,[count]+['' if h in cls.bulky else row[h] for h in headers]+[cls.number(row[h]) for h in numeric])
+                        db.execute('INSERT INTO payloads VALUES (?,?,?)',[count,begin,end-begin])
                         if count%2000==0:
                             db.commit();status['rows']=count;cls.atomic(cache/'status.json',status)
                     for h in ['refcode','metal','spinmult','geometry','charge','ox_state','coordination_number']:
-                        if h in headers: db.execute('CREATE INDEX '+quote('__i'+str(headers.index(h)))+' ON candidates('+quote(h)+')')
+                        if h in headers: db.execute('CREATE INDEX '+quote('__i'+str(headers.index(h)))+' ON candidates('+quote(h)+' COLLATE NOCASE)' )
                     for i in range(len(numeric)): db.execute('CREATE INDEX "__ni'+str(i)+'" ON candidates("__n'+str(i)+'")')
-                    metadata = dict(headers=headers,numeric=numeric,total=count,fingerprint=fingerprint,csv=str(source),phase='ready')
+                    summary={}
+                    for h in numeric:
+                        col='__n'+str(numeric.index(h));lo,hi,n=db.execute('SELECT MIN('+col+'), MAX('+col+'), COUNT('+col+') FROM candidates').fetchone()
+                        summary[h]=dict(min=lo,max=hi,count=n)
+                    categories={h:[dict(value=v,count=n) for v,n in db.execute('SELECT '+quote(h)+', COUNT(*) FROM candidates GROUP BY '+quote(h)+' ORDER BY '+quote(h)+' COLLATE NOCASE') if v.strip() and v.strip().lower() not in cls.missing] for h in cls.categorical if h in headers}
+                    metadata = dict(summary=summary,categories=categories,headers=headers,numeric=numeric,total=count,fingerprint=fingerprint,csv=str(source),phase='ready')
                     db.execute('CREATE TABLE metadata (data TEXT)');db.execute('INSERT INTO metadata VALUES (?)',[json.dumps(metadata)])
                     db.commit();db.close();db=None
                     if cls.location(request)[2]!=fingerprint: raise ValueError('CSV changed while indexing. Index the current version again.')
@@ -134,12 +153,22 @@ class BosTMCCatalog:
             except (OSError,KeyError): return dict(phase='error',error='Indexing stopped. Click Index CSV to retry.',rows=result.get('rows',0))
         return result
     @classmethod
+    def raw(cls,db,metadata,row_id):
+        record=db.execute('SELECT offset,length FROM payloads WHERE id=?',[row_id]).fetchone()
+        if record is None: raise ValueError('Record not found.')
+        with Path(metadata['csv']).open('rb') as stream:
+            stream.seek(record[0]);data=stream.read(record[1]).decode('utf-8')
+        values=next(csv.reader(io.StringIO(data,newline='')))
+        return dict(zip(metadata['headers'],values))
+    @classmethod
     def connect(cls,request):
         _,cache,_=cls.location(request)
         if not (cache/'index.sqlite').exists(): raise ValueError('Index this CSV before querying it.')
         db=sqlite3.connect((cache/'index.sqlite').as_uri()+'?mode=ro',uri=True)
         db.row_factory=sqlite3.Row
         metadata=json.loads(db.execute('SELECT data FROM metadata').fetchone()[0])
+        csv.field_size_limit(50_000_000)
+        db.create_function('cvraw',2,lambda row_id,index:cls.raw(db,metadata,row_id)[metadata['headers'][index]])
         db.create_function('cvnumber',1,cls.number)
         db.create_function('cvpresent',1,lambda x: int(str(x or '').strip().lower() not in cls.missing))
         def array_test(raw, mode, lower, upper):
@@ -165,10 +194,11 @@ class BosTMCCatalog:
             h=f['property'];mode=f.get('mode','range')
             if h not in headers: raise ValueError('Unknown property: '+h)
             col=quote(h)
+            if h in cls.bulky: col='cvraw(__id,'+str(headers.index(h))+')'
             if mode in ('present','missing'): clauses.append('cvpresent('+col+')='+('1' if mode=='present' else '0'));continue
             if mode in ('contains','exact'):
                 text=str(f.get('text',''))
-                clauses.append('instr(lower('+col+'),lower(?))>0' if mode=='contains' else 'lower('+col+')=lower(?)');values.append(text);continue
+                clauses.append('instr(lower('+col+'),lower(?))>0' if mode=='contains' else col+'=? COLLATE NOCASE');values.append(text);continue
             lower,upper=f.get('lower'),f.get('upper')
             for bound in (lower,upper):
                 if bound is not None and cls.number(bound) is None: raise ValueError('Range limits must be finite numbers.')
@@ -196,7 +226,7 @@ class BosTMCCatalog:
             fields=request.get('columns') or [h for h in ['refcode','metal','ox_state','spinmult','geometry','coordination_number','energetic_gap_eV','dipole_magnitude_debye'] if h in m['headers']]
             if any(h not in m['headers'] for h in fields): raise ValueError('Unknown display column.')
             quoted=','.join('"'+h.replace('"','""')+'"' for h in dict.fromkeys(fields))
-            rows=[dict(row) for row in db.execute('SELECT __id'+(','+quoted if quoted else '')+' FROM candidates'+where+' ORDER BY ('+sort+' IS NULL),'+sort+descending+',__id LIMIT ? OFFSET ?',args+[limit,offset])]
+            rows=[dict(row) for row in db.execute('SELECT __id'+(','+quoted if quoted else '')+' FROM candidates'+where+' ORDER BY '+sort+descending+(' NULLS LAST' if column in m['numeric'] else '')+',__id LIMIT ? OFFSET ?',args+[limit,offset])]
             total=db.execute('SELECT COUNT(*) FROM candidates'+where,args).fetchone()[0]
             return dict(rows=rows,total=total,offset=offset,limit=limit)
         finally: db.close()
@@ -206,11 +236,11 @@ class BosTMCCatalog:
         try:
             row=db.execute('SELECT * FROM candidates WHERE __id=?',[int(request['id'])]).fetchone()
             if row is None: raise ValueError('This record is not in the catalog.')
-            return dict(id=row['__id'],values={h:row[h] for h in m['headers']})
+            return dict(id=row['__id'],values=cls.raw(db,m,row['__id']))
         finally: db.close()
     @classmethod
     def files(cls,request):
-        row=cls.detail(request)['values'];root=Path(request['root']).expanduser().absolute()
+        row=request.get('record') or cls.detail(request)['values'];root=Path(request['root']).expanduser().absolute()
         spin={1:'singlets',2:'doublets',3:'triplets',4:'quartets',5:'quintets',6:'sextets'}.get(cls.number(row.get('spinmult')))
         ref=row['refcode'];raw_xyz=row.get('xyz','');xyz=raw_xyz.strip();files=[];seen=set()
         def add(path):
@@ -220,7 +250,7 @@ class BosTMCCatalog:
         directories=([root/spin/ref] if spin else [])+[root/ref]
         if xyz and inline is None:
             p=Path(xyz).expanduser()
-            for candidate in ([p]+[d/p.name for d in directories] if p.is_absolute() else [root/p,Path(request['csv']).expanduser().parent/p]+[d/p for d in directories]):
+            for candidate in ([p]+[d/p.name for d in directories] if p.is_absolute() else [root/p,Path(request.get('csv') or root).expanduser().parent/p]+[d/p for d in directories]):
                 if candidate.is_file(): add(candidate);directories.insert(0,candidate.parent);break
         for directory in dict.fromkeys(directories):
             if directory.is_dir():
@@ -238,12 +268,26 @@ class BosTMCCatalog:
             rows=list(db.execute('SELECT * FROM candidates'+where+' ORDER BY __id LIMIT 500',args+[after]))
             out=io.StringIO(newline='');writer=csv.writer(out)
             if after==0: writer.writerow(m['headers'])
-            for row in rows: writer.writerow([row[h] for h in m['headers']])
+            for row in rows:
+                raw=cls.raw(db,m,row['__id']);writer.writerow([raw[h] for h in m['headers']])
             return dict(csv=out.getvalue(),after=rows[-1]['__id'] if rows else after,done=len(rows)<500,count=len(rows))
         finally: db.close()
     @classmethod
+    def histogram(cls,request):
+        db,m=cls.connect(request)
+        try:
+            h=request['property']
+            if h not in m['numeric']: raise ValueError('Histogram needs a scalar property.')
+            stat=m['summary'][h];lo,hi=stat['min'],stat['max']
+            if lo is None: return dict(bins=[],**stat)
+            width=(hi-lo)/24 if hi>lo else 1.0
+            col='"__n'+str(m['numeric'].index(h))+'"'
+            counts=dict(db.execute('SELECT MIN(23,CAST(('+col+'-?)/? AS INTEGER)),COUNT(*) FROM candidates WHERE '+col+' IS NOT NULL GROUP BY 1',[lo,width]))
+            return dict(bins=[dict(lower=lo+i*width,upper=lo+(i+1)*width,count=counts.get(i,0)) for i in range(24 if hi>lo else 1)],**stat)
+        finally: db.close()
+    @classmethod
     def execute(cls,request):
-        methods={'bostmc-start':cls.start,'bostmc-status':cls.status,'bostmc-query':cls.query,'bostmc-detail':cls.detail,'bostmc-files':cls.files,'bostmc-export':cls.export}
+        methods={'bostmc-start':cls.start,'bostmc-status':cls.status,'bostmc-query':cls.query,'bostmc-detail':cls.detail,'bostmc-files':cls.files,'bostmc-resolve':cls.files,'bostmc-export':cls.export,'bostmc-histogram':cls.histogram}
         return methods[request['action']](request)
 
 if __name__=='__main__' and len(sys.argv)==3:
