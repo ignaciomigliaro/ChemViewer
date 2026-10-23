@@ -43,12 +43,31 @@ struct Reply: Encodable {
     var measurement: Float?
     var fragments: [String]?
 }
+struct SavedAtom: Codable {
+    var element: String
+    var position: [Float]
+}
+struct SavedFrame: Codable {
+    var atoms: [SavedAtom]
+    init(atoms: [Atom]) {
+        self.atoms = atoms.map { SavedAtom(element: $0.element, position: [$0.position.x, $0.position.y, $0.position.z]) }
+    }
+    func restoredAtoms() throws -> [Atom] {
+        let result = try atoms.enumerated().map { index, atom -> Atom in
+            guard let element = BuildingProject.validatedElement(atom.element), atom.position.count == 3,
+                  atom.position.allSatisfy(\.isFinite) else { throw invalid("Invalid project atom") }
+            return Atom(id: index, element: element, position: Vector3(atom.position[0], atom.position[1], atom.position[2]))
+        }
+        _ = try BuildingProject(atoms: result)
+        return result
+    }
+}
 struct Project: Codable {
     var schemaVersion = 1
     var source: String
     var sourceName: String
     var companions: [String: String]
-    var frames: [BuildingProject]
+    var frames: [SavedFrame]
     var editedFrames: [Int]
 }
 var documents: [String: SessionDocument] = [:]
@@ -90,17 +109,19 @@ func handle(_ r: Request) throws -> Reply {
                 guard project.schemaVersion == 1 else { throw invalid("Unsupported desktop project version") }
                 source = project.source
                 sourceName = project.sourceName; companions = project.companions
+                let savedFrames = try project.frames.map { try $0.restoredAtoms() }
                 var restored = source.isEmpty
-                    ? ParsedDocument(title: url.deletingPathExtension().lastPathComponent, sourceFormat: "Builder", frames: project.frames.enumerated().map { MoleculeFrame(id: $0.offset, atoms: $0.element.atoms) })
+                    ? ParsedDocument(title: url.deletingPathExtension().lastPathComponent, sourceFormat: "Builder", frames: savedFrames.enumerated().map { MoleculeFrame(id: $0.offset, atoms: $0.element) })
                     : (companions.isEmpty
                        ? try ParserRegistry.parse(text: source, fileName: project.sourceName)
                        : try ORCAInputParser.parse(text: source, title: project.sourceName, resolveXYZ: { name in
                            guard let text = companions[name] else { throw invalid("Missing embedded companion: \(name)") }; return text
                        }))
                 guard restored.frames.count == project.frames.count else { throw invalid("Project frame count differs from its source") }
-                for (i, frame) in project.frames.enumerated() {
-                    restored.frames[i].atoms = frame.atoms
-                    if project.editedFrames.contains(i) { invalidateScience(&restored, frame: i) }
+                for (i, atoms) in savedFrames.enumerated() {
+                    let differsFromSource = restored.frames[i].atoms != atoms
+                    restored.frames[i].atoms = atoms
+                    if differsFromSource || project.editedFrames.contains(i) { invalidateScience(&restored, frame: i) }
                 }
                 parsed = restored
             } else {
@@ -134,8 +155,8 @@ func handle(_ r: Request) throws -> Reply {
             doc.undo.append(doc.current); doc.current = next
         case "save_project":
             let parsed = doc.current.parsed
-            let project = try Project(source: doc.source, sourceName: doc.sourceName, companions: doc.companions,
-                frames: parsed.frames.map { try BuildingProject(atoms: $0.atoms, charge: parsed.charge ?? 0, multiplicity: parsed.multiplicity ?? 1) },
+            let project = Project(source: doc.source, sourceName: doc.sourceName, companions: doc.companions,
+                frames: parsed.frames.map { SavedFrame(atoms: $0.atoms) },
                 editedFrames: parsed.frames.indices.filter { parsed.frames[$0].comment == "Edited geometry; source calculation values do not apply" })
             let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys, .prettyPrinted]
             try write(encoder.encode(project), path: r.path, overwrite: r.overwrite ?? false)

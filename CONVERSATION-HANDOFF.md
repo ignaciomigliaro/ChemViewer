@@ -1201,3 +1201,14 @@ compatibility requirement independently. Text labels now use a raster QWidget
 overlay plus QImage export compositing; they no longer invoke Qt text GL painting
 inside the molecular framebuffer. This also avoids old-context text-driver
 state errors. Package reports record the actual GL version/renderer/shader path.
+
+Project persistence now serializes only elements/coordinates, without inserting
+BuildingProject's internal default charge/multiplicity into scientific files.
+Reopening compares saved coordinates with parsed source coordinates and
+invalidates source energies/modes whenever they differ, even if an edited-frame
+flag was removed from the JSON. The fifteenth service regression independently
+changes a saved synthetic geometry and verifies that original calculation
+values cannot be reused. All 15 service and 15 GUI workflows pass locally.
+CSV export writes UTF-8 bytes to avoid Windows CRCRLF translation, with a row-count
+and byte regression. These are scientific/portability corrections, not a new
+release version; required Windows GUI/package checks are still pending.

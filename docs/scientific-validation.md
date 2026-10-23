@@ -546,7 +546,7 @@ render acceptance uses that correction, without relaxing resource containment.
 
 ## Qt desktop port — development acceptance
 
-The Windows-first branch adds 14 real-service protocol regressions and 15
+The Windows-first branch adds 15 real-service protocol regressions and 15
 Qt/OpenGL GUI regressions. Service oracles include water O–H 0.95720 Å,
 H–O–H 104.52°, signed dihedral 116.56505°, explicit numeric geometry edits,
 negative frequency −250 cm⁻¹, separate missing Raman/IR intensity 7.5, exact

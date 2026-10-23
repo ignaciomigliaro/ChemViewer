@@ -113,6 +113,10 @@ class DesktopServiceTests(unittest.TestCase):
         path = self.tmp / "water project.cvdesktop"
         saved = self.request("save_project", document=key, path=str(path))
         self.assertTrue(saved["ok"], saved); self.assertFalse(saved["dirty"])
+        encoded = json.loads(path.read_text())
+        self.assertEqual(set(encoded["frames"][0]), {"atoms"})
+        self.assertNotIn("charge", saved["data"])
+        self.assertNotIn("multiplicity", saved["data"])
         restored = self.request("open", path=str(path))
         self.assertEqual(restored["data"], saved["data"])
         path2 = self.tmp / "again.cvdesktop"
@@ -163,6 +167,20 @@ class DesktopServiceTests(unittest.TestCase):
         reply = json.loads(self.process.stdout.readline())
         self.assertEqual(reply["id"], -1); self.assertFalse(reply["ok"])
         self.assertTrue(self.request("hello")["ok"])
+
+    def test_project_changes_cannot_reuse_source_calculation_values(self):
+        opened = self.opened("desktop-imaginary.out")
+        path = self.tmp / "changed.cvdesktop"
+        self.assertTrue(self.request("save_project", document=opened["document"], path=str(path))["ok"])
+        project = json.loads(path.read_text())
+        project["frames"][0]["atoms"][0]["position"][1] = 1.0
+        project["editedFrames"] = []
+        path.write_text(json.dumps(project))
+        restored = self.request("open", path=str(path))
+        self.assertTrue(restored["ok"], restored)
+        self.assertEqual(restored["data"]["modes"], [])
+        self.assertNotIn("energyHartree", restored["data"]["frames"][0])
+        self.assertEqual(restored["data"]["frames"][0]["atoms"][0]["position"], [0, 1, 0])
 
     def test_negative_mode_preserved_then_invalidated_on_edit(self):
         # Independently authored ORCA-style fixture: one mode on two H atoms.

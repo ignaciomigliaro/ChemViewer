@@ -437,7 +437,7 @@ same Swift chemistry core through `ChemViewerService`. It adds native windows,
 instanced rendering, picking/measurements, coordinate/element edits,
 add/delete, fragments, internal distance/angle editing, undo/redo, document tabs,
 trajectory/mode animation, source/properties, energy plotting/CSV, XYZ/PNG export
-and portable desktop projects. 15 live Qt tests and fourteen service tests
+and portable desktop projects. 15 live Qt tests and 15 service tests
 pass locally on Apple Silicon. Hosted Windows/Linux evidence is tracked in the
 handoff; physical Windows/Linux GPU/HiDPI/desktop acceptance remains open.
 
