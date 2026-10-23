@@ -546,7 +546,7 @@ render acceptance uses that correction, without relaxing resource containment.
 
 ## Qt desktop port — development acceptance
 
-The Windows-first branch adds 14 real-service protocol regressions and eight
+The Windows-first branch adds 14 real-service protocol regressions and 13
 Qt/OpenGL GUI regressions. Service oracles include water O–H 0.95720 Å,
 H–O–H 104.52°, signed dihedral 116.56505°, explicit numeric geometry edits,
 negative frequency −250 cm⁻¹, separate missing Raman/IR intensity 7.5, exact
@@ -560,10 +560,17 @@ and energy test parsing/display only and do not establish physical accuracy of
 a computed H2 transition state. The water/dihedral fixtures retain the existing
 independent geometric oracles.
 
-All eight desktop tests passed on the physical Apple Silicon Mac using real Qt
+All 13 desktop tests passed on the physical Apple Silicon Mac using real Qt
 windows and OpenGL framebuffers. They inspect molecular pixels, picking,
 measurement, coordinate edit/undo/redo, per-document camera/playback lifetime,
 trajectory/equilibrium export, negative-mode animation/invalidation, builder
 project reload and source-only inputs. This does not establish physical Windows
 or Linux interactive acceptance. CI now requires service, GUI and relocated
 frozen-package checks on each platform; results are recorded in the handoff.
+
+Desktop line+branch coverage is approximately 87% on the development Mac, with
+per-module floors and exact source inventory in `Tests/desktop-coverage-floors.json`.
+The platform-specific software-OpenGL adapter must execute on Windows; its
+absence from Mac/Linux execution is explicit in the policy. Linux arm64 Mesa
+validation caught and reproduced a QPainter-to-3D GL-state regression after label
+rendering; the viewport now resets blend/scissor/depth-write state before drawing.

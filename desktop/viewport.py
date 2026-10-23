@@ -187,6 +187,11 @@ class MoleculeViewport(QOpenGLWidget):
         return projection * view
 
     def paintGL(self):
+        # QPainter overlays can leave blending/scissor/depth-write state changed.
+        # Restore explicit 3D state before clearing or drawing the next frame.
+        GL.glDisable(GL.GL_BLEND); GL.glDisable(GL.GL_SCISSOR_TEST)
+        GL.glDepthMask(GL.GL_TRUE); GL.glDepthFunc(GL.GL_LESS)
+        GL.glColorMask(True, True, True, True)
         GL.glClearColor(0.96, 0.97, 0.99, 1.0)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         if not self.program or self.error:

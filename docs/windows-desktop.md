@@ -19,6 +19,10 @@ py -3 -m venv .venv-desktop
 
 Linux (Swift 6.1.3, Python 3.12, OpenGL 3.3 drivers and Qt platform dependencies):
 
+On Ubuntu 24.04, install `python3-venv libegl1 libgl1-mesa-dri libxcb-cursor0
+libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0
+libglib2.0-0t64 libdbus-1-3`. Automated GUI runs additionally need `xvfb xauth`.
+
 ```bash
 swift build --product ChemViewerService
 python3 -m venv .venv-desktop
@@ -29,6 +33,11 @@ python3 -m venv .venv-desktop
 The same command works on macOS for development, without changing the existing
 SwiftUI/AppKit/Metal application or its canonical installation. A custom service
 location can be set with `CHEMVIEWER_SERVICE`.
+
+![Native Qt desktop with independently authored water fixture](images/native-qt-desktop.png)
+
+The screenshot is the actual Qt implementation running on the development Mac;
+it is not Windows acceptance evidence.
 
 ## Implemented interactions
 
@@ -70,7 +79,9 @@ python3 Tests/gui/desktop/test_desktop.py
 ```
 
 On Windows use the `.exe` service suffix. GUI tests require an actual desktop or,
-for Linux automation, Xvfb with Mesa software OpenGL. They fail on blank rendering;
+for Linux automation, Xvfb with Mesa software OpenGL. The suite currently contains 13 desktop GUI workflows and 14 service regressions.
+Per-module line/branch floors are enforced from
+`Tests/desktop-coverage-floors.json`. They fail on blank rendering;
 a passing process exit alone is insufficient.
 
 For Windows software-rendered CI, `QT_OPENGL=software` selects the Qt wheel's

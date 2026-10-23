@@ -1164,3 +1164,20 @@ Packaging/CI checks are in progress. No new release version or tag is claimed:
 full Windows/Linux parity, physical Windows GPU/HiDPI acceptance, complete
 scientific presentation, drawing, ChemRefine, SSH and BosTMC remain outstanding.
 See docs/windows-desktop.md for the full implemented/open inventory and commands.
+
+Desktop follow-up evidence: the frozen macOS desktop ZIP passed its relocated
+GUI acceptance with developer PATH removed. The suite now has 13 GUI workflows
+(save/open/export dialog flows, unsaved-close cancellation, invalid coordinate
+rollback, plotting and packaged-acceptance paths included). Desktop Python
+coverage is about 87% lines+branches locally, enforced per module; only the
+Windows-only GL adapter is exempt on non-Windows hosts.
+
+Initial hosted Windows service failure was a test fixture's text-mode CRLF
+translation, not source corruption: fixture generation now writes explicit UTF-8
+bytes, retaining exact source comparisons. The initial Linux Qt plugin failure
+was missing libxcb-shape0; Linux platform/runtime dependencies are explicit.
+Real Linux arm64 Xvfb/Mesa testing then caught a renderer-state bug after labels:
+QPainter leaves GL blending/scissor/depth-write state changed. The viewport now
+restores explicit 3D state before the next clear/draw. The overlapping placement
+in the display-control test was also removed to avoid ambiguous depth ties.
+These failures were retained and fixed, not skipped or counted as acceptance.

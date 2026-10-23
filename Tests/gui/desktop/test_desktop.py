@@ -73,6 +73,7 @@ class DesktopAcceptance(unittest.TestCase):
                 color = image.pixelColor(x, y)
                 red += color.red() > color.green() * 1.5 and color.red() > color.blue() * 1.5
                 non_background += min(color.red(), color.green(), color.blue()) < 180
+        if red <= 15: image.save(str(ROOT / ".build" / ("desktop-pixels-failure-" + sys.platform + ".png")), "PNG")
         self.assertGreater(red, 15)
         self.assertGreater(non_background, 30)
 
@@ -236,6 +237,7 @@ class DesktopAcceptance(unittest.TestCase):
         wait_until(lambda: not self.window.bridge.pending)
         measure = self.request("measure", document=pane.key, indices=[1, 0, 2])
         self.assertAlmostEqual(measure["measurement"], 90, places=4)
+        pane.placement[0].setValue(3.0)
         with patch("main.QInputDialog.getText", return_value=("He", True)):
             pane.add_atom()
         wait_until(lambda: len(pane.data["frames"][0]["atoms"]) == 4)
