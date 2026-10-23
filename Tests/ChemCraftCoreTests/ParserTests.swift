@@ -2,6 +2,50 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testPortableVectorMathHasIndependentCartesianOracles() {
+        let x = SIMD3<Double>(1, 0, 0), y = SIMD3<Double>(0, 1, 0)
+        XCTAssertEqual(VectorMath.cross(x, y), SIMD3<Double>(0, 0, 1))
+        XCTAssertEqual(VectorMath.cross(y, x), SIMD3<Double>(0, 0, -1))
+        XCTAssertEqual(VectorMath.dot(SIMD3<Double>(2, -3, 4), SIMD3<Double>(-1, 5, 2)), -9)
+        XCTAssertEqual(VectorMath.length(SIMD3<Double>(2, 3, 6)), 7, accuracy: 1e-14)
+        XCTAssertEqual(VectorMath.distance(SIMD3<Double>(2, 3, 6), SIMD3<Double>(2, 3, -1)), 7, accuracy: 1e-14)
+        XCTAssertEqual(VectorMath.normalize(SIMD3<Double>(0, -5, 0)), SIMD3<Double>(0, -1, 0))
+    }
+
+    func testPortableSerializationPreservesMissingDataAndSource() throws {
+        let source = "2\n</script><script>alert('source')</script> μ\nH 0 0 0\nH 0 0 0.74\n"
+        let parsed = try XYZParser.parse(text: source, title: "Hydrogen")
+        let portable = PortableDocument(document: parsed, source: source)
+        let object = try JSONSerialization.jsonObject(with: portable.json()) as! [String: Any]
+        XCTAssertEqual(object["coordinateUnit"] as? String, "angstrom")
+        XCTAssertEqual(object["energyUnit"] as? String, "hartree")
+        XCTAssertEqual(object["source"] as? String, source)
+        XCTAssertTrue(object["charge"] == nil)
+        let frames = object["frames"] as! [[String: Any]]
+        XCTAssertTrue(frames[0]["energyHartree"] == nil)
+        XCTAssertEqual(frames[0]["bonds"] as? [[Int]], [[0, 1]])
+        let html = try portable.html(template: "<script>__CHEMVIEWER_DATA__</script>")
+        XCTAssertTrue(!html.contains("alert"))
+        let encoded = html.replacingOccurrences(of: "<script>", with: "").replacingOccurrences(of: "</script>", with: "")
+        XCTAssertEqual(Data(base64Encoded: encoded), try portable.json())
+    }
+
+    func testPortableModeKeepsNegativeFrequencyAndSeparateActivities() throws {
+        let atom = Atom(id: 0, element: "H", position: .zero)
+        let document = ParsedDocument(title: "Synthetic", sourceFormat: "test",
+            frames: [MoleculeFrame(id: 0, atoms: [atom], energyHartree: -1.123456789012345)],
+            vibrationalModes: [VibrationalMode(index: 7, frequencyCM1: -250.25,
+                infraredIntensity: 2.5, ramanActivity: 8.75, displacements: [Vector3(0.1, -0.2, 0.3)])],
+            vibrationalFrameIndex: 0, charge: -1, multiplicity: 2)
+        let portable = PortableDocument(document: document, source: "synthetic")
+        XCTAssertEqual(portable.modes[0].frequencyCM1, -250.25)
+        XCTAssertEqual(portable.modes[0].infraredIntensity, 2.5)
+        XCTAssertEqual(portable.modes[0].ramanActivity, 8.75)
+        XCTAssertEqual(portable.frames[0].energyHartree, -1.123456789012345)
+        XCTAssertEqual(portable.vibrationalFrameIndex, 0)
+        XCTAssertEqual(portable.charge, -1)
+        XCTAssertEqual(portable.multiplicity, 2)
+    }
     func testORCAInputCartesianGeometryAndSpin() throws {
         let document = try ParserRegistry.parse(text: "! PBE def2-SVP\n* xyz -1 2\nFe 0 0 0\nH 0 0 1.5\n*\n", fileName: "metal.inp")
         XCTAssertEqual(document.sourceFormat, "ORCA input")

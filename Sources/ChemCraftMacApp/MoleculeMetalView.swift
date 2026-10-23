@@ -324,9 +324,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     override var acceptsFirstResponder: Bool { true }
 
     private func buildPipelines(device: MTLDevice) {
-        let packagedBundleURL = Bundle.main.resourceURL?
-            .appendingPathComponent("ChemViewer_ChemViewerApp.bundle")
-        let shaderBundle = packagedBundleURL.flatMap(Bundle.init(url:)) ?? .module
+        let shaderBundle = ChemistryResources.bundle
         shaderBundlePath = shaderBundle.bundlePath
         let library: MTLLibrary?
         if let compiledLibrary = try? device.makeDefaultLibrary(bundle: shaderBundle) {

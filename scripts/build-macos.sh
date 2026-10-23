@@ -30,10 +30,14 @@ bash "$project_dir/scripts/build-icon.sh"
 cp "$project_dir/Packaging/ChemViewer.icns" "$app_dir/Contents/Resources/ChemViewer.icns"
 resource_bundle="$(find "$bin_dir" -maxdepth 1 -name '*ChemViewerApp.bundle' -print -quit)"
 if [[ -n "$resource_bundle" ]]; then
+    # Replace generated resources rather than retaining obsolete Python bytecode
+    # or removed assets from an earlier local build.
+    rm -rf "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
     ditto "$resource_bundle" "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
 else
     echo "missing SwiftPM Metal resource bundle" >&2; exit 1
 fi
+find "$app_dir/Contents/Resources" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 cp "$project_dir/docs/third-party/xyzrender-LICENSE.txt" "$app_dir/Contents/Resources/xyzrender-LICENSE.txt"
 codesign --force --deep --sign - "$app_dir"
 codesign --verify --deep --strict --verbose=2 "$app_dir"

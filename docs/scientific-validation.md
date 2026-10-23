@@ -375,7 +375,7 @@ Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
 remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
 AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.
 
-## BossTMC screening — 0.11.0 / build35 (2026-10-21)
+## BosTMC screening — 0.11.0 / build35 (2026-10-21)
 
 The 18 new independent `python_tests.test_bostmc` cases plus 48 existing chemistry,
 drawing, workflow and remote tests pass (66 total). Oracles cover quoted/multiline
@@ -477,3 +477,69 @@ chemviewer-ssh-session-startup-long.log. Credentials/keys are never stored by th
 recovery mechanism. Official reference for keepalive/control semantics:
 https://man.openbsd.org/ssh_config . ORCD escalation reference:
 https://orcd-docs.mit.edu/accessing-orcd/ssh-troubleshooting/ .
+
+## 0.12.0 — portability baseline (2026-10-23)
+
+Real Swift6.1.3 XCTest on Linux arm64 (Docker official swift image) passes47cases (44core +3migrated suites);
+three migrated parser/editing/state suites and six real executable tests pass on
+Linux and Mac. The selected Mac CLT lacks XCTest; before/after genuine attempts
+fail explicitly, while the standalone adapter passes44 core assertions. No
+claim of local Mac XCTest success is made. Hosted Windows XCTest47 has also passed. Final all-platform gate results are
+linked from [PR1](https://github.com/ignaciomigliaro/ChemViewer/pull/1).
+
+The Python redistributable suite passes91tests with3explicit optional licensed-
+corpus/artifact skips, including the coverage-gate self-tests. All seven
+helper modules are measured (approximately83% combined line/branch coverage).
+The previous full discovery depended unconditionally on a missing proprietary
+water output: those two exact-corpus checks are now optional and a checked-in
+synthetic negative-mode/energy/vector oracle is mandatory. No licensed fixture
+is redistributed. Per-file floors retain lower legacy coverage honestly.
+
+Portable export tests retain source units, missing optional values, separate IR/
+Raman properties, negative frequency, source frame, full Double energy and source
+text including Unicode/closing-script content. Water oracles verify0.95720Å
+distance and two inferred bonds; exported XYZ round-trips frames/energy without
+overwrite. Fragment math is checked against independent Cartesian dot/cross,
+3D7-unit-length and signed-axis oracles, plus existing rigid-body invariance.
+
+Five actual Chromium checks exercise canvas pixels, rotate/fit, click measurement,
+resize, downloads, trajectory playback, negative-mode animation/equilibrium export,
+text injection isolation, offline networking and source-only inputs. Synthetic
+fixture screenshots in docs/images demonstrate the portable interface; they are
+not reference-app captures or quantum predictions. Physical Windows/Linux desktop
+interaction and full UI parity remain unexecuted. Native physical Mac smoke
+results and final hosted CI evidence are recorded in CONVERSATION-HANDOFF.md.
+
+Hosted Linux testing exposed a hard-coded /private/tmp SSH control path. It now
+uses the host temporary directory on Linux while retaining the short canonical
+Mac path for existing masters/socket limits. Hermetic tests check private
+permissions and symlink refusal. Platform-specific ORCA/CUDA preflight branches
+are now tested with explicit platform/file-probe mocks on both hosts; no engine
+is executed. This preserves coverage floors instead of lowering them on Linux.
+
+Hosted run[40004224822](https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40004224822)
+passes the complete Linux/Windows/Mac matrix, Python science/coverage and native
+Mac packaging gates at candidate16a3702. Downloaded Mac portable artifact was
+hash-verified and tested independently after relocation; all5browser cases pass
+after explicit render synchronization in the picking harness. This adds no
+physical Windows/Linux or full-interface parity claim. The final commit's own
+required CI results are linked on PR1 before its version tag is published.
+
+A separate native download test then exposed a release-blocking resource bug:
+RemoteConnection and its smoke helpers called Bundle.module directly, whose
+generated accessor searched the app root or the build machine's absolute path,
+while packaged assets live in Contents/Resources. The signed CI app crashed
+before its GUI opened. All native lookups now share the packaged resource
+resolver, and a new headless relocated-archive/negative-helper gate prevents
+local fallback from masking this defect. Earlier build/signature success is
+not native runtime acceptance. Final physical downloaded-app retest is required.
+
+Post-fix candidate6a3da93 passes the complete required hosted run
+[40005895948](https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40005895948),
+including the native archive's contained-resource/missing-helper gate. Native
+artifact12524422347 (SHA-2560e08496bb83ff5cabc3d2e575070994926b04a51b3fbf107010cbbbe5f903237)
+was downloaded and independently passed native REMOTE_SESSION and BOSTMC workflows
+on this physical Mac. Its general render smoke reached the shader-location
+assertion but falsely rejected /tmp versus /private/tmp aliases. The assertion
+now canonicalizes both paths and requires a directory boundary; final physical
+render acceptance uses that correction, without relaxing resource containment.

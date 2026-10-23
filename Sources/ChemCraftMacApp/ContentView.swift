@@ -8,7 +8,7 @@ struct ContentView: View {
     @ObservedObject private var chemistry = ChemistryRuntime.shared
     @ObservedObject private var remote = RemoteConnection.shared
 
-    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BossTMC"]
+    private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BosTMC"]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -30,10 +30,10 @@ struct ContentView: View {
                 Spacer()
             }.padding(.horizontal, 5).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))
             Divider()
-            if !["Draw","BossTMC"].contains(workspace.activeTab) { ScrollView(.horizontal, showsIndicators: false) { classicToolbar } }
+            if !["Draw","BosTMC"].contains(workspace.activeTab) { ScrollView(.horizontal, showsIndicators: false) { classicToolbar } }
             Divider()
-            if workspace.isDraggingEnabled && !["ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab) { ManipulationToolbar() }
-            if !workspace.buildingHint.isEmpty && !["ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab) {
+            if workspace.isDraggingEnabled && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) { ManipulationToolbar() }
+            if !workspace.buildingHint.isEmpty && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) {
                 HStack {
                     if let element = workspace.pendingElement {
                         Button(element + "…") { workspace.presentPeriodicTable() }.help("Choose another element")
@@ -45,25 +45,25 @@ struct ContentView: View {
             }
             Divider()
             HSplitView {
-                if workspace.activeTab != "BossTMC" && (remote.explorerVisible || (workspace.showExplorer && !["ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab))) {
+                if workspace.activeTab != "BosTMC" && (remote.explorerVisible || (workspace.showExplorer && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab))) {
                     VSplitView {
                         if remote.explorerVisible { RemoteExplorerView() }
-                        if workspace.showExplorer && !["ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab) { sidebar.frame(minHeight: 160) }
+                        if workspace.showExplorer && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) { sidebar.frame(minHeight: 160) }
                     }.frame(minWidth: 230, idealWidth: 280, maxWidth: 380)
                 }
                 tabContent
-                if workspace.isBuilderVisible && !["ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab) { BuilderPanel() }
+                if workspace.isBuilderVisible && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) { BuilderPanel() }
             }
         }
         .preferredColorScheme(.light)
-        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine", "Draw", "BossTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
+        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
             clear: workspace.clearSelection,
             selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
-            if CommandLine.arguments.contains("--bostmc-local-smoke-test") { await Task { @MainActor in await BossTMCLocalSmokeTest.run(workspace:workspace) }.value }
-            if CommandLine.arguments.contains("--bostmc-smoke-test") { await Task { @MainActor in await BossTMCSmokeTest.run(workspace: workspace) }.value }
+            if CommandLine.arguments.contains("--bostmc-local-smoke-test") { await Task { @MainActor in await BosTMCLocalSmokeTest.run(workspace:workspace) }.value }
+            if CommandLine.arguments.contains("--bostmc-smoke-test") { await Task { @MainActor in await BosTMCSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--remote-workflow-smoke-test") { await RemoteWorkflowSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-explorer-smoke-test") { await RemoteExplorerSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--remote-tree-smoke-test") { await RemoteTreeSmokeTest.run(workspace: workspace) }
@@ -202,7 +202,7 @@ struct ContentView: View {
     @ViewBuilder private var tabContent: some View {
         switch workspace.activeTab {
         case "Draw": DrawView(drawing: workspace.drawing)
-        case "BossTMC": BossTMCView()
+        case "BosTMC": BosTMCView()
         case "ChemRefine": LocalWorkflowView(embedded: true)
         case "Abstract": abstractPanel
         case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)

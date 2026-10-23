@@ -2,11 +2,11 @@ import AppKit
 import ChemCraftCore
 
 @MainActor
-enum BossTMCSmokeTest {
+enum BosTMCSmokeTest {
     static var started=false
     static func run(workspace: WorkspaceStore) async {
         guard !started else{return};started=true
-        let model=BossTMCStore.shared,defaults=UserDefaults.standard
+        let model=BosTMCStore.shared,defaults=UserDefaults.standard
         let oldCatalogRemote=defaults.object(forKey:"BossTMCCatalogRemote"),oldFilesRemote=defaults.object(forKey:"BossTMCFilesRemote")
         let oldCSV=defaults.object(forKey:"BossTMCCSV"),oldRoot=defaults.object(forKey:"BossTMCRoot"),oldCache=defaults.object(forKey:"BossTMCCache")
         let directory=FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-bostmc-"+UUID().uuidString)
@@ -16,6 +16,13 @@ enum BossTMCSmokeTest {
         defer{restore();try? FileManager.default.removeItem(at:directory)}
         do{
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+            // Start with a loaded document. An empty initial tab is intentionally
+            // reused by DocumentTabs; counting it as a newly added tab is wrong.
+            let existingURL=directory.appendingPathComponent("existing.xyz")
+            try "2\nIndependent existing document\nH 0 0 0\nH 0 0 .74\n".write(to:existingURL,atomically:true,encoding:.utf8)
+            let existing=workspace.documents!.open(existingURL)
+            for _ in 0..<100{if !existing.isLoading{break};await pause()}
+            try require(existing.currentFrame?.atoms.count==2,"Synthetic baseline document failed to load")
             let xyz="7\nIndependent synthetic FeN6 GUI fixture\nFe 0 0 0\nN 2 0 0\nN -2 0 0\nN 0 2 0\nN 0 -2 0\nN 0 0 2\nN 0 0 -2\n"
             for spin in ["singlets","triplets"]{
                 let folder=directory.appendingPathComponent(spin+"/HUNJAE_comp_0");try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
@@ -24,7 +31,7 @@ enum BossTMCSmokeTest {
             }
             let csv="refcode,xyz,spinmult,metal,charge,geometry,coordination_number,electronic_energy_Eh,energetic_gap_eV,metal_ligand_bond_lengths\nHUNJAE_comp_0,structure.xyz,1,Fe,2,octahedral,6,-100.123456789012,1.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\nHUNJAE_comp_0,structure.xyz,3,Fe,2,octahedral,6,-100.0,0.5,\"[2.0,2.0,2.0,2.0,2.0,2.0]\"\n"
             let file=directory.appendingPathComponent("catalog.csv");try csv.write(to:file,atomically:true,encoding:.utf8)
-            model.remote=false;model.filesRemote=false;model.csvPath=file.path;model.rootPath=directory.path;model.cachePath=directory.appendingPathComponent("index-cache").path;workspace.activeTab="BossTMC"
+            model.remote=false;model.filesRemote=false;model.csvPath=file.path;model.rootPath=directory.path;model.cachePath=directory.appendingPathComponent("index-cache").path;workspace.activeTab="BosTMC"
             for _ in 0..<4{await pause()};model.index()
             for _ in 0..<300{if !model.busy && model.validCatalog && model.rows.count==2{break};await pause()}
             try require(model.rows.count==2 && model.matched==2,"Native catalog failed to index/query: "+model.status)
@@ -56,6 +63,7 @@ enum BossTMCSmokeTest {
             model.openInViewer(workspace)
             for _ in 0..<100{if !workspace.documents!.activeWorkspace.isLoading && workspace.documents!.activeWorkspace.multiplicity==3{break};await pause()}
             try require(workspace.documents!.files.count==count+2 && workspace.documents!.activeWorkspace.multiplicity==3,"Distinct spin record did not retain an independent document and multiplicity")
+            try require(existing.currentFrame?.atoms.count==2 && existing.currentFrame?.atoms[1].position.z==0.74,"Catalog opening replaced the existing document")
             try require(try String(contentsOf:file,encoding:.utf8)==csv,"Catalog source CSV was modified")
             restore();try? FileManager.default.removeItem(at:directory);print("BOSTMC_PASS: native catalog indexing, AND filters, separate spin records, 7-atom XYZ preview/exact coordinates, full CSV energy precision, associated Psi4 source sheet, independent/deduplicated viewer tabs, CSV charge/spin propagation and separate triplet document, unchanged source CSV. Synthetic fixtures only.");fflush(stdout);exit(0)
         }catch{restore();try? FileManager.default.removeItem(at:directory);print("BOSTMC_FAIL: \(error)");fflush(stdout);exit(1)}

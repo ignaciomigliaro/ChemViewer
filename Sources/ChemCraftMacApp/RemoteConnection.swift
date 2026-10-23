@@ -310,7 +310,7 @@ final class RemoteConnection: ObservableObject {
     }
     func localRequest(_ payload: [String: Any], profile: RemoteProfile, edit: Bool = false, folder: String? = nil) async throws -> [String: Any] {
 
-        guard let script = Bundle.module.url(forResource: "remote_bridge", withExtension: "py") else { throw RemoteError.message("Missing SSH helper.") }
+        guard let script = ChemistryResources.bundle.url(forResource: "remote_bridge", withExtension: "py") else { throw RemoteError.message("Missing SSH helper.") }
         let temporary = FileManager.default.temporaryDirectory.appendingPathComponent("chemviewer-ssh-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: temporary) }

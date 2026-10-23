@@ -27,7 +27,7 @@ enum RemoteExplorerSmokeTest {
             try "ordinary file".write(to: directory.appendingPathComponent("README.txt"), atomically: true, encoding: .utf8)
             try "2\nH2\nH 0 0 0\nH 0 0 0.74\n".write(to: directory.appendingPathComponent("molecule.xyz"), atomically: true, encoding: .utf8)
             let python = ChemistryRuntime.python
-            let agent = Bundle.module.url(forResource: "remote_agent", withExtension: "py")!
+            let agent = ChemistryResources.bundle.url(forResource: "remote_agent", withExtension: "py")!
             var startups = 0
             let remote = RemoteConnection(makeSession: { _ in
                 startups += 1

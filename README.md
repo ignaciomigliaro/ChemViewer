@@ -1,6 +1,19 @@
-# ChemViewer (clean-room macOS implementation)
+# ChemViewer
 
-This repository is an independent macOS implementation of practical ChemCraft
+Molecular visualization and computational chemistry workflows for macOS, with a
+shared-parser portable viewer preview for Windows and Linux.
+
+**[Feature guide](docs/user-guide.md) · [Windows/Linux quick start](docs/portable-viewer.md) · [Testing and releases](docs/release-process.md) · [Feature status](docs/feature-parity.md)**
+
+![ChemViewer portable molecule viewer](docs/images/portable-water.png)
+
+Version **0.12.0** prepares the project for 1.0. The native Mac app retains its
+full existing interface; the portable viewer currently covers molecular viewing,
+trajectories, modes, source inspection, energy plots and XYZ/JSON/PNG export.
+Cross-platform editing, ChemRefine/SSH/BosTMC UI parity and physical Windows/Linux
+acceptance remain required before calling this a cross-platform 1.0 release.
+
+This repository is an independent implementation of practical ChemCraft
 workflows. It does not contain ChemCraft code, assets, license material, or
 decompiled source. The Windows application is treated only as a behavioral and
 file-compatibility reference.
@@ -69,19 +82,27 @@ Apple Silicon run `38922066239` passed all seven Swift tests plus the arm64,
 bundle-signature, packaging, and artifact-upload checks. Download its
 `ChemViewer-macos-arm64` artifact from the repository's **Actions** page.
 
-## Tests on the evidence host
+## Tests and branch policy
 
-The portable reference test runs without third-party Python packages:
+Every push, pull request and merge-queue candidate runs the all-platform workflow.
+The required `release-gate` depends on Swift XCTest, per-module coverage floors,
+Python scientific regressions, migrated geometry suites, portable executable and
+browser acceptance, and Mac/portable packaging. Main requires a pull request and
+passing up-to-date checks; force pushes and deletion are disabled.
 
-```powershell
-py -3 -m unittest discover -s .\python_tests -v
+```bash
+swift test --enable-code-coverage
+python -m pip install -r requirements-test.txt
+python -m coverage run -m unittest discover -s python_tests -v
+python scripts/check-building.py
+python scripts/check-portable.py --binary .build/debug/ChemViewerPortable
 ```
 
-The portable oracle tests check the installed ORCA water fixture for atom
-identity, per-geometry and final energies, nine mode frequencies, IR intensity,
-and normal-mode vectors; compound-job section selection; and the official
-ARM/Intel Mach-O architecture, dependency, and signature shape. Swift tests run
-as part of `scripts/build-macos.sh` on macOS.
+Use the `.exe` binary suffix on Windows. POSIX transport/engine Python tests run
+on Linux and macOS; Windows runs the shared core, executable and browser gates.
+Licensed reference corpus checks are optional and explicitly skipped when absent;
+redistributable synthetic fixtures run everywhere. See [complete validation and
+release instructions](docs/release-process.md), including physical GUI requirements.
 
 ## Official-macOS diagnosis
 
@@ -101,6 +122,10 @@ ChemCraft crash reports. It does not clear quarantine or change security
 settings. See `docs/macos-diagnostics.md`.
 
 ## Documentation
+
+- [Feature guide](docs/user-guide.md) — task-oriented instructions for every implemented feature family.
+- [Portable viewer](docs/portable-viewer.md) — Windows/Linux setup, illustrated workflows and limits.
+- [Release process](docs/release-process.md) — branch policy, CI coverage and 1.0 acceptance.
 
 - `docs/architecture.md` — modular design and implementation decisions.
 - `docs/windows-feature-inventory.md` — reference functionality and evidence.
@@ -388,14 +413,14 @@ without regard to case and numbered names sort naturally. Your choice is saved.
 Double-click a folder name to enter it; its disclosure arrow still expands the
 folder tree. Home and Parent return to other locations using the existing channel.
 
-## BossTMC catalyst screening — 0.11.0
+## BosTMC catalyst screening — 0.11.0
 
-Open **BossTMC** to screen a BosTMC property CSV on **SSH / HPC** or **This Mac**.
+Open **BosTMC** to screen a BosTMC property CSV on **SSH / HPC** or **This Mac**.
 For HPC data, connect using **SSH settings…**, browse to the CSV, and set **Root**
 to the directory containing `singlets`, `doublets`, `triplets`, `quartets`,
 `quintets`, and `sextets`. Click **Index CSV**. An optional **Index cache** path
 places the rebuildable SQLite index on a source-host filesystem of your choice;
-the default is `~/.cache/ChemViewer/BossTMC`. Indexing runs in the background on
+the default is `~/.cache/ChemViewer/BossTMC` (legacy cache path, retained for compatibility). Indexing runs in the background on
 the source computer; ChemViewer transfers result pages and selected files rather
 than downloading the full dataset. Allow time and disk space for the first index.
 
@@ -421,9 +446,9 @@ metadata, and synthetic SSH workflow are tested. The user's actual BosTMC CSV,
 array encodings, folder names, and large-catalog performance require validation
 against the real dataset paths.
 
-## Local BossTMC catalog with SSH structures — 0.11.1
+## Local BosTMC catalog with SSH structures — 0.11.1
 
-Choose **BossTMC → Local CSV** and select your downloaded property catalog.
+Choose **BosTMC → Local CSV** and select your downloaded property catalog.
 The supplied `~/Documents/BosTMC/BOSTMC-complete.csv` is suggested when present.
 Enable **Structure/output files on SSH**, select the SSH connection, and set
 **Root** to the remote folder containing the spin-state directories. **Index CSV**

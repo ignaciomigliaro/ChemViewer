@@ -1,6 +1,6 @@
 # ChemViewer continuation handoff
 
-Date updated: 2026-10-16
+Date updated: 2026-10-23
 
 This file packages the working context needed to continue the project on an
 Apple Silicon Mac. The user's original, complete project request is included
@@ -890,9 +890,9 @@ Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
 remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
 AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.
 
-## 0.11.0 / build35 — BossTMC catalyst screening (2026-10-21)
+## 0.11.0 / build35 — BosTMC catalyst screening (2026-10-21)
 
-User requested a BossTMC tab for an HPC-hosted BosTMC property CSV with 43 columns
+User requested a BosTMC tab for an HPC-hosted BosTMC property CSV with 43 columns
 and singlets/doublets/triplets/quartets/quintets/sextets/refcode structure folders.
 Implemented native tab with source-host background SQLite index, SSH/local source
 and optional index-cache path, AND property screening, scalar/array/text/missing
@@ -902,14 +902,14 @@ CSV energies/units remain raw; charge/multiplicity propagate to candidate docume
 Distinct CSV spin rows sharing XYZ do not merge; normal document identity unchanged.
 No Psi4 results parser or activity predictor is claimed.
 
-New files: BossTMCStore.swift, BossTMCView.swift, BossTMCSmokeTest.swift,
+New files: BosTMCStore.swift, BosTMCView.swift, BosTMCSmokeTest.swift,
 Resources/bostmc_catalog.py, python_tests/test_bostmc.py. The remote bridge embeds
 the catalog resource into the existing persistent agent; no separate SSH login
 per query and no full dataset download. Indexing is a source-host background
 process, not a SLURM calculation; users choose a cache path appropriate to the HPC.
 
 Validation:66 Python tests (18 new), signed arm64 mandatory build/core 41+3,
-native BossTMC charge/spin and preview acceptance, document workspace regression,
+native BosTMC charge/spin and preview acceptance, document workspace regression,
 persistent remote-session regression, real SSH synthetic catalog/filter/XYZ/source
 lookup/CSV export with final verified cleanup; no scheduler jobs submitted.
 Evidence: `/private/tmp/chemviewer-bostmc-python-release.log`,
@@ -956,7 +956,7 @@ acceptance, independent full CSV count/filter/raw-field/coordinate/dipole oracle
 synthetic native catalog charge/spin/source regression and persistent-session check.
 Evidence in /private/tmp/bostmc-* and chemviewer-bostmc-hybrid-release36-final.log;
 actual data and captures remain local, not committed. No HPC calculation submitted.
-Saved BossTMCRoot points to /orcd/data/hjkulik/001/OpenTMC/gather_outputs/outputs_for_group.
+Saved BosTMCRoot points to /orcd/data/hjkulik/001/OpenTMC/gather_outputs/outputs_for_group.
 A read-only live resolver request timed out after20s; actual HPC-output lookup is
 not claimed. No source changes or scheduler submissions were made.
 Existing AGENTS.md user edits must remain excluded from release commits.
@@ -997,3 +997,140 @@ User replied Authenticated after the first long probe; final post-confirmation
 probe is /private/tmp/chemviewer-ssh-after-confirmation.log. Sanitized report:
 ~/Downloads/ChemViewer-SSH-diagnostic.txt (not committed). Never send it or contact
 support on the user's behalf without explicit authorization.
+
+## 0.12.0 / build38 — cross-platform preparation (2026-10-23)
+
+User requests Windows/Linux support, stronger branch/merge/push tests, feature
+documentation/showcase and BosTMC spelling. Working branch release/0.12.0-portability.
+The new portable viewer uses the same Swift scientific core and generates offline
+HTML, JSON or XYZ. Native Mac UI retained. Portable editing, ChemRefine/SSH/BosTMC
+panels and full physical-platform acceptance remain explicit 1.0 gaps. Do not
+claim the complete Mac application has been ported.
+
+Linux arm64 Docker Swift6.1.3 passes real XCTest44, migrated3 and CLI6; local Mac
+standalone44/migrated3/CLI6 and browser5 pass. Native smoke and document-workspace
+pass. Initial BosTMC smoke failed because it assumed opening into an initial empty
+tab adds a tab; DocumentTabs intentionally reuses that tab. Harness now loads a
+synthetic baseline H2 first, then checks catalog documents and preservation. Final
+rerun pending at this checkpoint. Before/after swift test fails on this Mac due
+to missing XCTest in selected CLT; CI requires full framework and cannot fall back.
+
+Main previously unprotected; verified GitHub admin access and applied protection:
+PR required, strict release-gate, admins included, linear history, resolved review
+conversations, force/deletion disabled. Zero mandatory peer approvals allows the
+single owner to merge their own passing PR. No jobs or personal calculations run.
+
+New CI quality.yml runs every push/PR/merge-group: portable matrix Windows2022/
+Ubuntu24.04/Mac15, Python science Mac/Linux, native signed arm64 packaging and
+aggregate gate. Added measured per-module coverage floors and fail-closed tests.
+Docs: user-guide.md, portable-viewer.md (3 independent fixture screenshots),
+release-process.md and current-status matrix above historical parity tables.
+BosTMC visible spelling/types corrected; legacy preference/cache/identity keys
+intentionally preserved. Explicit resource list excludes local interpreter caches.
+
+Local evidence /private/tmp/chemviewer-{portable-*,linux-*,0120-*,browser-tests.log};
+.build/linux-validation/core-coverage.json and python-coverage.json (ignored).
+Preserve/exclude pre-existing user AGENTS.md and .vscode/ changes. No tag yet: final
+checks, hosted CI, canonical installation and remote publication remain pending.
+
+Follow-up validation: native BOSTMC_PASS after the synthetic baseline correction,
+SMOOTH interaction/labels/PNG/GIF PASS and REMOTE_SESSION_PASS on this physical Mac.
+Python91 /3optional skips; Linux genuine XCTest47 after migrating the original
+3suites into SPM as well as standalone runners. IntegratedBuilding line coverage
+rises56→93.88%; its minimum is now93. The shared suite assertions remain enabled
+under optimized compilation through preconditions.
+
+Hosted first runs found an uninitialized Swiftly signing key, hidden coverage
+upload filtering and hardcoded /private/tmp on Linux. Linux now uses the verified
+official Swift6.1.3 container by digest, coverage uploads explicitly include hidden
+paths, and SSH uses Linux host temp while preserving the existing Mac path. Added
+private-mode/symlink tests and explicit Mac ORCA/CUDA mock preflight tests to keep
+coverage meaningful across hosts. PR1 opened through existing Git credentials;
+GitHub connector itself returned403 for PR creation. Hosted final rerun pending.
+
+Final local release checks: all7native flags pass on this physical Mac: smoke,
+document-workspace, bostmc, smooth, remote-session, fragment-placement and
+atom-editing. Strict signed arm64 build succeeds; obsolete pyc files removed from
+generated resources. /Applications and existing ~/Applications copies refreshed
+with install-macos.sh --no-build; running user session not terminated. Portable
+release ZIP also succeeds after extraction into a path containing spaces. CI now
+runs that relocation/resource gate on each OS before artifact upload.
+
+Hosted Linux/Mac portable jobs (including coverage/browser/packaging), both Python
+science jobs, and Windows XCTest47/migrated suites pass in candidate runs. Windows
+CLI source-preservation assertion exposed Python text-mode newline translation
+in the harness: app preserved actual CRLF bytes correctly. Fixture now writes
+explicit CRLF bytes on every OS and checks exact source. Mac XCTest runner flags
+also required separating optional standalone corpus arguments; corrected in f0c1e18.
+Final required all-platform results and source hashes are visible on PR1 and its
+Checks tab: https://github.com/ignaciomigliaro/ChemViewer/pull/1 . Never bypass the
+release-gate to publish; annotated v0.12.0 is created only after its commit passes.
+Physical Windows/Linux desktop acceptance and full interface parity remain open.
+
+## Final cross-platform automated gate — 0.12.0
+
+Candidate16a3702 passed every required hosted job in push run40004224822:
+https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40004224822 . Windows,
+Linux and Mac portable jobs pass XCTest47, migrated3, CLI6, browser5, release
+packaging and relocated-ZIP execution. Both scientific Python jobs pass with
+per-module coverage floors; native Mac XCTest/arm64/signature/package also passes.
+
+Downloaded Mac portable artifact12524110541 was SHA-256 verified and independently
+executed after relocation on this physical Mac. That separate check caught a
+harness-only fit/picking synchronization issue; tests now await two rendered
+frames after Fit rather than immediately clicking stale projected coordinates.
+All5browser cases then pass against that downloaded binary. Native CI artifact
+12524210617 is also hash/signature verified and tested separately from the local
+build; see /private/tmp/chemviewer-ci-native-smoke.log for the real Mac result.
+Final source commit adds only that harness synchronization, policy-comment accuracy
+and this evidence; its own fresh release-gate remains mandatory before tagging.
+
+No1.0claim: portable GUI covers viewing/trajectories/modes/source/energy/exports;
+Mac editing/drawing/SSH/ChemRefine/BosTMC panel parity and physical Windows/Linux
+desktop acceptance remain unfinished. Main is protected; PR1 is the review entry.
+Preserve AGENTS.md and .vscode user changes. Current tag/source can be verified
+with git ls-remote origin refs/heads/release/0.12.0-portability 'refs/tags/v0.12.0*'.
+
+### Release-blocking downloaded native artifact finding
+
+Native CI artifact12524210617 passed signing/build but crashed at startup:
+Bundle.module searched .app root and /Users/runner/...build path rather than
+Contents/Resources. Local builds had silently used a development fallback. The
+claim above is deliberately only hash/signature verification plus an attempted
+physical test, not a successful native download launch. Evidence:
+/private/tmp/chemviewer-ci-native-smoke.log.
+
+All native resource consumers now use ChemistryResources.bundle. In .app mode
+it never evaluates Bundle.module; missing shipped resources surface through
+existing errors. New --resource-smoke-test checks exact package containment and
+all10assets before views initialize. check-macos-package.py relocates the ZIP,
+checks signature and resource lookup, then removes remote_bridge.py in its
+temporary copy and requires explicit failure. CI native job now requires it.
+Final local copy and downloaded post-fix CI artifact tests must pass before tag.
+The portable downloaded-artifact five-browser run passes after the two-frame
+Fit synchronization correction; no scientific parser/model changed in this fix.
+
+Post-fix local archive gate passes exact resource containment and the deliberately
+missing-helper negative control. Separate relocated native GUI/Metal and remote
+helper smoke logs are /private/tmp/chemviewer-0120-isolated-*.log. Keep the failed
+pre-fix downloaded-app log distinct from these post-fix results. The final
+hosted native archive and physical downloaded-artifact checks must also pass.
+
+### Post-fix hosted and physical result
+
+6a3da93 passes every required job in40005895948. Downloaded native artifact
+12524422347 is hash verified (0e08496bb83ff5cabc3d2e575070994926b04a51b3fbf107010cbbbe5f903237),
+passes strict signature/relocated resource checks, and actual REMOTE_SESSION_PASS
+and BOSTMC_PASS on this Mac. No remote login/job or production catalog used.
+Its render-smoke assertion falsely treated /tmp and /private/tmp as different
+bundle locations; final assertion resolves symlinks and checks a directory
+boundary. This is a test correction, not a fallback to development resources.
+
+The earlier intentional native crash caused a macOS restore prompt. Synthetic
+GUI test instances now use process-only -ApplePersistenceIgnoreState YES, whose
+OS diagnostic explicitly says existing state will not be touched. An explicit
+open -a exact-test-app event creates the test window. stdout/stderr are combined.
+Do not clear saved user state or use open -F. Logs: /private/tmp/chemviewer-ci-
+postfix-{remote-session,bostmc}-smoke-test.log. Final source render evidence:
+/private/tmp/chemviewer-0120-final-isolated-render.log. Both installation copies
+have been refreshed after the resource fix; running user work was not closed.

@@ -5,6 +5,21 @@ struct ChemViewerApp: App {
     @StateObject private var documents = DocumentTabs()
     private var workspace: WorkspaceStore { documents.activeWorkspace }
 
+    init() {
+        // Run before constructing views, Python helpers or Metal. This is a
+        // packaging gate suitable for CI, not a physical GUI acceptance test.
+        if CommandLine.arguments.contains("--resource-smoke-test") {
+            do {
+                try ChemistryResources.validatePackaged()
+                print("RESOURCE_BUNDLE_PASS: every resource resolves inside the shipped app.")
+                exit(0)
+            } catch {
+                FileHandle.standardError.write(Data("RESOURCE_BUNDLE_FAIL: \(error.localizedDescription)\n".utf8))
+                exit(1)
+            }
+        }
+    }
+
     private func binding<Value>(_ keyPath: ReferenceWritableKeyPath<WorkspaceStore, Value>) -> Binding<Value> {
         let tabs = documents
         return Binding(get: { tabs.activeWorkspace[keyPath: keyPath] }, set: { tabs.activeWorkspace[keyPath: keyPath] = $0 })

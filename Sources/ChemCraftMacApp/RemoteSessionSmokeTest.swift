@@ -9,7 +9,7 @@ enum RemoteSessionSmokeTest {
         guard !started else { return }; started = true
         func require(_ condition: Bool, _ message: String) throws { if !condition { throw ParseError.malformed(message) } }
         do {
-            let agent = Bundle.module.url(forResource: "remote_agent", withExtension: "py")!
+            let agent = ChemistryResources.bundle.url(forResource: "remote_agent", withExtension: "py")!
             let python = FileManager.default.isExecutableFile(atPath: ChemistryRuntime.python.path) ? ChemistryRuntime.python : URL(fileURLWithPath: "/usr/bin/python3")
             let session = try RemoteSSHSession(arguments: [python.path, agent.path, "--chemviewer-serve"], executable: python)
             defer { session.close() }

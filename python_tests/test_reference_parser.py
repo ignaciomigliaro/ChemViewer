@@ -1,15 +1,18 @@
 from pathlib import Path
+import os
 import sys
 import unittest
 
 PROJECT = Path(__file__).resolve().parents[1]
-SAMPLES = PROJECT.parent
+SAMPLES = Path(os.environ.get("CHEMVIEWER_REFERENCE_CORPUS", PROJECT.parent))
+WATER = SAMPLES / "ORCA" / "H2O_xyz_opt_freq_compound_jobs.out"
 sys.path.insert(0, str(PROJECT / "tools"))
 
 from reference_parser import parse_orca, parse_orca_file  # noqa: E402
 
 
 class InstalledCorpusTests(unittest.TestCase):
+    @unittest.skipUnless(WATER.exists(), "optional licensed corpus; set CHEMVIEWER_REFERENCE_CORPUS")
     def test_orca_water_frequency_job(self) -> None:
         path = SAMPLES / "ORCA" / "H2O_xyz_opt_freq_compound_jobs.out"
         self.assertTrue(path.exists(), f"missing authorized fixture: {path}")
@@ -29,6 +32,7 @@ class InstalledCorpusTests(unittest.TestCase):
         self.assertEqual(len(modes[6].displacements), 3)
         self.assertAlmostEqual(modes[6].displacements[0][2], -0.070076, places=6)
 
+    @unittest.skipUnless(WATER.exists(), "optional licensed corpus; set CHEMVIEWER_REFERENCE_CORPUS")
     def test_orca_water_geometry_energy_association(self) -> None:
         path = SAMPLES / "ORCA" / "H2O_xyz_opt_freq_compound_jobs.out"
         result = parse_orca_file(path)
@@ -83,6 +87,14 @@ THERMOCHEMISTRY
         self.assertEqual(result.modes[0].frequency_cm1, -25.0)
         self.assertEqual(result.modes[0].ir_intensity, 3.0)
         self.assertEqual(result.modes[0].displacements[0][2], 0.2)
+
+    def test_redistributable_synthetic_mode_fixture(self) -> None:
+        result = parse_orca_file(PROJECT / "Tests/fixtures/integrated-building/synthetic-modes.out")
+        self.assertEqual(len(result.geometries), 1)
+        self.assertEqual([a.element for a in result.geometries[0]], ["O", "H", "H"])
+        self.assertEqual(result.geometry_energies_hartree, [-75])
+        self.assertEqual([m.frequency_cm1 for m in result.modes], [1600, 3600, -250])
+        self.assertEqual(result.modes[2].displacements, [(0.2, 0, 0), (-0.1, 0, 0), (-0.1, 0, 0)])
 
 
 if __name__ == "__main__":

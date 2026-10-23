@@ -3,11 +3,11 @@ import ChemCraftCore
 import SwiftUI
 
 /// Read-only acceptance on the user's explicitly supplied local catalog. Never submits or connects SSH.
-@MainActor enum BossTMCLocalSmokeTest {
+@MainActor enum BosTMCLocalSmokeTest {
     static var started=false
     static func run(workspace:WorkspaceStore) async {
         guard !started else{return};started=true
-        let model=BossTMCStore.shared,defaults=UserDefaults.standard
+        let model=BosTMCStore.shared,defaults=UserDefaults.standard
         let keys=["BossTMCCSV","BossTMCRoot","BossTMCCache","BossTMCCatalogRemote","BossTMCFilesRemote"],saved=keys.map{UserDefaults.standard.object(forKey:$0)}
         func restore(){for (key,value) in zip(keys,saved){if let value{defaults.set(value,forKey:key)}else{defaults.removeObject(forKey:key)}}}
         func pause() async {try? await Task.sleep(nanoseconds:100_000_000)}
@@ -16,7 +16,7 @@ import SwiftUI
             let csv=FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents/BosTMC/BOSTMC-complete.csv")
             let before=try FileManager.default.attributesOfItem(atPath:csv.path)
             let connection=RemoteConnection.shared.connectionStatus
-            model.remote=false;model.filesRemote=true;model.csvPath=csv.path;model.cachePath="";model.rootPath="";workspace.activeTab="BossTMC"
+            model.remote=false;model.filesRemote=true;model.csvPath=csv.path;model.cachePath="";model.rootPath="";workspace.activeTab="BosTMC"
             for _ in 0..<4{await pause()};model.index()
             for _ in 0..<2400{if model.validCatalog && !model.busy && !model.rows.isEmpty{break};await pause()}
             try require(model.total==263235,"Actual catalog row count differs: \(model.status)")
@@ -44,7 +44,7 @@ import SwiftUI
     private static func sliderCheck() async throws {
         var low="2",high="8"
         let window=NSWindow(contentRect:NSRect(x:180,y:180,width:320,height:64),styleMask:[.titled,.closable],backing:.buffered,defer:false)
-        let host=NSHostingView(rootView:BossTMCRangeSlider(lower:Binding(get:{low},set:{low=$0}),upper:Binding(get:{high},set:{high=$0}),minimum:0,maximum:10).frame(width:280,height:24).padding(20))
+        let host=NSHostingView(rootView:BosTMCRangeSlider(lower:Binding(get:{low},set:{low=$0}),upper:Binding(get:{high},set:{high=$0}),minimum:0,maximum:10).frame(width:280,height:24).padding(20))
         window.contentView=host;window.setContentSize(NSSize(width:320,height:64));window.title="ChemViewer — range slider acceptance";window.makeKeyAndOrderFront(nil)
         defer{window.orderOut(nil);window.contentView=nil}
         NSApp.activate(ignoringOtherApps:true)

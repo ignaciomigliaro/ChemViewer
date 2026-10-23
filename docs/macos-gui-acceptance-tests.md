@@ -388,9 +388,9 @@ draft20seconds, probes HTTP, and checks closure. Prior0.10.11 startup acceptance
 ended too early to catch the2-second false-disconnect monitor; that evidence did
 not establish sustained editor stability. No actual cluster calculation submitted.
 
-## BossTMC screening — 0.11.0
+## BosTMC screening — 0.11.0
 
-CV-BOSTMC-001: Select BossTMC, choose This Mac or an authenticated SSH profile,
+CV-BOSTMC-001: Select BosTMC, choose This Mac or an authenticated SSH profile,
 choose a CSV and root containing spin folders. Optionally choose a source-host
 index cache directory. Index CSV; show progress without freezing the window.
 Close/reopen or switch tabs while indexing; an interrupted process must report
@@ -415,7 +415,7 @@ Automated native fixture acceptance and synthetic real-SSH acceptance pass for
 this release; actual BosTMC record checks and large production-catalog timing
 remain pending the real source paths. Native test flag: `--bostmc-smoke-test`.
 
-## BossTMC hybrid sources and graph controls — 0.11.1
+## BosTMC hybrid sources and graph controls — 0.11.1
 
 CV-BOSTMC-004: Choose a local CSV with Structure/output files on SSH enabled.
 Index and filter while SSH is disconnected: local descriptors/embedded XYZ and
@@ -451,3 +451,25 @@ a trivial command, then the configured Python/listing. If both ordinary SSH and
 SFTP stall, retain an explicit external-session blocker rather than claiming an
 app regression fixed the remote service. Hermetic publication/failure tests and
 native transport regression pass; actual live browsing is currently blocked.
+
+## Packaged resources and downloaded-app isolation — 0.12.0
+
+CV-PACKAGE-001: Run `python3 scripts/check-macos-package.py --archive
+dist/ChemViewer-macos-arm64.zip` after packaging. It must resolve all resources
+inside the relocated app and reject its temporary copy with remote_bridge.py
+removed. This headless check is automated and is not a GUI pass.
+
+CV-PACKAGE-002: Independently download the CI app artifact, verify its hash and
+signature, extract away from the source tree, then run its `--smoke-test` on the
+physical Mac. Verify launch, opening, Metal frames, source and image export.
+Do not accept source-build fallback as proof that the distributed app works.
+The first0.12.0 download failed before launch due to direct Bundle.module lookup;
+only a passing post-fix downloaded artifact can close this regression.
+
+For synthetic GUI flags after a deliberate crash, pass
+`-ApplePersistenceIgnoreState YES` to that test process to leave existing saved
+state untouched. Deliver an explicit `open -a /exact/test/ChemViewer.app` event
+after starting the instance if no window appears. Do not use `open -F`, clear
+saved user state or terminate a running user app. Capture stdout and stderr
+together; several native assertions report to stderr. Canonicalize paths before
+checking bundle containment because macOS aliases /tmp and /private/tmp.

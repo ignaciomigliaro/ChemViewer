@@ -4,8 +4,8 @@ import CryptoKit
 import SwiftUI
 
 @MainActor
-final class BossTMCStore: ObservableObject {
-    static let shared = BossTMCStore()
+final class BosTMCStore: ObservableObject {
+    static let shared = BosTMCStore()
     static let numericProperties = Set("charge spinmult electronic_energy_Eh dipole_magnitude_debye alpha_HOMO_Eh beta_HOMO_Eh alpha_LUMO_Eh beta_LUMO_Eh alpha_gap_Eh beta_gap_Eh spin_contamination mw natoms ox_state metal_lowdin_charge metal_lowdin_spin metal_mulliken_charge metal_mulliken_spin energetic_gap_eV IS-LS_VSSE_kcal_mol HS-LS_VSSE_kcal_mol HS-IS_VSSE_kcal_mol atomization_energy_Eh relative_AE_kcal_g csd_r_factor metal_index coordination_number".split(separator:" ").map(String.init))
     struct Candidate: Identifiable { let id: Int; let values: [String:String] }
     struct CatalogFile: Identifiable { var id: String { path }; let name: String; let path: String; let kind: String }
@@ -252,7 +252,7 @@ final class BossTMCStore: ObservableObject {
             target.multiplicity=spin;target.document?.multiplicity=spin
             if let charge{target.charge=charge;target.document?.charge=charge}
             target.document?.title=(source["refcode"] ?? xyzURL.lastPathComponent)+" · mult \(spin)"
-            let provenance="BossTMC CSV record \(recordID): multiplicity \(spin)"+(charge.map{" and charge \($0)"} ?? "; charge missing/invalid—set it before calculation")+". Descriptors remain sourced from the CSV."
+            let provenance="BosTMC CSV record \(recordID): multiplicity \(spin)"+(charge.map{" and charge \($0)"} ?? "; charge missing/invalid—set it before calculation")+". Descriptors remain sourced from the CSV."
             if target.document?.warnings.contains(provenance) != true{target.document?.warnings.append(provenance)}
         }
     }
@@ -264,7 +264,7 @@ final class BossTMCStore: ObservableObject {
     }
     func export() {
         guard validCatalog,!busy else{return}
-        let panel=NSSavePanel();panel.nameFieldStringValue="BossTMC-candidates.csv";guard panel.runModal() == .OK,let target=panel.url else{return}
+        let panel=NSSavePanel();panel.nameFieldStringValue="BosTMC-candidates.csv";guard panel.runModal() == .OK,let target=panel.url else{return}
         busy=true;let identity=key
         Task {
             let temporary=target.deletingLastPathComponent().appendingPathComponent(".bostmc-export-"+UUID().uuidString)

@@ -1,5 +1,4 @@
 import Foundation
-import simd
 
 // Original project-owned implementation, retained in a namespace to avoid parser/model collisions.
 enum IntegratedBuilding {
@@ -233,14 +232,14 @@ static func position(_ a: Atom) -> SIMD3<Double> { SIMD3(a.x, a.y, a.z) }
 static func movedAtom(_ a: Atom, _ p: SIMD3<Double>) -> Atom { Atom(symbol: a.symbol, x: p.x, y: p.y, z: p.z) }
 
 static func transformedAtoms(_ atoms: [Atom], selection: Set<Int>, translation: SIMD3<Double>, axis: SIMD3<Double>, radians: Double, pivot: SIMD3<Double>) -> [Atom] {
-    let length = simd_length(axis)
+    let length = VectorMath.length(axis)
     let unit = length > 1e-12 ? axis / length : SIMD3<Double>(0, 0, 1)
     let angle = length > 1e-12 ? radians : 0
     let c = cos(angle), s = sin(angle)
     return atoms.enumerated().map { i, a in
         guard selection.contains(i) else { return a }
         let v = position(a) - pivot
-        let rotated = v * c + simd_cross(unit, v) * s + unit * simd_dot(unit, v) * (1 - c)
+        let rotated = v * c + VectorMath.cross(unit, v) * s + unit * VectorMath.dot(unit, v) * (1 - c)
         return movedAtom(a, pivot + rotated + translation)
     }
 }
@@ -266,7 +265,7 @@ static func inferredBondPairs(_ atoms: [Atom]) -> [(Int, Int)] {
             for j in grid[BondCell(x: cell.x + dx, y: cell.y + dy, z: cell.z + dz)] ?? [] {
                 comparisons += 1
                 if comparisons > 2_000_000 { return pairs }
-                let d = simd_length(p - position(atoms[j]))
+                let d = VectorMath.length(p - position(atoms[j]))
                 if d > 0.35 && d <= 1.25 * (radii[i] + radii[j]) {
                     pairs.append((j, i))
                     if pairs.count >= 30_000 { return pairs }
@@ -330,10 +329,10 @@ static func attachFragment(host: [Atom], hostLeaving: Int, fragment: [Atom], fra
             throw EditingError(message: "Choose a leaving hydrogen or dummy atom at each attachment site.")
         }
         let candidates = atoms.indices.filter { $0 != leaving && !["H", "X", "Du"].contains(atoms[$0].symbol) }
-        guard let nearest = candidates.min(by: { simd_distance(position(atoms[$0]), position(atoms[leaving])) < simd_distance(position(atoms[$1]), position(atoms[leaving])) }) else {
+        guard let nearest = candidates.min(by: { VectorMath.distance(position(atoms[$0]), position(atoms[leaving])) < VectorMath.distance(position(atoms[$1]), position(atoms[leaving])) }) else {
             throw EditingError(message: "The leaving atom needs a heavy-atom anchor.")
         }
-        let distance = simd_distance(position(atoms[nearest]), position(atoms[leaving]))
+        let distance = VectorMath.distance(position(atoms[nearest]), position(atoms[leaving]))
         guard distance.isFinite, distance > 0.1, distance < 2.6 else {
             throw EditingError(message: "The leaving atom is too far from an attachment anchor.")
         }
@@ -352,13 +351,13 @@ static func attachFragment(host: [Atom], hostLeaving: Int, fragment: [Atom], fra
         throw EditingError(message: "Invalid coordinates or too many atoms for attachment.")
     }
     let h = try anchor(host, hostLeaving), f = try anchor(fragment, fragmentLeaving)
-    let direction = simd_normalize(position(host[hostLeaving]) - position(host[h]))
-    let source = simd_normalize(position(fragment[fragmentLeaving]) - position(fragment[f]))
+    let direction = VectorMath.normalize(position(host[hostLeaving]) - position(host[h]))
+    let source = VectorMath.normalize(position(fragment[fragmentLeaving]) - position(fragment[f]))
     let target = -direction
-    let dot = max(-1.0, min(1.0, simd_dot(source, target)))
-    var axis = simd_cross(source, target)
-    if simd_length(axis) < 1e-10 {
-        axis = simd_cross(source, abs(source.x) < 0.8 ? SIMD3<Double>(1,0,0) : SIMD3<Double>(0,1,0))
+    let dot = max(-1.0, min(1.0, VectorMath.dot(source, target)))
+    var axis = VectorMath.cross(source, target)
+    if VectorMath.length(axis) < 1e-10 {
+        axis = VectorMath.cross(source, abs(source.x) < 0.8 ? SIMD3<Double>(1,0,0) : SIMD3<Double>(0,1,0))
     }
     let length = bondLength ?? ((editingRadii[host[h].symbol] ?? 0.76) + (editingRadii[fragment[f].symbol] ?? 0.76))
     guard length.isFinite, length >= 0.5, length <= 4 else {

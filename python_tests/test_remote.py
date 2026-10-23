@@ -33,6 +33,21 @@ class RemoteTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_linux_control_directory_uses_host_temporary_root(self):
+        with patch.object(bridge.sys,'platform','linux'), patch.object(bridge.tempfile,'gettempdir',return_value=str(self.root)):
+            directory=bridge.control_directory()
+            self.assertEqual(directory.parent,self.root)
+            self.assertEqual(directory.stat().st_mode & 0o777,0o700)
+            self.assertEqual(bridge.control_directory(),directory)
+            directory.chmod(0o755)
+            with self.assertRaisesRegex(ValueError,'private and owned'):bridge.control_directory()
+
+    def test_linux_control_directory_rejects_symlink(self):
+        outside=self.root/'outside';outside.mkdir(mode=0o700)
+        candidate=self.root/('chemviewer-ssh-'+str(os.getuid()));candidate.symlink_to(outside,target_is_directory=True)
+        with patch.object(bridge.sys,'platform','linux'), patch.object(bridge.tempfile,'gettempdir',return_value=str(self.root)):
+            with self.assertRaisesRegex(ValueError,'private and owned'):bridge.control_directory()
+
     def test_owned_remote_editor_exits_on_stdin_eof(self):
         import re, select, shlex, time, urllib.request, urllib.parse, socket
         profile = dict(host='synthetic-gui-test', python=sys.executable, setup='')

@@ -1,4 +1,4 @@
-"""Original BossTMC CSV/SQLite screening engine. Standard library only; source data is read-only."""
+"""Original BosTMC CSV/SQLite screening engine. Standard library only; source data is read-only."""
 import ast
 import base64
 import csv

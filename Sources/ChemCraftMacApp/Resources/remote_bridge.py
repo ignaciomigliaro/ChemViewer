@@ -36,7 +36,10 @@ def ssh_arguments(profile, agent, persistent=False):
 
 
 def control_directory():
-    directory = Path('/private/tmp') / ('chemviewer-ssh-' + str(os.getuid()))
+    # macOS needs the short canonical path to stay within its Unix-socket limit;
+    # /private/tmp does not exist on Linux. Keep existing Mac masters discoverable.
+    base = Path('/private/tmp') if sys.platform == 'darwin' else Path(tempfile.gettempdir())
+    directory = base / ('chemviewer-ssh-' + str(os.getuid()))
     directory.mkdir(mode=0o700, exist_ok=True)
     stat = directory.lstat()
     if directory.is_symlink() or stat.st_uid != os.getuid() or stat.st_mode & 0o077:
