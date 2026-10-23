@@ -2,10 +2,12 @@
 
 ## Decision
 
-The long-term implementation is a native Apple Silicon application using
-SwiftUI/AppKit for macOS integration and Metal for rendering. Scientific parsing
-and models live in a UI-independent Swift module. A small Python implementation
-acts only as an independent validation oracle.
+The Mac application uses SwiftUI/AppKit for system integration and Metal for
+rendering. Scientific parsing, models and geometry algorithms live in the shared
+ChemCraftCore Swift module. ChemViewerPortable uses that same core to generate
+an offline browser viewer on Windows, Linux and macOS. Optional Python helpers
+provide chemistry, drawing, plotting, catalog and workflow integration; the
+separate reference_parser.py remains an independent validation oracle.
 
 This choice favors native file dialogs, Retina rendering, keyboard/window
 behavior, ARM64 performance, and a self-contained `.app`. It carries more
@@ -660,3 +662,12 @@ uses LLVM line data; Python helper coverage includes branches. Per-module floors
 and source inventories must match. Every push, PR and merge-group receives the
 checks. Protected main enforces PR/strict status/linear history and blocks force
 pushes/deletion. See release-process.md for the exact support and approval policy.
+
+Native packaging correction: all renderer, plotting and remote-helper lookups
+now use ChemistryResources.bundle, preferring Contents/Resources. A packaged app
+never falls back to SwiftPM's generated absolute development path; an incomplete
+app returns missing-resource errors rather than the accessor's fatal trap.
+`--resource-smoke-test` validates containment/all assets without starting the GUI.
+The relocated ZIP gate also removes one temporary helper and verifies refusal.
+This corrects a real crash in the separately downloaded CI app that was hidden
+by local build-tree fallback, despite successful signing and compilation.

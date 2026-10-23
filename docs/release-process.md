@@ -27,7 +27,7 @@ Dependabot opens updates for Actions and pinned test dependencies.
 | Portable · Windows x86_64, Ubuntu x86_64, Mac arm64 | Real Swift XCTest; three migrated parser/editing/state suites; six executable regressions; five offline Chromium tests; release ZIP and execution after relocation |
 | Core coverage · Ubuntu and Mac | LLVM source line coverage for every ChemCraftCore file, uploaded JSON and per-file floors |
 | Scientific Python · Ubuntu and Mac | All discoverable redistributable Python tests, installed RDKit/ASE/Matplotlib/ChemRefine dependencies, branch coverage and uploaded XML/JSON |
-| Native Mac | Genuine XCTest, migrated suites, arm64 release build, strict signature verification, app ZIP |
+| Native Mac | Genuine XCTest, migrated suites, arm64 release build, strict signature verification, app ZIP and relocated-resource/missing-helper checks |
 | Release gate | Every preceding platform/job must report success |
 
 The Windows Swift installer action is pinned to a commit; Linux uses the official
@@ -133,3 +133,11 @@ No build or coverage percentage establishes complete Chemcraft parity.
 
 A portability preview can ship with its declared subset. It cannot be relabeled
 as a verified full cross-platform 1.0 application while its acceptance gaps remain.
+
+The native archive probe runs `--resource-smoke-test` before constructing views.
+It requires every helper, fragment catalog and shader to resolve inside the
+app's own Resources directory, then removes one helper in a temporary copy and
+requires an explicit failure. This catches successful local builds that secretly
+rely on SwiftPM's absolute development-machine resource path. It does not need
+Metal or count as a physical GUI pass. Downloaded release app launch/open tests
+on the physical Mac remain separate.

@@ -112,7 +112,7 @@ enum MatplotlibRunner {
             guard fm.isExecutableFile(atPath: python.path) else {
                 throw NSError(domain: "Matplotlib", code: 1, userInfo: [NSLocalizedDescriptionKey: "Matplotlib is not configured. Run bash scripts/setup-plotting.sh from the ChemViewer project, then reopen this plot."])
             }
-            let resourceBundle = Bundle.main.resourceURL.flatMap { Bundle(url: $0.appendingPathComponent("ChemViewer_ChemViewerApp.bundle")) } ?? .module
+            let resourceBundle = ChemistryResources.bundle
             guard let script = resourceBundle.url(forResource: "energy_landscape", withExtension: "py") else { throw CocoaError(.fileNoSuchFile) }
             let directory = fm.temporaryDirectory.appendingPathComponent("ChemViewer-energy-\(UUID().uuidString)", isDirectory: true)
             try fm.createDirectory(at: directory, withIntermediateDirectories: true)

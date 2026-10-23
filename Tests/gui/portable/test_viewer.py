@@ -50,6 +50,10 @@ class ViewerTests(unittest.TestCase):
         self.assertNotEqual(before, canvas.screenshot())
         self.page.locator('#fit').click()
         self.page.wait_for_function('yaw === 0 && pitch === 0')
+        # Fit changes camera state synchronously; picking data updates on the
+        # next animation frame. Wait for rendering rather than clicking a stale
+        # rotated projection (particularly visible with relocated fast builds).
+        self.page.evaluate('() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))')
         for index in [0,1]:
             point = self.page.evaluate(f'({{x:projected[{index}].x/(devicePixelRatio||1),y:projected[{index}].y/(devicePixelRatio||1)}})')
             self.page.mouse.click(box['x']+point['x'],box['y']+point['y'])

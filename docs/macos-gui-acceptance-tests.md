@@ -451,3 +451,17 @@ a trivial command, then the configured Python/listing. If both ordinary SSH and
 SFTP stall, retain an explicit external-session blocker rather than claiming an
 app regression fixed the remote service. Hermetic publication/failure tests and
 native transport regression pass; actual live browsing is currently blocked.
+
+## Packaged resources and downloaded-app isolation — 0.12.0
+
+CV-PACKAGE-001: Run `python3 scripts/check-macos-package.py --archive
+dist/ChemViewer-macos-arm64.zip` after packaging. It must resolve all resources
+inside the relocated app and reject its temporary copy with remote_bridge.py
+removed. This headless check is automated and is not a GUI pass.
+
+CV-PACKAGE-002: Independently download the CI app artifact, verify its hash and
+signature, extract away from the source tree, then run its `--smoke-test` on the
+physical Mac. Verify launch, opening, Metal frames, source and image export.
+Do not accept source-build fallback as proof that the distributed app works.
+The first0.12.0 download failed before launch due to direct Bundle.module lookup;
+only a passing post-fix downloaded artifact can close this regression.

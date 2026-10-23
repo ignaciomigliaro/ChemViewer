@@ -1,6 +1,6 @@
 # ChemViewer continuation handoff
 
-Date updated: 2026-10-16
+Date updated: 2026-10-23
 
 This file packages the working context needed to continue the project on an
 Apple Silicon Mac. The user's original, complete project request is included
@@ -1066,3 +1066,52 @@ Final required all-platform results and source hashes are visible on PR1 and its
 Checks tab: https://github.com/ignaciomigliaro/ChemViewer/pull/1 . Never bypass the
 release-gate to publish; annotated v0.12.0 is created only after its commit passes.
 Physical Windows/Linux desktop acceptance and full interface parity remain open.
+
+## Final cross-platform automated gate — 0.12.0
+
+Candidate16a3702 passed every required hosted job in push run40004224822:
+https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40004224822 . Windows,
+Linux and Mac portable jobs pass XCTest47, migrated3, CLI6, browser5, release
+packaging and relocated-ZIP execution. Both scientific Python jobs pass with
+per-module coverage floors; native Mac XCTest/arm64/signature/package also passes.
+
+Downloaded Mac portable artifact12524110541 was SHA-256 verified and independently
+executed after relocation on this physical Mac. That separate check caught a
+harness-only fit/picking synchronization issue; tests now await two rendered
+frames after Fit rather than immediately clicking stale projected coordinates.
+All5browser cases then pass against that downloaded binary. Native CI artifact
+12524210617 is also hash/signature verified and tested separately from the local
+build; see /private/tmp/chemviewer-ci-native-smoke.log for the real Mac result.
+Final source commit adds only that harness synchronization, policy-comment accuracy
+and this evidence; its own fresh release-gate remains mandatory before tagging.
+
+No1.0claim: portable GUI covers viewing/trajectories/modes/source/energy/exports;
+Mac editing/drawing/SSH/ChemRefine/BosTMC panel parity and physical Windows/Linux
+desktop acceptance remain unfinished. Main is protected; PR1 is the review entry.
+Preserve AGENTS.md and .vscode user changes. Current tag/source can be verified
+with git ls-remote origin refs/heads/release/0.12.0-portability 'refs/tags/v0.12.0*'.
+
+### Release-blocking downloaded native artifact finding
+
+Native CI artifact12524210617 passed signing/build but crashed at startup:
+Bundle.module searched .app root and /Users/runner/...build path rather than
+Contents/Resources. Local builds had silently used a development fallback. The
+claim above is deliberately only hash/signature verification plus an attempted
+physical test, not a successful native download launch. Evidence:
+/private/tmp/chemviewer-ci-native-smoke.log.
+
+All native resource consumers now use ChemistryResources.bundle. In .app mode
+it never evaluates Bundle.module; missing shipped resources surface through
+existing errors. New --resource-smoke-test checks exact package containment and
+all10assets before views initialize. check-macos-package.py relocates the ZIP,
+checks signature and resource lookup, then removes remote_bridge.py in its
+temporary copy and requires explicit failure. CI native job now requires it.
+Final local copy and downloaded post-fix CI artifact tests must pass before tag.
+The portable downloaded-artifact five-browser run passes after the two-frame
+Fit synchronization correction; no scientific parser/model changed in this fix.
+
+Post-fix local archive gate passes exact resource containment and the deliberately
+missing-helper negative control. Separate relocated native GUI/Metal and remote
+helper smoke logs are /private/tmp/chemviewer-0120-isolated-*.log. Keep the failed
+pre-fix downloaded-app log distinct from these post-fix results. The final
+hosted native archive and physical downloaded-artifact checks must also pass.

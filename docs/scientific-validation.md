@@ -516,3 +516,20 @@ Mac path for existing masters/socket limits. Hermetic tests check private
 permissions and symlink refusal. Platform-specific ORCA/CUDA preflight branches
 are now tested with explicit platform/file-probe mocks on both hosts; no engine
 is executed. This preserves coverage floors instead of lowering them on Linux.
+
+Hosted run[40004224822](https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40004224822)
+passes the complete Linux/Windows/Mac matrix, Python science/coverage and native
+Mac packaging gates at candidate16a3702. Downloaded Mac portable artifact was
+hash-verified and tested independently after relocation; all5browser cases pass
+after explicit render synchronization in the picking harness. This adds no
+physical Windows/Linux or full-interface parity claim. The final commit's own
+required CI results are linked on PR1 before its version tag is published.
+
+A separate native download test then exposed a release-blocking resource bug:
+RemoteConnection and its smoke helpers called Bundle.module directly, whose
+generated accessor searched the app root or the build machine's absolute path,
+while packaged assets live in Contents/Resources. The signed CI app crashed
+before its GUI opened. All native lookups now share the packaged resource
+resolver, and a new headless relocated-archive/negative-helper gate prevents
+local fallback from masking this defect. Earlier build/signature success is
+not native runtime acceptance. Final physical downloaded-app retest is required.

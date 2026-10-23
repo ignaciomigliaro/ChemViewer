@@ -1,2 +1,2 @@
-# Scientific code and release workflows require repository-owner review.
+# Repository owner for review routing; main protection enforces required CI.
 * @ignaciomigliaro
