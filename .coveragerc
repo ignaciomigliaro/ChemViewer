@@ -1,0 +1,11 @@
+[run]
+branch = True
+source = Sources/ChemCraftMacApp/Resources
+omit = */__pycache__/*
+data_file = .build/python.coverage
+[report]
+show_missing = True
+[xml]
+output = .build/python-coverage.xml
+[json]
+output = .build/python-coverage.json

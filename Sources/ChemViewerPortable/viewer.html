@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChemViewer · Portable</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui;background:#10151e;color:#e6edf7}*{box-sizing:border-box}body{margin:0}header{padding:18px 24px;border-bottom:1px solid #354153;background:#192331}h1{font-size:22px;margin:0 0 5px}p{margin:6px 0;color:#b7c7db}main{display:grid;grid-template-columns:290px 1fr;min-height:80vh}aside{padding:20px;background:#17202d}section{padding:16px;min-width:0}button,select,input{font:inherit;color:inherit;background:#25354a;border:1px solid #576b83;border-radius:5px;padding:7px;max-width:100%}button{cursor:pointer}button:disabled{opacity:.45;cursor:default}label{display:block;margin:14px 0 7px}#viewport{width:100%;height:58vh;min-height:260px;background:#10151e;touch-action:none;border:1px solid #354153;border-radius:8px}#plot{width:100%;height:170px}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:50vh;overflow:auto;background:#17202d;padding:15px}details{margin:12px 0}#status,#selection{min-height:24px}a{color:#9bdaf2}.row{display:flex;gap:7px;flex-wrap:wrap}.imaginary{color:#ff8998}#warnings{color:#ffca88}footer{padding:15px 24px;border-top:1px solid #354153}@media(max-width:750px){main{grid-template-columns:1fr}aside{display:flex;flex-wrap:wrap;gap:10px;align-items:center}aside label{margin:0}#viewport{height:50vh}}
+</style>
+<header><h1 id="title">ChemViewer</h1><p id="summary"></p><p>Portable viewer · Shared ChemCraftCore parsers · Offline, no upload</p></header>
+<main><aside>
+<label for="frame">Geometry</label><select id="frame"></select>
+<div class="row"><button id="previous" aria-label="Previous geometry">←</button><button id="play">Play trajectory</button><button id="next" aria-label="Next geometry">→</button></div>
+<label for="mode">Normal mode · cm⁻¹</label><select id="mode"><option value="-1">Equilibrium geometry</option></select>
+<label for="amplitude">Display amplitude <span id="amplitudeValue">0.6</span></label><input id="amplitude" type="range" min="0" max="2" step="0.05" value="0.6">
+<p>Animation phase is illustrative, not physical vibrational time. Negative frequencies remain imaginary.</p>
+<label for="labels"><input id="labels" type="checkbox" checked> Atom labels</label>
+<div class="row"><button id="fit">Fit view</button><button id="xyz">Save geometry XYZ</button><button id="png">Save PNG</button></div>
+<p id="warnings"></p>
+</aside><section>
+<canvas id="viewport" aria-label="Molecular viewport. Drag to rotate, Shift-drag to pan, scroll to zoom, click atoms to measure distance."></canvas>
+<p>Drag to rotate · Shift-drag to pan · Scroll to zoom · Click two atoms for distance</p>
+<p id="status"></p><p id="selection" aria-live="polite">Select atoms to measure a distance.</p>
+<canvas id="plot" aria-label="Geometry energy plot in Hartree"></canvas>
+<details><summary>Coordinates · Å</summary><pre id="coordinates"></pre></details>
+<details><summary>Vibrational properties · source values</summary><pre id="properties"></pre></details>
+<details><summary>Original source</summary><pre id="source"></pre></details>
+</section></main><footer>Bond connectivity is inferred from distance. Source geometries and energies are never modified by camera or animation controls. Native editing, ChemRefine, SSH and BosTMC panels remain macOS features.</footer>
+<script id="payload" type="application/octet-stream">__CHEMVIEWER_DATA__</script>
+<script>
+'use strict';
+const data=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(document.getElementById('payload').textContent.trim()),c=>c.charCodeAt(0))));
+const $=id=>document.getElementById(id),canvas=$('viewport'),ctx=canvas.getContext('2d');
+let frame=0,mode=-1,yaw=0,pitch=0,zoom=1,pan=[0,0],selected=[],projected=[],playing=false,lastStep=0;
+$('title').textContent=data.title;
+$('summary').textContent=`${data.sourceFormat} · ${data.frames.length} geometries · charge ${data.charge??'unavailable'} · multiplicity ${data.multiplicity??'unavailable'}`;
+$('source').textContent=data.source;$('warnings').textContent=data.warnings.join('\n');
+data.frames.forEach((f,i)=>$('frame').add(new Option(`${i+1} · ${f.atoms.length} atoms`,i)));
+data.modes.forEach((m,i)=>{const option=new Option(`${m.index}: ${m.frequencyCM1}${m.frequencyCM1<0?' (imaginary)':''}`,i);if(m.frequencyCM1<0)option.className='imaginary';$('mode').add(option)});
+$('properties').textContent=data.modes.map(m=>`Mode ${m.index}: ${m.frequencyCM1} cm⁻¹${m.frequencyCM1<0?' (imaginary)':''}\n  IR source intensity: ${m.infraredIntensity??'unavailable'}; Raman activity: ${m.ramanActivity??'unavailable'}\n  Complete vectors: ${m.displacements.length}`).join('\n')||'No vibrational properties in this input.';
+// Fixed bounds for all trajectory positions prevent recentering during playback.
+const bounds=[[Infinity,Infinity,Infinity],[-Infinity,-Infinity,-Infinity]];
+for(const f of data.frames)for(const a of f.atoms)for(let k=0;k<3;k++){bounds[0][k]=Math.min(bounds[0][k],a.position[k]);bounds[1][k]=Math.max(bounds[1][k],a.position[k]);}
+const center=bounds[0].map((v,k)=>Number.isFinite(v)?(v+bounds[1][k])/2:0),extent=Math.max(2,...bounds[1].map((v,k)=>Number.isFinite(v)?v-bounds[0][k]:0));
+function resize(c){const dpr=window.devicePixelRatio||1,w=Math.round(c.clientWidth*dpr),h=Math.round(c.clientHeight*dpr);if(c.width!==w||c.height!==h){c.width=w;c.height=h}return dpr}
+function changeFrame(index){if(!data.frames.length)return;frame=(index+data.frames.length)%data.frames.length;mode=-1;$('frame').value=String(frame);$('mode').value='-1';selected=[];update()}
+function update(){const f=data.frames[frame];$('coordinates').textContent=f?.xyz??'No Cartesian geometry available.';$('xyz').disabled=!f;$('png').disabled=!f;$('play').disabled=data.frames.length<2;$('previous').disabled=data.frames.length<2;$('next').disabled=data.frames.length<2;$('status').textContent=f?`Geometry ${frame+1} · Energy: ${f.energyHartree??'unavailable'}${f.energyHartree==null?'':' Eh'}${mode>=0?' · Animated display':''}`:'No Cartesian geometry available.';if(selected.length===2){const a=f.atoms[selected[0]],b=f.atoms[selected[1]],distance=Math.hypot(...a.position.map((v,k)=>v-b.position[k]));$('selection').textContent=`Atoms ${selected[0]+1}–${selected[1]+1}: ${distance.toFixed(5)} Å (equilibrium coordinates)`}else $('selection').textContent=selected.length?`Atom ${selected[0]+1} selected. Select a second atom.`:'Select atoms to measure a distance.';energyPlot()}
+function energyPlot(){const c=$('plot'),dpr=resize(c),p=c.getContext('2d'),w=c.width,h=c.height;p.clearRect(0,0,w,h);p.fillStyle='#b7c7db';p.font=`${12*dpr}px system-ui`;p.fillText('Energy / Eh vs geometry (missing values are gaps)',12*dpr,20*dpr);const finite=data.frames.map(f=>f.energyHartree).filter(Number.isFinite);if(!finite.length){p.fillText('No source energies available',12*dpr,50*dpr);return}let lo=Math.min(...finite),hi=Math.max(...finite),span=hi-lo||1;p.strokeStyle='#7edbea';p.lineWidth=2*dpr;p.beginPath();let connected=false;data.frames.forEach((f,i)=>{if(!Number.isFinite(f.energyHartree)){connected=false;return}const x=75*dpr+(w-100*dpr)*i/Math.max(1,data.frames.length-1),y=h-30*dpr-(h-70*dpr)*(f.energyHartree-lo)/span;connected?p.lineTo(x,y):p.moveTo(x,y);connected=true});p.stroke();p.fillText(hi.toPrecision(9),5*dpr,42*dpr);p.fillText(lo.toPrecision(9),5*dpr,h-8*dpr);data.frames.forEach((f,i)=>{if(!Number.isFinite(f.energyHartree))return;p.beginPath();p.fillStyle=i===frame?'#ffbf71':'#7edbea';p.arc(75*dpr+(w-100*dpr)*i/Math.max(1,data.frames.length-1),h-30*dpr-(h-70*dpr)*(f.energyHartree-lo)/span,4*dpr,0,Math.PI*2);p.fill()})}
+function draw(time){const dpr=resize(canvas),w=canvas.width,h=canvas.height;ctx.fillStyle='#10151e';ctx.fillRect(0,0,w,h);if(playing&&time-lastStep>500){changeFrame(frame+1);lastStep=time}const f=data.frames[frame];if(f){const scale=Math.min(w,h)*.65/extent*zoom,m=data.modes[mode],phase=Math.sin(time*.004)*Number($('amplitude').value);projected=f.atoms.map((a,i)=>{let v=a.position.map((x,k)=>x-center[k]+(m&&m.displacements.length===f.atoms.length?m.displacements[i][k]*phase:0));let x=v[0]*Math.cos(yaw)+v[2]*Math.sin(yaw),z=-v[0]*Math.sin(yaw)+v[2]*Math.cos(yaw),y=v[1]*Math.cos(pitch)-z*Math.sin(pitch);return {i,x:w/2+x*scale+pan[0]*dpr,y:h/2-y*scale+pan[1]*dpr,z:v[1]*Math.sin(pitch)+z*Math.cos(pitch),r:Math.max(4*dpr,Math.min(30*dpr,(a.element==='H'?.18:.28)*scale))}});ctx.strokeStyle='#9caec3';ctx.lineWidth=4*dpr;for(const [i,j]of f.bonds){const a=projected[i],b=projected[j];ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}for(const a of [...projected].sort((a,b)=>a.z-b.z)){const atom=f.atoms[a.i],rgb=atom.color.map(v=>Math.round(v*255));ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fillStyle=`rgb(${rgb})`;ctx.fill();ctx.strokeStyle=selected.includes(a.i)?'#ffca6a':'#9ba9bc';ctx.lineWidth=(selected.includes(a.i)?3:1)*dpr;ctx.stroke();if($('labels').checked){ctx.fillStyle='#edf3fc';ctx.font=`${12*dpr}px system-ui`;ctx.fillText(`${atom.element}${a.i+1}`,a.x+a.r+3*dpr,a.y)}}}requestAnimationFrame(draw)}
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,startX:e.clientX,startY:e.clientY,moved:false};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.moved ||= Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)>3;if(drag.moved){if(e.shiftKey){pan[0]+=dx;pan[1]+=dy}else{yaw+=dx*.01;pitch+=dy*.01}}drag.x=e.clientX;drag.y=e.clientY});
+canvas.addEventListener('pointerup',e=>{if(drag&&!drag.moved){const rect=canvas.getBoundingClientRect(),dpr=window.devicePixelRatio||1,x=(e.clientX-rect.left)*dpr,y=(e.clientY-rect.top)*dpr;const hit=projected.filter(a=>Math.hypot(a.x-x,a.y-y)<=a.r+4*dpr).sort((a,b)=>b.z-a.z)[0];if(hit){if(selected.length===2)selected=[];if(!selected.includes(hit.i))selected.push(hit.i)}else selected=[];update()}drag=null});canvas.addEventListener('pointercancel',()=>drag=null);
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.1,Math.min(15,zoom*Math.exp(-e.deltaY*.001)))},{passive:false});
+$('frame').onchange=()=>{playing=false;$('play').textContent='Play trajectory';changeFrame(Number($('frame').value))};$('previous').onclick=()=>changeFrame(frame-1);$('next').onclick=()=>changeFrame(frame+1);
+$('play').onclick=()=>{playing=!playing;mode=-1;$('mode').value='-1';$('play').textContent=playing?'Pause trajectory':'Play trajectory';update()};
+$('mode').onchange=()=>{playing=false;$('play').textContent='Play trajectory';mode=Number($('mode').value);if(mode>=0){if(data.vibrationalFrameIndex==null){mode=-1;$('mode').value='-1';return}frame=data.vibrationalFrameIndex;$('frame').value=String(frame);selected=[]}update()};
+$('amplitude').oninput=()=>$('amplitudeValue').textContent=$('amplitude').value;
+$('fit').onclick=()=>{yaw=0;pitch=0;zoom=1;pan=[0,0]};
+function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+$('xyz').onclick=()=>download(new Blob([data.frames[frame].xyz],{type:'chemical/x-xyz'}),`geometry-${frame+1}.xyz`);
+$('png').onclick=()=>canvas.toBlob(blob=>{if(blob)download(blob,'chemviewer.png')},'image/png');
+window.addEventListener('resize',energyPlot);update();requestAnimationFrame(draw);
+</script></html>

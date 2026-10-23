@@ -890,9 +890,9 @@ Downloads/chemviewer-remote-evidence/{explorer-loading-regression,
 remote-chemrefine-tab,remote-workflow-picker}.png (not committed).
 AGENTS.md user changes preserved/excluded. Quit/reopen installed app for update.
 
-## 0.11.0 / build35 — BossTMC catalyst screening (2026-10-21)
+## 0.11.0 / build35 — BosTMC catalyst screening (2026-10-21)
 
-User requested a BossTMC tab for an HPC-hosted BosTMC property CSV with 43 columns
+User requested a BosTMC tab for an HPC-hosted BosTMC property CSV with 43 columns
 and singlets/doublets/triplets/quartets/quintets/sextets/refcode structure folders.
 Implemented native tab with source-host background SQLite index, SSH/local source
 and optional index-cache path, AND property screening, scalar/array/text/missing
@@ -902,14 +902,14 @@ CSV energies/units remain raw; charge/multiplicity propagate to candidate docume
 Distinct CSV spin rows sharing XYZ do not merge; normal document identity unchanged.
 No Psi4 results parser or activity predictor is claimed.
 
-New files: BossTMCStore.swift, BossTMCView.swift, BossTMCSmokeTest.swift,
+New files: BosTMCStore.swift, BosTMCView.swift, BosTMCSmokeTest.swift,
 Resources/bostmc_catalog.py, python_tests/test_bostmc.py. The remote bridge embeds
 the catalog resource into the existing persistent agent; no separate SSH login
 per query and no full dataset download. Indexing is a source-host background
 process, not a SLURM calculation; users choose a cache path appropriate to the HPC.
 
 Validation:66 Python tests (18 new), signed arm64 mandatory build/core 41+3,
-native BossTMC charge/spin and preview acceptance, document workspace regression,
+native BosTMC charge/spin and preview acceptance, document workspace regression,
 persistent remote-session regression, real SSH synthetic catalog/filter/XYZ/source
 lookup/CSV export with final verified cleanup; no scheduler jobs submitted.
 Evidence: `/private/tmp/chemviewer-bostmc-python-release.log`,
@@ -956,7 +956,7 @@ acceptance, independent full CSV count/filter/raw-field/coordinate/dipole oracle
 synthetic native catalog charge/spin/source regression and persistent-session check.
 Evidence in /private/tmp/bostmc-* and chemviewer-bostmc-hybrid-release36-final.log;
 actual data and captures remain local, not committed. No HPC calculation submitted.
-Saved BossTMCRoot points to /orcd/data/hjkulik/001/OpenTMC/gather_outputs/outputs_for_group.
+Saved BosTMCRoot points to /orcd/data/hjkulik/001/OpenTMC/gather_outputs/outputs_for_group.
 A read-only live resolver request timed out after20s; actual HPC-output lookup is
 not claimed. No source changes or scheduler submissions were made.
 Existing AGENTS.md user edits must remain excluded from release commits.
@@ -997,3 +997,38 @@ User replied Authenticated after the first long probe; final post-confirmation
 probe is /private/tmp/chemviewer-ssh-after-confirmation.log. Sanitized report:
 ~/Downloads/ChemViewer-SSH-diagnostic.txt (not committed). Never send it or contact
 support on the user's behalf without explicit authorization.
+
+## 0.12.0 / build38 — cross-platform preparation (2026-10-23)
+
+User requests Windows/Linux support, stronger branch/merge/push tests, feature
+documentation/showcase and BosTMC spelling. Working branch release/0.12.0-portability.
+The new portable viewer uses the same Swift scientific core and generates offline
+HTML, JSON or XYZ. Native Mac UI retained. Portable editing, ChemRefine/SSH/BosTMC
+panels and full physical-platform acceptance remain explicit 1.0 gaps. Do not
+claim the complete Mac application has been ported.
+
+Linux arm64 Docker Swift6.1.3 passes real XCTest44, migrated3 and CLI6; local Mac
+standalone44/migrated3/CLI6 and browser5 pass. Native smoke and document-workspace
+pass. Initial BosTMC smoke failed because it assumed opening into an initial empty
+tab adds a tab; DocumentTabs intentionally reuses that tab. Harness now loads a
+synthetic baseline H2 first, then checks catalog documents and preservation. Final
+rerun pending at this checkpoint. Before/after swift test fails on this Mac due
+to missing XCTest in selected CLT; CI requires full framework and cannot fall back.
+
+Main previously unprotected; verified GitHub admin access and applied protection:
+PR required, strict release-gate, admins included, linear history, resolved review
+conversations, force/deletion disabled. Zero mandatory peer approvals allows the
+single owner to merge their own passing PR. No jobs or personal calculations run.
+
+New CI quality.yml runs every push/PR/merge-group: portable matrix Windows2022/
+Ubuntu24.04/Mac15, Python science Mac/Linux, native signed arm64 packaging and
+aggregate gate. Added measured per-module coverage floors and fail-closed tests.
+Docs: user-guide.md, portable-viewer.md (3 independent fixture screenshots),
+release-process.md and current-status matrix above historical parity tables.
+BosTMC visible spelling/types corrected; legacy preference/cache/identity keys
+intentionally preserved. Explicit resource list excludes local interpreter caches.
+
+Local evidence /private/tmp/chemviewer-{portable-*,linux-*,0120-*,browser-tests.log};
+.build/linux-validation/core-coverage.json and python-coverage.json (ignored).
+Preserve/exclude pre-existing user AGENTS.md and .vscode/ changes. No tag yet: final
+checks, hosted CI, canonical installation and remote publication remain pending.

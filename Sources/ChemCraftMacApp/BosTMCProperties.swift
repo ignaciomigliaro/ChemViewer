@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Display metadata only: exports and queries retain the original column keys/units.
-enum BossTMCProperties {
+enum BosTMCProperties {
     static let hidden = Set("xyz mol2 mulliken_charges lowdin_charges mulliken_spins lowdin_spins geometry_details bond_lengths metal_ligand_bond_lengths coordinating_atoms metal_index dipole_moment_debye".split(separator:" ").map(String.init))
     static let categorical = Set("metal geometry charge spinmult ox_state coordination_number".split(separator:" ").map(String.init))
     static let names: [String:String] = [
@@ -23,12 +23,12 @@ enum BossTMCProperties {
     static func formatted(_ value:Double)->String {String(format:"%.6g",value)}
 }
 
-struct BossTMCRangeSlider: View {
+struct BosTMCRangeSlider: View {
     @Binding var lower:String
     @Binding var upper:String
     let minimum:Double
     let maximum:Double
-    private func value(_ text:String,_ fallback:Double)->Double {BossTMCProperties.number(text) ?? fallback}
+    private func value(_ text:String,_ fallback:Double)->Double {BosTMCProperties.number(text) ?? fallback}
     var body: some View {
         GeometryReader { geo in
             let width=max(1,geo.size.width-18), span=max(Double.leastNormalMagnitude,maximum-minimum)

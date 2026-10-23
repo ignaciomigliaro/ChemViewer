@@ -5,6 +5,29 @@ Status meanings: **Implemented** has source; **Tested** passed a meaningful test
 artifact; **Not started** has no implementation. “Implemented” does not imply
 parity or daily-use readiness.
 
+## Current platform status — 0.12.0 (2026-10-23)
+
+The task-oriented [feature guide](user-guide.md) and [portable support matrix](portable-viewer.md)
+are the current entry points. Historical milestone tables below retain their
+original evidence dates; “no Mac host” entries in the initial table are superseded
+by later recorded native releases and do not describe the current Mac environment.
+
+| Capability | Native Mac | Windows/Linux portable preview |
+|---|---|---|
+| XYZ, ORCA output/input, Gaussian Cartesian subset | Implemented, core regressions | Same core; genuine Linux XCTest and CLI tests pass locally; hosted Windows pending |
+| Atom/bond display, camera, source, trajectory | Metal; native regression | Offline browser view; real Chromium regressions pass on Mac |
+| Negative modes / printed vectors | Animation and optional arrows | Animation, source-frame binding; no arrows |
+| Energies | Abstract, explicit conversion, plots | Absolute Eh plot, JSON/XYZ; missing values remain absent |
+| Coordinates/project editing, builder, drawing, UFF | Implemented with bounded native tests | Pending |
+| Measurement annotations | 2/3/4 atoms, persistent labels, exports | Two-atom distance only |
+| PNG / GIF / Matplotlib figures | Implemented | Viewport PNG only; XYZ and versioned JSON available |
+| BosTMC, SSH explorer, ChemRefine | Native panels; external-service limits documented | Pending equivalent UI |
+| Automated coverage | Per-file core + Python floors; app packaging | All-platform core/CLI/browser/packaging CI added |
+| Branch safeguards | Main requires PR and up-to-date release-gate; force push/deletion blocked | Same repository policy |
+| Full cross-platform 1.0 | **Not established** | Physical desktops, packaging/runtime delivery and missing UI workflows remain |
+
+## Historical initial inventory — 2026-10-16
+
 | Capability | macOS implementation | Test status | Gap / next acceptance test |
 |---|---|---|---|
 | Native ARM64 app bundle | Implemented build/package script | Blocked: no macOS host | Build, launch, reopen on Apple Silicon |
@@ -363,7 +386,7 @@ regression extends beyond the monitor interval. Explorer adds persisted Name or
 Extension sorting for roots/children and native-tested double-click folder entry
 with cached return on the same helper. No new SLURM scientific validation.
 
-## BossTMC screening — 0.11.0
+## BosTMC screening — 0.11.0
 
 Implemented independent catalyst-candidate browser for local or SSH-hosted CSVs:
 background source-host indexing, configurable cache location, all-column AND
@@ -381,7 +404,7 @@ large production CSV has been validated: SSH CSV/root paths are still pending.
 Psi4 scientific-output parsing, catalytic-activity prediction, automatic
 mechanistic ranking and dataset-specific semantic interpretation are not claimed.
 
-## BossTMC local descriptors / remote structures — 0.11.1
+## BosTMC local descriptors / remote structures — 0.11.1
 
 Implemented independent local CSV/SSH file sources, compact offset-backed indexing,
 NOCASE index-aligned text filters, cached scalar histograms, scalar-only grouped

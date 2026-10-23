@@ -388,9 +388,9 @@ draft20seconds, probes HTTP, and checks closure. Prior0.10.11 startup acceptance
 ended too early to catch the2-second false-disconnect monitor; that evidence did
 not establish sustained editor stability. No actual cluster calculation submitted.
 
-## BossTMC screening — 0.11.0
+## BosTMC screening — 0.11.0
 
-CV-BOSTMC-001: Select BossTMC, choose This Mac or an authenticated SSH profile,
+CV-BOSTMC-001: Select BosTMC, choose This Mac or an authenticated SSH profile,
 choose a CSV and root containing spin folders. Optionally choose a source-host
 index cache directory. Index CSV; show progress without freezing the window.
 Close/reopen or switch tabs while indexing; an interrupted process must report
@@ -415,7 +415,7 @@ Automated native fixture acceptance and synthetic real-SSH acceptance pass for
 this release; actual BosTMC record checks and large production-catalog timing
 remain pending the real source paths. Native test flag: `--bostmc-smoke-test`.
 
-## BossTMC hybrid sources and graph controls — 0.11.1
+## BosTMC hybrid sources and graph controls — 0.11.1
 
 CV-BOSTMC-004: Choose a local CSV with Structure/output files on SSH enabled.
 Index and filter while SSH is disconnected: local descriptors/embedded XYZ and

@@ -1,0 +1,31 @@
+{
+  "_note": "Measured 2026-10-23 on Swift 6.1.3 Linux and Python 3.12 macOS. Absolute per-module floors rounded down; raise as independent tests grow. Swift lines; Python lines plus branches. UI is covered separately by browser and physical Mac gates. Do not lower floors to bypass a failure.",
+  "swift": {
+    "BuildingProject.swift": 87,
+    "Energy.swift": 96,
+    "GeometryEditor.swift": 84,
+    "IntegratedBuilding.swift": 56,
+    "Models.swift": 88,
+    "MolecularSketch.swift": 96,
+    "NEBProfile.swift": 61,
+    "ORCAInputParser.swift": 100,
+    "ORCAParser.swift": 98,
+    "ParserRegistry.swift": 84,
+    "PortableDocument.swift": 100,
+    "SketchLayout.swift": 83,
+    "Spectrum.swift": 97,
+    "Thermochemistry.swift": 98,
+    "VectorMath.swift": 100,
+    "XYZParser.swift": 94,
+    "XYZWriter.swift": 100
+  },
+  "python": {
+    "bostmc_catalog.py": 91,
+    "chemistry_bridge.py": 81,
+    "drawing_bridge.py": 83,
+    "energy_landscape.py": 86,
+    "remote_agent.py": 67,
+    "remote_bridge.py": 80,
+    "workflow_bridge.py": 79
+  }
+}
