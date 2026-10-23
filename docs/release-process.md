@@ -24,7 +24,7 @@ Dependabot opens updates for Actions and pinned test dependencies.
 
 | Job | Required checks |
 |---|---|
-| Portable · Windows x86_64, Ubuntu x86_64, Mac arm64 | Real Swift XCTest; three migrated parser/editing/state suites; six executable regressions; five offline Chromium tests; release executable and resource ZIP |
+| Portable · Windows x86_64, Ubuntu x86_64, Mac arm64 | Real Swift XCTest; three migrated parser/editing/state suites; six executable regressions; five offline Chromium tests; release ZIP and execution after relocation |
 | Core coverage · Ubuntu and Mac | LLVM source line coverage for every ChemCraftCore file, uploaded JSON and per-file floors |
 | Scientific Python · Ubuntu and Mac | All discoverable redistributable Python tests, installed RDKit/ASE/Matplotlib/ChemRefine dependencies, branch coverage and uploaded XML/JSON |
 | Native Mac | Genuine XCTest, migrated suites, arm64 release build, strict signature verification, app ZIP |

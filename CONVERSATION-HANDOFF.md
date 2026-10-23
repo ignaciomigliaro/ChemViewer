@@ -1047,3 +1047,22 @@ paths, and SSH uses Linux host temp while preserving the existing Mac path. Adde
 private-mode/symlink tests and explicit Mac ORCA/CUDA mock preflight tests to keep
 coverage meaningful across hosts. PR1 opened through existing Git credentials;
 GitHub connector itself returned403 for PR creation. Hosted final rerun pending.
+
+Final local release checks: all7native flags pass on this physical Mac: smoke,
+document-workspace, bostmc, smooth, remote-session, fragment-placement and
+atom-editing. Strict signed arm64 build succeeds; obsolete pyc files removed from
+generated resources. /Applications and existing ~/Applications copies refreshed
+with install-macos.sh --no-build; running user session not terminated. Portable
+release ZIP also succeeds after extraction into a path containing spaces. CI now
+runs that relocation/resource gate on each OS before artifact upload.
+
+Hosted Linux/Mac portable jobs (including coverage/browser/packaging), both Python
+science jobs, and Windows XCTest47/migrated suites pass in candidate runs. Windows
+CLI source-preservation assertion exposed Python text-mode newline translation
+in the harness: app preserved actual CRLF bytes correctly. Fixture now writes
+explicit CRLF bytes on every OS and checks exact source. Mac XCTest runner flags
+also required separating optional standalone corpus arguments; corrected in f0c1e18.
+Final required all-platform results and source hashes are visible on PR1 and its
+Checks tab: https://github.com/ignaciomigliaro/ChemViewer/pull/1 . Never bypass the
+release-gate to publish; annotated v0.12.0 is created only after its commit passes.
+Physical Windows/Linux desktop acceptance and full interface parity remain open.

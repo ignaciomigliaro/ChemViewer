@@ -14,7 +14,7 @@ by later recorded native releases and do not describe the current Mac environmen
 
 | Capability | Native Mac | Windows/Linux portable preview |
 |---|---|---|
-| XYZ, ORCA output/input, Gaussian Cartesian subset | Implemented, core regressions | Same core; genuine Linux XCTest and CLI tests pass locally; hosted Windows pending |
+| XYZ, ORCA output/input, Gaussian Cartesian subset | Implemented, core regressions | Same core; genuine Linux XCTest/CLI pass locally; hosted Windows XCTest47 verified; full required CI tracked in PR1 |
 | Atom/bond display, camera, source, trajectory | Metal; native regression | Offline browser view; real Chromium regressions pass on Mac |
 | Negative modes / printed vectors | Animation and optional arrows | Animation, source-frame binding; no arrows |
 | Energies | Abstract, explicit conversion, plots | Absolute Eh plot, JSON/XYZ; missing values remain absent |

@@ -484,7 +484,8 @@ Real Swift6.1.3 XCTest on Linux arm64 (Docker official swift image) passes47case
 three migrated parser/editing/state suites and six real executable tests pass on
 Linux and Mac. The selected Mac CLT lacks XCTest; before/after genuine attempts
 fail explicitly, while the standalone adapter passes44 core assertions. No
-claim of local Mac XCTest success is made. Windows hosted validation is pending.
+claim of local Mac XCTest success is made. Hosted Windows XCTest47 has also passed. Final all-platform gate results are
+linked from [PR1](https://github.com/ignaciomigliaro/ChemViewer/pull/1).
 
 The Python redistributable suite passes91tests with3explicit optional licensed-
 corpus/artifact skips, including the coverage-gate self-tests. All seven

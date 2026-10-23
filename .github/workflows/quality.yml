@@ -54,6 +54,8 @@ jobs:
         run: swift build -c release --product ChemViewerPortable
       - name: Package portable release
         run: python scripts/package-portable.py --output dist/ChemViewer-portable-${{ runner.os }}.zip
+      - name: Execute relocated portable release ZIP
+        run: python scripts/check-portable-package.py --archive dist/ChemViewer-portable-${{ runner.os }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: ChemViewer-portable-${{ runner.os }}
