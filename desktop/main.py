@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
     QHBoxLayout, QInputDialog, QLabel, QListWidget, QMainWindow, QMessageBox,
     QPushButton, QSplitter, QTabWidget, QTableWidget, QTableWidgetItem,
-    QTextEdit, QToolBar, QVBoxLayout, QWidget, QAbstractItemView,
+    QTextEdit, QToolBar, QVBoxLayout, QWidget, QAbstractItemView, QSizePolicy,
 )
 from bridge import CoreBridge
 from viewport import MoleculeViewport
@@ -39,6 +39,7 @@ class DocumentPane(QWidget):
         self.timer = QTimer(self); self.timer.setInterval(33); self.timer.timeout.connect(self.tick)
         self.trajectory_ticks = 0
         self.viewport = MoleculeViewport(self)
+        self.viewport.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.viewport.atomPicked.connect(self.pick)
         self.viewport.renderFailed.connect(lambda message: self.window().show_error(message))
         self.frames = QComboBox(); self.frames.setObjectName("frameSelector")
@@ -52,8 +53,9 @@ class DocumentPane(QWidget):
         controls = QHBoxLayout()
         for item in [self.frames, self.play, self.fit, style, labels]: controls.addWidget(item)
         image = QWidget(); image_layout = QVBoxLayout(image)
-        image_layout.addLayout(controls); image_layout.addWidget(self.viewport)
+        image_layout.addLayout(controls); image_layout.addWidget(self.viewport, 1)
         self.measurement = QLabel("Click atoms to measure; Ctrl-click adds to the selection.")
+        self.measurement.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         image_layout.addWidget(self.measurement)
         self.views = QTabWidget(); self.views.addTab(image, "Image")
         self.coordinates = QTableWidget(0, 4); self.coordinates.setObjectName("coordinates")

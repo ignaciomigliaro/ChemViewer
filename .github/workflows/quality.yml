@@ -60,7 +60,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           apt-get update
-          apt-get install -y xvfb xauth libegl1 libgl1-mesa-dri libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0
+          apt-get install -y xvfb xauth libegl1 libgl1-mesa-dri libxcb-cursor0 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0 libglib2.0-0t64 libdbus-1-3
       - name: Native desktop GUI and GPU regressions
         shell: bash
         env:
@@ -68,10 +68,15 @@ jobs:
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
-            xvfb-run -a python Tests/gui/desktop/test_desktop.py
+            xvfb-run -a python -m coverage run --branch --source=desktop --data-file=.build/desktop.coverage Tests/gui/desktop/test_desktop.py
           else
-            python Tests/gui/desktop/test_desktop.py
+            python -m coverage run --branch --source=desktop --data-file=.build/desktop.coverage Tests/gui/desktop/test_desktop.py
           fi
+      - name: Enforce desktop module line and branch coverage
+        run: |
+          python -m coverage report --data-file=.build/desktop.coverage
+          python -m coverage json --data-file=.build/desktop.coverage -o .build/desktop-coverage.json
+          python scripts/check-desktop-coverage.py .build/desktop-coverage.json
       - name: Freeze native desktop and chemistry runtime
         run: python scripts/package-desktop.py
       - name: Execute relocated native desktop with developer PATH removed
@@ -94,6 +99,7 @@ jobs:
           path: |
             dist/ChemViewer-desktop-*.zip
             .build/desktop-package-evidence/*
+            .build/desktop-coverage.json
           if-no-files-found: error
           include-hidden-files: true
       - name: Build portable release

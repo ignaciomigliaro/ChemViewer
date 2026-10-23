@@ -9,6 +9,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -17,7 +18,7 @@ from main import MainWindow, configure_graphics
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QTableWidgetItem
+from PySide6.QtWidgets import QApplication, QTableWidgetItem, QMessageBox
 
 configure_graphics()
 APP = QApplication.instance() or QApplication(["ChemViewer desktop acceptance"])
@@ -171,8 +172,94 @@ class DesktopAcceptance(unittest.TestCase):
             value = frame.get("energyHartree")
             self.assertEqual(row[1], "" if value is None else repr(value))
         pane.energy_plot.set_points([(1, -1.123456789012), (2, None), (3, -1.0)])
+        pane.views.setCurrentWidget(pane.energy_plot); QTest.qWait(50)
         self.assertIn("2,\r\n", pane.energy_plot.csv())
         self.assertIn("-1.123456789012", pane.energy_plot.csv())
+
+    def test_save_export_dialog_workflows_and_dirty_close_cancel(self):
+        pane = self.open()
+        pane.command("position", atom=1, position=[1.5, 0, 0])
+        wait_until(lambda: pane.dirty)
+        with patch("main.QMessageBox.question", return_value=QMessageBox.Cancel):
+            self.window.close_document(0)
+            self.window.close()
+        self.assertEqual(self.window.tabs.count(), 1)
+        self.assertTrue(self.window.isVisible())
+        directory = Path(self.tmp.name)
+        project = directory / "saved.cvdesktop"
+        with patch("main.QFileDialog.getSaveFileName", return_value=(str(project), "")):
+            self.window.save_project()
+        wait_until(lambda: project.exists() and not pane.dirty)
+        xyz = directory / "saved.xyz"
+        with patch("main.QFileDialog.getSaveFileName", return_value=(str(xyz), "")):
+            self.window.export_xyz()
+        wait_until(xyz.exists)
+        self.assertEqual(self.request("open", path=str(xyz))["data"]["frames"][0]["atoms"], pane.data["frames"][0]["atoms"])
+        png = directory / "saved.png"
+        pane.views.setCurrentIndex(0); QTest.qWait(50)
+        with patch("main.QFileDialog.getSaveFileName", return_value=(str(png), "")):
+            self.window.export_png()
+        self.assert_molecule_pixels(QImage(str(png)))
+        csv_path = directory / "energy.csv"
+        pane.views.setCurrentWidget(pane.energy_plot); QTest.qWait(50)
+        with patch("main.QFileDialog.getSaveFileName", return_value=(str(csv_path), "")):
+            self.window.export_energy()
+        self.assertIn("Energy / Hartree", csv_path.read_text())
+        self.window.copy_xyz(); self.assertIn("1.5", QApplication.clipboard().text())
+        self.window.close_document(0); wait_until(lambda: self.window.tabs.count() == 0)
+        with patch("main.QFileDialog.getOpenFileNames", return_value=([str(project)], "")):
+            self.window.open_dialog()
+        wait_until(lambda: self.window.tabs.count() == 1)
+        self.assertEqual(self.window.pane().data["frames"][0]["atoms"][1]["position"][0], 1.5)
+
+    def test_invalid_coordinate_edits_restore_authoritative_state(self):
+        pane = self.open(); original = pane.data["frames"][0]["atoms"][:]
+        pane.views.setCurrentIndex(1)
+        pane.coordinates.setItem(1, 1, QTableWidgetItem("nan"))
+        self.assertIn("finite", self.window.errors.pop())
+        self.assertEqual(float(pane.coordinates.item(1, 1).text()), original[1]["position"][0])
+        pane.coordinates.setItem(0, 0, QTableWidgetItem("unobtainium"))
+        wait_until(lambda: len(self.window.errors) == 1)
+        self.window.errors.clear()
+        wait_until(lambda: pane.coordinates.item(0, 0).text() == "O")
+        self.assertEqual(pane.data["frames"][0]["atoms"], original)
+        self.assertFalse(pane.dirty)
+
+    def test_numeric_edit_actions_builder_add_and_display_controls(self):
+        pane = self.open(); pane.selection = [0, 1]
+        with patch("main.QInputDialog.getDouble", return_value=(1.25, True)):
+            pane.set_internal("distance")
+        wait_until(lambda: abs(pane.data["frames"][0]["atoms"][1]["position"][0] - 1.25) < 1e-6)
+        pane.selection = [1, 0, 2]
+        with patch("main.QInputDialog.getDouble", return_value=(90, True)):
+            pane.set_internal("angle")
+        wait_until(lambda: not self.window.bridge.pending)
+        measure = self.request("measure", document=pane.key, indices=[1, 0, 2])
+        self.assertAlmostEqual(measure["measurement"], 90, places=4)
+        with patch("main.QInputDialog.getText", return_value=("He", True)):
+            pane.add_atom()
+        wait_until(lambda: len(pane.data["frames"][0]["atoms"]) == 4)
+        pane.change_style("Space filling"); pane.change_labels(True)
+        pane.views.setCurrentIndex(0); QTest.qWait(50)
+        self.assert_molecule_pixels(pane.viewport.grabFramebuffer())
+        self.assertEqual(pane.viewport.style, "Space filling")
+        self.assertTrue(pane.viewport.labels)
+
+    def test_packaged_acceptance_path_checks_actual_gui(self):
+        from acceptance import run
+        report = Path(self.tmp.name) / "report.json"
+        run(self.window, ROOT / "Tests/fixtures/water.xyz", report)
+        wait_until(report.exists)
+        result = json.loads(report.read_text())
+        self.assertTrue(result["ok"], result)
+        self.assertTrue(report.with_suffix(".png").exists())
+
+    def test_packaged_acceptance_rejects_wrong_fixture(self):
+        from acceptance import run
+        report = Path(self.tmp.name) / "report.json"
+        run(self.window, ROOT / "Tests/fixtures/methane.xyz", report)
+        wait_until(report.exists)
+        self.assertFalse(json.loads(report.read_text())["ok"])
 
     def test_source_only_input_no_invented_geometry(self):
         path = Path(self.tmp.name) / "source.inp"

@@ -191,7 +191,7 @@ IR SPECTRUM
  Mode freq T**2
 0: -250.0 7.5
 """
-        path = self.tmp / "imaginary.out"; path.write_text(source)
+        path = self.tmp / "imaginary.out"; path.write_bytes(source.encode("utf-8"))
         opened = self.request("open", path=str(path)); self.assertTrue(opened["ok"], opened)
         key = opened["document"]; mode = opened["data"]["modes"][0]
         self.assertEqual(mode["frequencyCM1"], -250)
