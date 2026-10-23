@@ -86,8 +86,10 @@ class PortableTests(unittest.TestCase):
         import base64
         import re
         source = self.folder/'injection.xyz'
-        text = '1\n</script><img src=x onerror=alert(1)> μ\nHe 0 0 0\n'
-        source.write_text(text, encoding='utf-8')
+        # Write exact bytes: Windows text-mode writes otherwise translate LF to
+        # CRLF. Source preservation must be checked against the bytes we supply.
+        text = '1\r\n</script><img src=x onerror=alert(1)> μ\r\nHe 0 0 0\r\n'
+        source.write_bytes(text.encode('utf-8'))
         output = self.folder/'view.html'
         self.run_cli(source, '--output', output)
         html = output.read_text(encoding='utf-8')
