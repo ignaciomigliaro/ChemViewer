@@ -465,3 +465,11 @@ physical Mac. Verify launch, opening, Metal frames, source and image export.
 Do not accept source-build fallback as proof that the distributed app works.
 The first0.12.0 download failed before launch due to direct Bundle.module lookup;
 only a passing post-fix downloaded artifact can close this regression.
+
+For synthetic GUI flags after a deliberate crash, pass
+`-ApplePersistenceIgnoreState YES` to that test process to leave existing saved
+state untouched. Deliver an explicit `open -a /exact/test/ChemViewer.app` event
+after starting the instance if no window appears. Do not use `open -F`, clear
+saved user state or terminate a running user app. Capture stdout and stderr
+together; several native assertions report to stderr. Canonicalize paths before
+checking bundle containment because macOS aliases /tmp and /private/tmp.

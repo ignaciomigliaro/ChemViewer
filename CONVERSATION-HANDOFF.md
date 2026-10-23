@@ -1115,3 +1115,22 @@ missing-helper negative control. Separate relocated native GUI/Metal and remote
 helper smoke logs are /private/tmp/chemviewer-0120-isolated-*.log. Keep the failed
 pre-fix downloaded-app log distinct from these post-fix results. The final
 hosted native archive and physical downloaded-artifact checks must also pass.
+
+### Post-fix hosted and physical result
+
+6a3da93 passes every required job in40005895948. Downloaded native artifact
+12524422347 is hash verified (0e08496bb83ff5cabc3d2e575070994926b04a51b3fbf107010cbbbe5f903237),
+passes strict signature/relocated resource checks, and actual REMOTE_SESSION_PASS
+and BOSTMC_PASS on this Mac. No remote login/job or production catalog used.
+Its render-smoke assertion falsely treated /tmp and /private/tmp as different
+bundle locations; final assertion resolves symlinks and checks a directory
+boundary. This is a test correction, not a fallback to development resources.
+
+The earlier intentional native crash caused a macOS restore prompt. Synthetic
+GUI test instances now use process-only -ApplePersistenceIgnoreState YES, whose
+OS diagnostic explicitly says existing state will not be touched. An explicit
+open -a exact-test-app event creates the test window. stdout/stderr are combined.
+Do not clear saved user state or use open -F. Logs: /private/tmp/chemviewer-ci-
+postfix-{remote-session,bostmc}-smoke-test.log. Final source render evidence:
+/private/tmp/chemviewer-0120-final-isolated-render.log. Both installation copies
+have been refreshed after the resource fix; running user work was not closed.

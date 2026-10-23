@@ -38,7 +38,9 @@ enum AppSmokeTest {
             guard let view = NSApp.windows.compactMap({ $0.contentView }).compactMap({ metalView(in: $0) }).first else {
                 throw NSError(domain: "ChemViewerSmokeTest", code: 2, userInfo: [NSLocalizedDescriptionKey: "No live Metal viewport"])
             }
-            try require(view.shaderBundlePath?.hasPrefix(Bundle.main.bundlePath) == true, "Shader resources were not loaded from the app bundle")
+            let appRoot = Bundle.main.bundleURL.resolvingSymlinksInPath().standardizedFileURL.path
+            let shaderRoot = view.shaderBundlePath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().standardizedFileURL.path }
+            try require(shaderRoot?.hasPrefix(appRoot + "/") == true, "Shader resources were not loaded from the app bundle")
             try require(view.renderingReady, view.renderingFailure ?? "Metal pipeline initialization failed")
             view.draw()
             try await Task.sleep(nanoseconds: 200_000_000)

@@ -533,3 +533,13 @@ before its GUI opened. All native lookups now share the packaged resource
 resolver, and a new headless relocated-archive/negative-helper gate prevents
 local fallback from masking this defect. Earlier build/signature success is
 not native runtime acceptance. Final physical downloaded-app retest is required.
+
+Post-fix candidate6a3da93 passes the complete required hosted run
+[40005895948](https://github.com/ignaciomigliaro/ChemViewer/actions/runs/40005895948),
+including the native archive's contained-resource/missing-helper gate. Native
+artifact12524422347 (SHA-2560e08496bb83ff5cabc3d2e575070994926b04a51b3fbf107010cbbbe5f903237)
+was downloaded and independently passed native REMOTE_SESSION and BOSTMC workflows
+on this physical Mac. Its general render smoke reached the shader-location
+assertion but falsely rejected /tmp versus /private/tmp aliases. The assertion
+now canonicalizes both paths and requires a directory boundary; final physical
+render acceptance uses that correction, without relaxing resource containment.
