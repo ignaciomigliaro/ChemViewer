@@ -19,6 +19,12 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Import official Swift signing keys
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location https://www.swift.org/keys/all-keys.asc -o "$RUNNER_TEMP/swift-signing-keys.asc"
+          gpg --import "$RUNNER_TEMP/swift-signing-keys.asc"
       - uses: swift-actions/setup-swift@d8e84bc3a450686a95474d7d6fa4a3301498debc # v3
         if: runner.os == 'Linux'
         with:
@@ -68,6 +74,7 @@ jobs:
           name: core-coverage-${{ runner.os }}
           path: .build/**/codecov/*.json
           if-no-files-found: error
+          include-hidden-files: true
   scientific-python:
     strategy:
       fail-fast: false
@@ -95,6 +102,7 @@ jobs:
           name: python-coverage-${{ runner.os }}
           path: .build/python-coverage.*
           if-no-files-found: error
+          include-hidden-files: true
   native-macos:
     runs-on: macos-15
     timeout-minutes: 30
