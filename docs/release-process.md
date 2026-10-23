@@ -30,9 +30,9 @@ Dependabot opens updates for Actions and pinned test dependencies.
 | Native Mac | Genuine XCTest, migrated suites, arm64 release build, strict signature verification, app ZIP |
 | Release gate | Every preceding platform/job must report success |
 
-The Windows Swift installer action and Linux setup action are pinned to commits.
-See their [Windows setup documentation](https://github.com/compnerd/gha-setup-swift)
-and [Linux/macOS action definition](https://github.com/swift-actions/setup-swift).
+The Windows Swift installer action is pinned to a commit; Linux uses the official
+Swift6.1.3 container pinned to its image digest. See the [Windows setup documentation](https://github.com/compnerd/gha-setup-swift)
+and [official Swift container](https://hub.docker.com/_/swift).
 Test Python dependencies are pinned in `requirements-test.txt`, including an exact
 ChemRefine commit. These checks do not install ORCA, proprietary datasets or model
 credentials and do not submit cluster jobs.
@@ -45,8 +45,9 @@ check. Floors are rounded down from measurements, not a claim that all functiona
 is correct. New code needs independent behavioral assertions; do not lower floors
 to hide a failure. Raise floors as previously untested paths gain meaningful tests.
 
-The first measured core baseline ranges from 56% in the integrated legacy builder
-to 100% in ORCA inputs, vector math and portable serialization. ORCA output is 98%
+The core baseline ranges from61% in NEB summary paths to100% in ORCA inputs, vector
+math and portable serialization. The migrated builder suites now also run inside
+XCTest, raising measured integrated-builder coverage from56% to93%. ORCA output is 98%
 and XYZ 94% minimum. Python helper aggregate is approximately 83% combined line/
 branch coverage; the remote agent remains a weaker area at a 67% floor. Coverage
 currently measures source paths, not full GUI behavior or scientific correctness.

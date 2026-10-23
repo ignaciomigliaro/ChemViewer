@@ -1032,3 +1032,18 @@ Local evidence /private/tmp/chemviewer-{portable-*,linux-*,0120-*,browser-tests.
 .build/linux-validation/core-coverage.json and python-coverage.json (ignored).
 Preserve/exclude pre-existing user AGENTS.md and .vscode/ changes. No tag yet: final
 checks, hosted CI, canonical installation and remote publication remain pending.
+
+Follow-up validation: native BOSTMC_PASS after the synthetic baseline correction,
+SMOOTH interaction/labels/PNG/GIF PASS and REMOTE_SESSION_PASS on this physical Mac.
+Python91 /3optional skips; Linux genuine XCTest47 after migrating the original
+3suites into SPM as well as standalone runners. IntegratedBuilding line coverage
+rises56→93.88%; its minimum is now93. The shared suite assertions remain enabled
+under optimized compilation through preconditions.
+
+Hosted first runs found an uninitialized Swiftly signing key, hidden coverage
+upload filtering and hardcoded /private/tmp on Linux. Linux now uses the verified
+official Swift6.1.3 container by digest, coverage uploads explicitly include hidden
+paths, and SSH uses Linux host temp while preserving the existing Mac path. Added
+private-mode/symlink tests and explicit Mac ORCA/CUDA mock preflight tests to keep
+coverage meaningful across hosts. PR1 opened through existing Git credentials;
+GitHub connector itself returned403 for PR creation. Hosted final rerun pending.

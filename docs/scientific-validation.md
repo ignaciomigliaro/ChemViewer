@@ -480,14 +480,14 @@ https://orcd-docs.mit.edu/accessing-orcd/ssh-troubleshooting/ .
 
 ## 0.12.0 — portability baseline (2026-10-23)
 
-Real Swift6.1.3 XCTest on Linux arm64 (Docker official swift image) passes44cases;
+Real Swift6.1.3 XCTest on Linux arm64 (Docker official swift image) passes47cases (44core +3migrated suites);
 three migrated parser/editing/state suites and six real executable tests pass on
 Linux and Mac. The selected Mac CLT lacks XCTest; before/after genuine attempts
 fail explicitly, while the standalone adapter passes44 core assertions. No
 claim of local Mac XCTest success is made. Windows hosted validation is pending.
 
-The Python redistributable suite passes84tests with3explicit optional licensed-
-corpus/artifact skips before the coverage-gate self-tests were added. All seven
+The Python redistributable suite passes91tests with3explicit optional licensed-
+corpus/artifact skips, including the coverage-gate self-tests. All seven
 helper modules are measured (approximately83% combined line/branch coverage).
 The previous full discovery depended unconditionally on a missing proprietary
 water output: those two exact-corpus checks are now optional and a checked-in
@@ -508,3 +508,10 @@ fixture screenshots in docs/images demonstrate the portable interface; they are
 not reference-app captures or quantum predictions. Physical Windows/Linux desktop
 interaction and full UI parity remain unexecuted. Native physical Mac smoke
 results and final hosted CI evidence are recorded in CONVERSATION-HANDOFF.md.
+
+Hosted Linux testing exposed a hard-coded /private/tmp SSH control path. It now
+uses the host temporary directory on Linux while retaining the short canonical
+Mac path for existing masters/socket limits. Hermetic tests check private
+permissions and symlink refusal. Platform-specific ORCA/CUDA preflight branches
+are now tested with explicit platform/file-probe mocks on both hosts; no engine
+is executed. This preserves coverage floors instead of lowering them on Linux.

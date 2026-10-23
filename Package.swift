@@ -8,7 +8,8 @@ var products: [Product] = [
 var targets: [Target] = [
     .target(name: "ChemCraftCore"),
     .executableTarget(name: "ChemViewerPortable", dependencies: ["ChemCraftCore"], resources: [.copy("viewer.html")]),
-    .testTarget(name: "ChemCraftCoreTests", dependencies: ["ChemCraftCore"])
+    .testTarget(name: "ChemCraftCoreTests", dependencies: ["ChemCraftCore"]),
+    .testTarget(name: "IntegratedBuildingTests", dependencies: ["ChemCraftCore"], path: "Tests/IntegratedBuilding")
 ]
 #if os(macOS)
 products.append(.executable(name: "ChemViewer", targets: ["ChemViewerApp"]))

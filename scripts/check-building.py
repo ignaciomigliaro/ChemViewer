@@ -8,7 +8,7 @@ build = root / '.build' / 'building-tests'
 build.mkdir(parents=True, exist_ok=True)
 for suite in ('Parser', 'Editing', 'State'):
     binary = build / (suite + ('Tests.exe' if sys.platform == 'win32' else 'Tests'))
-    subprocess.run(['swiftc', '-module-cache-path', str(build/'module-cache'),
+    subprocess.run(['swiftc', '-D', 'CHEMVIEWER_STANDALONE', '-module-cache-path', str(build/'module-cache'),
         str(root/'Sources/ChemCraftCore/VectorMath.swift'),
         str(root/'Sources/ChemCraftCore/IntegratedBuilding.swift'),
         str(root/f'Tests/IntegratedBuilding/{suite}Tests.swift'), '-o', str(binary)], cwd=root, check=True)

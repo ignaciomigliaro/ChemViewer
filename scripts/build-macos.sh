@@ -37,6 +37,7 @@ if [[ -n "$resource_bundle" ]]; then
 else
     echo "missing SwiftPM Metal resource bundle" >&2; exit 1
 fi
+find "$app_dir/Contents/Resources" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 cp "$project_dir/docs/third-party/xyzrender-LICENSE.txt" "$app_dir/Contents/Resources/xyzrender-LICENSE.txt"
 codesign --force --deep --sign - "$app_dir"
 codesign --verify --deep --strict --verbose=2 "$app_dir"

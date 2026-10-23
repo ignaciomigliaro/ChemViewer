@@ -17,18 +17,9 @@ jobs:
         os: [ubuntu-24.04, windows-2022, macos-15]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
+    container: ${{ matrix.os == 'ubuntu-24.04' && 'swift:6.1.3@sha256:04b28d4aff67fa4ff4029d6e27dd40f9737cc69cc558a37b06f18b3dceb8942f' || '' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Import official Swift signing keys
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          curl --fail --silent --show-error --location https://www.swift.org/keys/all-keys.asc -o "$RUNNER_TEMP/swift-signing-keys.asc"
-          gpg --import "$RUNNER_TEMP/swift-signing-keys.asc"
-      - uses: swift-actions/setup-swift@d8e84bc3a450686a95474d7d6fa4a3301498debc # v3
-        if: runner.os == 'Linux'
-        with:
-          swift-version: '6.1.3'
       - uses: compnerd/gha-setup-swift@775d3f4111c5be58a0f62f2efdd353bb8fac15c7
         if: runner.os == 'Windows'
         with:

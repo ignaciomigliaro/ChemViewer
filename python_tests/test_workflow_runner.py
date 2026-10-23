@@ -77,7 +77,6 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(report['ok'])
         self.assertTrue(any(c['name'] == 'orca' and c['status'] == 'error' for c in report['checks']))
 
-    @unittest.skipUnless(sys.platform == 'darwin', 'macOS ORCA package check')
     def test_partial_orca_package_rejected(self):
         self.config('orca', 'template: step1.inp')
         (self.root / 'templates/step1.inp').write_text('! HF STO-3G\n')
@@ -86,6 +85,27 @@ class WorkflowTests(unittest.TestCase):
         with patch.dict(os.environ, {'PATH': str(self.root)}):
             report = bridge.inspect_workflow(self.path)
         self.assertTrue(any(c['name'] == 'ORCA installation' and c['status'] == 'error' for c in report['checks']))
+
+    def test_mac_preflight_rejects_non_mac_orca_without_executing_it(self):
+        import subprocess
+        self.config('orca', 'template: step1.inp')
+        bridge.act(dict(action='scaffold', config_path=str(self.path)))
+        binary=self.root/'orca';binary.write_text('#!/bin/sh\nexit 0\n');binary.chmod(0o755)
+        for architecture in ['ELF 64-bit x86-64 executable','PE32+ executable x86-64']:
+            with self.subTest(architecture=architecture), patch.dict(os.environ, {'PATH':str(self.root)}), patch.object(bridge.sys,'platform','darwin'), patch.object(bridge.subprocess,'run',return_value=subprocess.CompletedProcess([],0,architecture)) as probe:
+                report=bridge.inspect_workflow(self.path)
+            self.assertTrue(any(c['name']=='ORCA platform' and c['status']=='error' for c in report['checks']))
+            probe.assert_called_once_with(['/usr/bin/file',str(binary)],capture_output=True,text=True)
+
+    def test_mac_cuda_is_rejected_before_backend_provisioning(self):
+        self.config('mlip', 'options: {task_name: omol, device: cuda}')
+        self.path.write_text(self.path.read_text().replace('max_cores: 1','max_cores: 1\nmax_gpus: 1'))
+        bridge.act(dict(action='scaffold', config_path=str(self.path)))
+        with patch.object(bridge.sys,'platform','darwin'), patch('chemrefine.engines.preflight_backends') as backend:
+            report=bridge.inspect_workflow(self.path)
+        self.assertFalse(report['ok'])
+        self.assertTrue(any(c['status']=='error' and 'CUDA is unavailable' in c['detail'] for c in report['checks']))
+        backend.assert_not_called()
 
     def test_complete_orca_helper_families_accepted(self):
         self.config('orca', 'template: step1.inp')

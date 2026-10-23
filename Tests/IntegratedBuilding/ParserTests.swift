@@ -1,5 +1,9 @@
 import Foundation
-@main struct ParserTests {
+#if !CHEMVIEWER_STANDALONE
+import XCTest
+@testable import ChemCraftCore
+#endif
+struct ParserChecks {
  static func main() throws {
   let geometry = "CARTESIAN COORDINATES (ANGSTROEM)\n---\nH 0 0 0\n\n"
   let mode = "VIBRATIONAL FREQUENCIES\n0: -123 cm**-1\nNORMAL MODES\n0\n0 0.1\n1 -0.2\n2 0.3\nIR SPECTRUM\n"
@@ -40,3 +44,13 @@ import Foundation
   print("Parser tests passed: compound job association, CRLF, vector values, malformed tables/coordinates, summaries and multi-frame XYZ.")
  }
 }
+
+#if CHEMVIEWER_STANDALONE
+@main struct ParserTests {
+    static func main() throws { try ParserChecks.main() }
+}
+#else
+final class IntegratedParserTests: XCTestCase {
+    func testMigratedParserAcceptance() throws { try ParserChecks.main() }
+}
+#endif

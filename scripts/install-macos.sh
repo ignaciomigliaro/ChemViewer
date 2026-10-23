@@ -15,6 +15,8 @@ if [[ -d "$HOME/Applications/ChemViewer.app" ]]; then
 fi
 for target in "${install_targets[@]}"; do
     ditto "$source_app" "$target"
+    # ditto merges directories: remove only obsolete interpreter-generated files.
+    find "$target/Contents/Resources" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
     codesign --verify --deep --strict "$target"
     echo "Updated $target"
 done
