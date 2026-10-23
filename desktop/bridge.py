@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QProcess, Signal
+from PySide6.QtCore import QObject, QProcess, QTimer, Signal
 
 
 def service_path():
@@ -40,11 +40,21 @@ class CoreBridge(QObject):
         self.stopping = False
 
     def start(self):
-        self.process.start(service_path(), [])
+        try:
+            path = service_path()
+        except OSError as error:
+            QTimer.singleShot(0, lambda message=str(error): self.failed.emit(message))
+            return
+        self.process.start(path, [])
 
     def request(self, action, callback=None, **arguments):
         self.next_id += 1
         request = dict(id=self.next_id, action=action, **arguments)
+        if self.process.state() == QProcess.NotRunning:
+            reply = dict(id=self.next_id, ok=False, error="The chemistry process is unavailable. Reopen the application.")
+            self.failed.emit(reply["error"])
+            if callback: callback(reply)
+            return self.next_id
         self.pending[self.next_id] = callback
         self.busyChanged.emit(True)
         # QProcess buffers writes, including while Starting. No shell quoting.

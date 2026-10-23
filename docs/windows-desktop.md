@@ -79,7 +79,7 @@ python3 Tests/gui/desktop/test_desktop.py
 ```
 
 On Windows use the `.exe` service suffix. GUI tests require an actual desktop or,
-for Linux automation, Xvfb with Mesa software OpenGL. The suite currently contains 13 desktop GUI workflows and 14 service regressions.
+for Linux automation, Xvfb with Mesa software OpenGL. The suite currently contains 15 desktop GUI workflows and 14 service regressions.
 Per-module line/branch floors are enforced from
 `Tests/desktop-coverage-floors.json`. They fail on blank rendering;
 a passing process exit alone is insufficient.

@@ -263,6 +263,29 @@ class DesktopAcceptance(unittest.TestCase):
         wait_until(report.exists)
         self.assertFalse(json.loads(report.read_text())["ok"])
 
+    def test_service_locator_resolves_bundled_and_explicit_paths(self):
+        from bridge import service_path
+        directory = Path(self.tmp.name)
+        binary = directory / ("ChemViewerService.exe" if sys.platform == "win32" else "ChemViewerService")
+        with patch.dict(os.environ, {"CHEMVIEWER_SERVICE": str(binary)}):
+            self.assertEqual(service_path(), str(binary.resolve()))
+        with patch.dict(os.environ, {"CHEMVIEWER_SERVICE": ""}), patch.object(sys, "_MEIPASS", str(directory), create=True):
+            with self.assertRaises(FileNotFoundError): service_path()
+            binary.write_bytes(b"packaged locator fixture")
+            self.assertEqual(service_path(), str(binary.resolve()))
+
+    def test_core_process_failure_preserves_visible_document(self):
+        pane = self.open(); original = pane.data.copy()
+        self.window.bridge.process.kill()
+        wait_until(lambda: self.window.bridge.process.state().name == "NotRunning")
+        wait_until(lambda: any("stopped" in message for message in self.window.errors))
+        self.assertEqual(pane.data, original)
+        replies = []
+        self.window.bridge.request("snapshot", replies.append, document=pane.key)
+        self.assertFalse(replies[0]["ok"])
+        self.assertFalse(self.window.bridge.pending)
+        self.window.errors.clear()
+
     def test_source_only_input_no_invented_geometry(self):
         path = Path(self.tmp.name) / "source.inp"
         path.write_text("! HF\n%coords\nend\n")

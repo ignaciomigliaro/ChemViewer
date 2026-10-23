@@ -1181,3 +1181,11 @@ QPainter leaves GL blending/scissor/depth-write state changed. The viewport now
 restores explicit 3D state before the next clear/draw. The overlapping placement
 in the display-control test was also removed to avoid ambiguous depth ties.
 These failures were retained and fixed, not skipped or counted as acceptance.
+
+The suite now has 15 desktop GUI workflows, including a real core-process failure
+that preserves the visible document and fails subsequent requests immediately,
+and hermetic bundled/explicit/missing service locator checks. All 15 pass on the
+physical Mac and Linux arm64 Xvfb/Mesa; both reports pass module coverage floors.
+Mac native release build/signature/arm64 check also passed; both canonical Mac
+installations were refreshed with `install-macos.sh --no-build` without terminating
+user sessions. Desktop source remains separate from that native Mac installation.
