@@ -159,6 +159,11 @@ cluster chemistry completion is still a separate acceptance gate.
 
 ## BosTMC catalyst screening
 
+![Native BosTMC panel showing synthetic FeN6 screening, a selected molecule and histogram](images/native-bostmc.png)
+
+The native screenshot uses two independently authored synthetic spin records,
+not production BosTMC data or a calculated catalyst ranking.
+
 Choose **BosTMC**, then a local CSV or SSH source, a structure/output root and
 optionally an index cache. A local downloaded catalog can filter and preview its
 embedded XYZ without SSH; enable remote structure/output lookup only when needed.

@@ -4,7 +4,7 @@ import XCTest
 @testable import ChemCraftCore
 #endif
 struct ParserChecks {
- static func main() throws {
+ static func main(referenceFile: String? = nil) throws {
   let geometry = "CARTESIAN COORDINATES (ANGSTROEM)\n---\nH 0 0 0\n\n"
   let mode = "VIBRATIONAL FREQUENCIES\n0: -123 cm**-1\nNORMAL MODES\n0\n0 0.1\n1 -0.2\n2 0.3\nIR SPECTRUM\n"
   let compound = "JOB NUMBER 1\n" + geometry + mode + "JOB NUMBER 2\n" + geometry.replacingOccurrences(of:"H 0 0 0",with:"O 0 0 0\nH 0 0 1") + "FINAL SINGLE POINT ENERGY -75.25\n"
@@ -32,8 +32,8 @@ struct ParserChecks {
   do { _ = try IntegratedBuilding.parse("2\ntruncated\nH 0 0 0\n"); preconditionFailure("accepted truncated XYZ") } catch {}
   let xyz = try IntegratedBuilding.parse("1\nframe one\nC 0 0 0\n1\nframe two\nC 1 0 0\n")
   precondition(xyz.frames.count == 2)
-  if CommandLine.arguments.count > 1 {
-   let water = try IntegratedBuilding.loadDocument(URL(fileURLWithPath:CommandLine.arguments[1]))
+  if let referenceFile {
+   let water = try IntegratedBuilding.loadDocument(URL(fileURLWithPath:referenceFile))
    precondition(water.frames.count == 6 && water.frames.allSatisfy { $0.count == 3 })
    precondition(water.modesByFrame.dropLast().allSatisfy(\.isEmpty))
    let modes = water.modesByFrame.last!
@@ -47,7 +47,7 @@ struct ParserChecks {
 
 #if CHEMVIEWER_STANDALONE
 @main struct ParserTests {
-    static func main() throws { try ParserChecks.main() }
+    static func main() throws { try ParserChecks.main(referenceFile: CommandLine.arguments.dropFirst().first) }
 }
 #else
 final class IntegratedParserTests: XCTestCase {
