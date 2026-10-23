@@ -19,10 +19,11 @@ if sys.platform == "win32" and os.environ.get("QT_OPENGL") == "software":
     os.environ["PYOPENGL_PLATFORM"] = "chemviewer-software"
     PlatformPlugin("chemviewer-software", "gl_platform.SoftwareWin32Platform")
 from OpenGL import GL
-from OpenGL.GL.shaders import compileProgram, compileShader
+from OpenGL.GL.shaders import compileShader
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QMatrix4x4, QPainter, QQuaternion, QVector3D, QVector4D
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
+from PySide6.QtWidgets import QWidget
 
 VERTEX = """#version 330 core
 layout(location=0) in vec3 vertex;
@@ -34,7 +35,8 @@ out vec3 litNormal;
 out vec3 surfaceColor;
 void main() {
     gl_Position = viewProjection * instance * vec4(vertex, 1.0);
-    litNormal = normalize(transpose(inverse(mat3(instance))) * normal);
+    // Spheres scale uniformly; cylinder side normals lie in its equally scaled XZ plane.
+    litNormal = normalize(mat3(instance) * normal);
     surfaceColor = color;
 }
 """
@@ -70,6 +72,22 @@ def matrix_values(matrix):
     return list(matrix.data())  # Qt column-major, matching GLSL.
 
 
+class AtomLabels(QWidget):
+    """Raster overlay keeps Qt text painting out of the molecular GL context."""
+    def __init__(self, viewport):
+        super().__init__(viewport)
+        self.viewport = viewport
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+    def paintEvent(self, event):
+        if self.viewport.labels:
+            painter = QPainter(self)
+            self.viewport.paint_labels(painter)
+            painter.end()
+
+
 class MoleculeViewport(QOpenGLWidget):
     atomPicked = Signal(int, bool)
     renderFailed = Signal(str)
@@ -85,6 +103,7 @@ class MoleculeViewport(QOpenGLWidget):
         self.last_mouse = None; self.press_mouse = None
         self.program = None; self.gpu_meshes = []; self.upload_needed = True
         self.error = None; self.render_count = 0
+        self.label_overlay = AtomLabels(self)
 
     def set_frame(self, frame, fit=False):
         self.atoms = frame.get("atoms", []) if frame else []
@@ -111,9 +130,39 @@ class MoleculeViewport(QOpenGLWidget):
     def initializeGL(self):
         try:
             self.context().aboutToBeDestroyed.connect(self.cleanup)
-            # Qt creates its widget framebuffer after initializeGL. Compile/link now;
-            # draw validation belongs to paintGL, when that framebuffer exists.
-            self.program = compileProgram(compileShader(VERTEX, GL.GL_VERTEX_SHADER), compileShader(FRAGMENT, GL.GL_FRAGMENT_SHADER), validate=False)
+            version = GL.glGetString(GL.GL_VERSION).decode("ascii", "replace")
+            major, minor = map(int, version.split()[0].split(".")[:2])
+            self.gl_version = version
+            self.gl_renderer = GL.glGetString(GL.GL_RENDERER).decode("ascii", "replace")
+            self.shader_version = "330"
+            vertex, fragment = VERTEX, FRAGMENT
+            self.draw_instances = GL.glDrawArraysInstanced
+            self.instance_divisor = GL.glVertexAttribDivisor
+            if (major, minor) < (3, 3):
+                # Qt's bundled Windows Mesa exposes GL 3.0 + ARB instancing.
+                # Keep the same meshes, depth and instanced draws with GLSL 1.30.
+                from OpenGL.GL.ARB.draw_instanced import glDrawArraysInstancedARB
+                from OpenGL.GL.ARB.instanced_arrays import glVertexAttribDivisorARB
+                if (major, minor) < (3, 0) or not glDrawArraysInstancedARB or not glVertexAttribDivisorARB:
+                    raise RuntimeError("OpenGL 3.0 with ARB instancing (or OpenGL 3.3) is required: " + version)
+                self.shader_version = "130"
+                self.draw_instances = glDrawArraysInstancedARB
+                self.instance_divisor = glVertexAttribDivisorARB
+                vertex = vertex.replace("#version 330 core", "#version 130")
+                fragment = fragment.replace("#version 330 core", "#version 130")
+                for location in (0, 1, 2, 6):
+                    vertex = vertex.replace(f"layout(location={location}) ", "")
+            shaders = [compileShader(vertex, GL.GL_VERTEX_SHADER), compileShader(fragment, GL.GL_FRAGMENT_SHADER)]
+            self.program = GL.glCreateProgram()
+            for shader in shaders: GL.glAttachShader(self.program, shader)
+            for location, name in [(0, "vertex"), (1, "normal"), (2, "instance"), (6, "color")]:
+                GL.glBindAttribLocation(self.program, location, name)
+            GL.glBindFragDataLocation(self.program, 0, "pixel")
+            GL.glLinkProgram(self.program)
+            for shader in shaders: GL.glDeleteShader(shader)
+            if not GL.glGetProgramiv(self.program, GL.GL_LINK_STATUS):
+                raise RuntimeError(GL.glGetProgramInfoLog(self.program).decode("utf-8", "replace"))
+            # Qt creates its framebuffer after initializeGL; drawing is tested later.
             self.vp_location = GL.glGetUniformLocation(self.program, "viewProjection")
             for kind in ("sphere", "cylinder"):
                 vertices = mesh(kind)
@@ -127,16 +176,16 @@ class MoleculeViewport(QOpenGLWidget):
                 for col in range(4):
                     GL.glEnableVertexAttribArray(2 + col)
                     GL.glVertexAttribPointer(2 + col, 4, GL.GL_FLOAT, False, 76, ctypes.c_void_p(col * 16))
-                    GL.glVertexAttribDivisor(2 + col, 1)
+                    self.instance_divisor(2 + col, 1)
                 GL.glEnableVertexAttribArray(6)
                 GL.glVertexAttribPointer(6, 3, GL.GL_FLOAT, False, 76, ctypes.c_void_p(64))
-                GL.glVertexAttribDivisor(6, 1)
+                self.instance_divisor(6, 1)
                 self.gpu_meshes.append(dict(vao=vao, vbo=vbo, instances=instances, vertices=len(vertices), count=0))
             GL.glBindVertexArray(0)
             GL.glEnable(GL.GL_DEPTH_TEST)
             self.upload_needed = True
         except Exception as error:
-            self.error = str(error); self.renderFailed.emit("OpenGL 3.3 initialization failed: " + self.error)
+            self.error = str(error); self.renderFailed.emit("Molecular renderer initialization failed: " + self.error)
 
     def cleanup(self):
         self.makeCurrent()
@@ -204,15 +253,27 @@ class MoleculeViewport(QOpenGLWidget):
         for entry in self.gpu_meshes:
             if entry["count"]:
                 GL.glBindVertexArray(entry["vao"])
-                GL.glDrawArraysInstanced(GL.GL_TRIANGLES, 0, entry["vertices"], entry["count"])
+                self.draw_instances(GL.GL_TRIANGLES, 0, entry["vertices"], entry["count"])
         GL.glBindVertexArray(0); GL.glUseProgram(0)
         self.render_count += 1
+        self.label_overlay.update()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.label_overlay.setGeometry(self.rect())
+
+    def paint_labels(self, painter):
+        painter.setPen(QColor("#172b42"))
+        for i, atom in enumerate(self.atoms):
+            x, y = self.project(self.positions[i])
+            painter.drawText(int(x + 8), int(y - 8), f"{i + 1} {atom['element']}")
+
+    def export_image(self):
+        image = self.grabFramebuffer()
         if self.labels:
-            painter = QPainter(self); painter.setPen(QColor("#172b42"))
-            for i, atom in enumerate(self.atoms):
-                x, y = self.project(self.positions[i])
-                painter.drawText(int(x + 8), int(y - 8), f"{i + 1} {atom['element']}")
-            painter.end()
+            image.setDevicePixelRatio(self.devicePixelRatioF())
+            painter = QPainter(image); self.paint_labels(painter); painter.end()
+        return image
 
     def project(self, position):
         clip = self.camera_matrix().map(QVector3D(*position))

@@ -341,7 +341,7 @@ class MainWindow(QMainWindow):
         pane = self.pane()
         if not pane: return
         path, _ = QFileDialog.getSaveFileName(self, "Export current view", "molecule.png", "PNG (*.png)")
-        if path and not pane.viewport.grabFramebuffer().save(path, "PNG"): self.show_error("Cannot save PNG to " + path)
+        if path and not pane.viewport.export_image().save(path, "PNG"): self.show_error("Cannot save PNG to " + path)
 
     def export_energy(self):
         pane = self.pane()
@@ -387,7 +387,7 @@ def main():
     arguments = parser.parse_args()
     configure_graphics(); app = QApplication([sys.argv[0]])
     app.setApplicationName("ChemViewer"); app.setOrganizationName("ChemViewer")
-    window = MainWindow(); window.show()
+    window = MainWindow(); window.dialogs_enabled = not bool(arguments.acceptance_report); window.show()
     if arguments.acceptance_report:
         if len(arguments.files) != 1: parser.error("Packaged acceptance requires water.xyz")
         from acceptance import run

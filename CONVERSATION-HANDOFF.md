@@ -1189,3 +1189,15 @@ physical Mac and Linux arm64 Xvfb/Mesa; both reports pass module coverage floors
 Mac native release build/signature/arm64 check also passed; both canonical Mac
 installations were refreshed with `install-macos.sh --no-build` without terminating
 user sessions. Desktop source remains separate from that native Mac installation.
+
+Hosted 4fad170 checks: Linux and macOS platform/package jobs, scientific Python
+and native Mac gates passed. Windows core XCTest and all 14 service regressions
+passed, then the actual desktop GPU test failed because Qt's bundled Windows
+Mesa exposes GL 3.0 / GLSL 1.30, not GLSL 3.30. No pass was claimed. The renderer
+now has an explicitly bound GLSL 1.30/ARB-instancing path sharing identical
+meshes/depth rendering with the modern path. The complete 15-test GUI suite also
+runs in CI under a Linux Mesa GL 3.0/GLSL 130 constraint, which reproduced the
+compatibility requirement independently. Text labels now use a raster QWidget
+overlay plus QImage export compositing; they no longer invoke Qt text GL painting
+inside the molecular framebuffer. This also avoids old-context text-driver
+state errors. Package reports record the actual GL version/renderer/shader path.

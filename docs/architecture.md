@@ -675,7 +675,8 @@ by local build-tree fallback, despite successful signing and compilation.
 ## Windows-first Qt desktop (development branch, 2026-10-23)
 
 `desktop/main.py` uses PySide6 Qt Widgets for desktop integration and
-`desktop/viewport.py` uses QOpenGLWidget/OpenGL 3.3 with two instanced mesh draws,
+`desktop/viewport.py` uses QOpenGLWidget/OpenGL 3.3 (or GL 3.0 plus ARB instancing/GLSL 1.30)
+with two instanced mesh draws,
 depth testing, explicit camera transforms and analytic sphere picking. This
 frontend is shared by Windows/Linux and can be exercised on macOS without
 replacing the native Apple application. Qt Quick 3D is not a dependency.
@@ -695,3 +696,10 @@ PATH and verifies the actual GUI/GPU and process boundary. Windows software GL
 uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Physical Windows
 GPU/HiDPI acceptance and complete feature parity remain separate open gates.
 See [desktop scope and reproducible checks](windows-desktop.md).
+
+Qt's bundled Windows Mesa exposes GL 3.0/GLSL 1.30; the compatible path binds
+attribute locations explicitly and uses ARB instancing. The same actual GPU-mesh
+workflows are mandatory under a constrained Linux Mesa context in CI. Labels
+use a transparent raster QWidget overlay and are composited into exported
+QImages, keeping Qt text painting out of the molecular GL context. Package
+reports record actual GL version, renderer and shader path.

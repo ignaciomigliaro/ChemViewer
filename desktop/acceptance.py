@@ -15,6 +15,8 @@ def run(window, source, report_path):
         if state["finished"]: return
         state["finished"] = True
         result = dict(ok=ok, stage=state["stage"], error=error, errors=window.errors)
+        pane = window.pane()
+        result["graphics"] = {name: getattr(pane.viewport, name, None) for name in ("gl_version", "gl_renderer", "shader_version")} if pane else None
         destination.write_text(json.dumps(result, indent=2), encoding="utf-8")
         for i in range(window.tabs.count()): window.tabs.widget(i).dirty = False
         window.close(); app.exit(0 if ok else 1)
@@ -33,7 +35,7 @@ def run(window, source, report_path):
         assert reply["data"]["frames"][0]["atoms"] == state["original"], "Undo changed original atoms"
         pane.apply(reply)
         screenshot = destination.with_suffix(".png")
-        assert pane.viewport.grabFramebuffer().save(str(screenshot), "PNG"), "PNG export failed"
+        assert pane.viewport.export_image().save(str(screenshot), "PNG"), "PNG export failed"
         assert window.grab().save(str(destination.with_name(destination.stem + "-window.png")), "PNG")
         finish(True)
 

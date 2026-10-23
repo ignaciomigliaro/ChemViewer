@@ -55,6 +55,8 @@ class DesktopAcceptance(unittest.TestCase):
         wait_until(lambda: pane.viewport.render_count > 0 or pane.viewport.error)
         self.assertIsNone(pane.viewport.error)
         self.assertIsNotNone(pane.viewport.program)
+        if os.environ.get("MESA_GL_VERSION_OVERRIDE") == "3.0":
+            self.assertEqual(pane.viewport.shader_version, "130")
         return pane
 
     def request(self, action, **kwargs):
@@ -243,7 +245,10 @@ class DesktopAcceptance(unittest.TestCase):
         wait_until(lambda: len(pane.data["frames"][0]["atoms"]) == 4)
         pane.change_style("Space filling"); pane.change_labels(True)
         pane.views.setCurrentIndex(0); QTest.qWait(50)
-        self.assert_molecule_pixels(pane.viewport.grabFramebuffer())
+        raw = pane.viewport.grabFramebuffer()
+        exported = pane.viewport.export_image()
+        self.assert_molecule_pixels(exported)
+        self.assertNotEqual(bytes(raw.constBits()), bytes(exported.constBits()))
         self.assertEqual(pane.viewport.style, "Space filling")
         self.assertTrue(pane.viewport.labels)
 

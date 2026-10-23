@@ -17,7 +17,7 @@ py -3 -m venv .venv-desktop
 .venv-desktop/Scripts/python desktop/main.py Tests/fixtures/water.xyz
 ```
 
-Linux (Swift 6.1.3, Python 3.12, OpenGL 3.3 drivers and Qt platform dependencies):
+Linux (Swift 6.1.3, Python 3.12, OpenGL 3.3 drivers (or OpenGL 3.0 with ARB instancing) and Qt platform dependencies):
 
 On Ubuntu 24.04, install `python3-venv libegl1 libgl1-mesa-dri libxcb-cursor0
 libxkbcommon-x11-0 libxcb-icccm4 libxcb-keysyms1 libxcb-xinerama0 libxcb-shape0
@@ -85,7 +85,9 @@ Per-module line/branch floors are enforced from
 a passing process exit alone is insufficient.
 
 For Windows software-rendered CI, `QT_OPENGL=software` selects the Qt wheel's
-Mesa `opengl32sw.dll`; the PyOpenGL platform adapter loads the same driver so
+Mesa `opengl32sw.dll`. Its older GL 3.0 implementation uses the GLSL 1.30/ARB
+instancing path; modern contexts use GLSL 3.30. Both retain instanced meshes and
+depth-tested rendering. The PyOpenGL platform adapter loads the same driver so
 context and procedure addresses agree. Ordinary Windows runs use system GPU
 OpenGL. Physical Windows GPU/HiDPI/installer acceptance is still required.
 
