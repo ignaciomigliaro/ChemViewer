@@ -1134,3 +1134,33 @@ Do not clear saved user state or use open -F. Logs: /private/tmp/chemviewer-ci-
 postfix-{remote-session,bostmc}-smoke-test.log. Final source render evidence:
 /private/tmp/chemviewer-0120-final-isolated-render.log. Both installation copies
 have been refreshed after the resource fix; running user work was not closed.
+
+## Windows-first native desktop implementation — 2026-10-23 (unreleased)
+
+After the user correctly challenged incomplete Windows/Linux parity, they
+explicitly authorized starting a Windows-first Qt port. Branch:
+`feature/windows-desktop`. Preserve existing `AGENTS.md` and `.vscode/` user edits.
+
+Implemented `ChemViewerService` (Swift core-backed private stdio process),
+`desktop/` Qt Widgets/PySide6 frontend and instanced OpenGL viewport. Native
+window/file/document lifecycle, coordinate edits, add/delete, fragments,
+measurements, numeric distances/angles, undo/redo, trajectory and imaginary-mode
+animation, source/properties, energy plot/CSV, XYZ/PNG export and `.cvdesktop`
+portable projects are present. Original source and ORCA-input companions are
+embedded in projects; geometry edits invalidate source properties and affected
+modes. No changes to Mac UI or scientific core algorithms.
+
+Local: `swift build --product ChemViewerService`, 14 service tests and eight live
+Qt GUI tests passed. Source app `--acceptance-report` also passed real render,
+picking, water-distance/edit/undo/PNG on this physical Mac. A premature OpenGL
+program validation initially failed because Qt's widget framebuffer does not
+exist during initializeGL; compile/link is now checked there and actual drawing
+is tested after framebuffer creation. PySide's matrix/vector operator binding
+failed on this build; explicit affine `map` performs the projection/unprojection.
+
+`swift test` attempted before work: full Xcode remains absent (`no such module
+XCTest` under CLT); standalone checks and hosted XCTest remain required.
+Packaging/CI checks are in progress. No new release version or tag is claimed:
+full Windows/Linux parity, physical Windows GPU/HiDPI acceptance, complete
+scientific presentation, drawing, ChemRefine, SSH and BosTMC remain outstanding.
+See docs/windows-desktop.md for the full implemented/open inventory and commands.

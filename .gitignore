@@ -14,3 +14,5 @@ Tests/gui/windows/.venv/
 Tests/references/windows/runs/
 evidence/official-macos-b638m/*.dmg
 evidence/official-macos-b638m/extracted-*/
+
+.venv-desktop/

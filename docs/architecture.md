@@ -671,3 +671,27 @@ app returns missing-resource errors rather than the accessor's fatal trap.
 The relocated ZIP gate also removes one temporary helper and verifies refusal.
 This corrects a real crash in the separately downloaded CI app that was hidden
 by local build-tree fallback, despite successful signing and compilation.
+
+## Windows-first Qt desktop (development branch, 2026-10-23)
+
+`desktop/main.py` uses PySide6 Qt Widgets for desktop integration and
+`desktop/viewport.py` uses QOpenGLWidget/OpenGL 3.3 with two instanced mesh draws,
+depth testing, explicit camera transforms and analytic sphere picking. This
+frontend is shared by Windows/Linux and can be exercised on macOS without
+replacing the native Apple application. Qt Quick 3D is not a dependency.
+
+`ChemViewerService` links ChemCraftCore and owns document state, transactions,
+scientific edits, per-document undo/redo, invalidation, measurement and export.
+`desktop/bridge.py` uses asynchronous QProcess and correlated JSON-line messages
+on a private child's standard streams. No shell, socket or Python chemistry
+reimplementation is involved. Parse/edit failures leave existing state intact.
+Full presentation snapshots use PortableDocument schema 1; project schema 1
+stores original source, embedded input companions and edited core-built frames.
+The `.cvdesktop` project format is separate from the native Mac builder format.
+
+The frozen desktop package embeds the chemistry service as a binary dependency;
+PyInstaller resolves runtime libraries. A relocated package check strips toolchain
+PATH and verifies the actual GUI/GPU and process boundary. Windows software GL
+uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Physical Windows
+GPU/HiDPI acceptance and complete feature parity remain separate open gates.
+See [desktop scope and reproducible checks](windows-desktop.md).
