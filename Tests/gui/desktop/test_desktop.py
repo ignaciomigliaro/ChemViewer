@@ -208,6 +208,10 @@ class DesktopAcceptance(unittest.TestCase):
         with patch("main.QFileDialog.getSaveFileName", return_value=(str(csv_path), "")):
             self.window.export_energy()
         self.assertIn("Energy / Hartree", csv_path.read_text())
+        import csv, io
+        exported_rows = list(csv.reader(io.StringIO(csv_path.read_text())))
+        self.assertEqual(len(exported_rows), len(pane.data["frames"]) + 1)
+        self.assertNotIn(b"\r\r\n", csv_path.read_bytes())
         self.window.copy_xyz(); self.assertIn("1.5", QApplication.clipboard().text())
         self.window.close_document(0); wait_until(lambda: self.window.tabs.count() == 0)
         with patch("main.QFileDialog.getOpenFileNames", return_value=([str(project)], "")):

@@ -348,7 +348,7 @@ class MainWindow(QMainWindow):
         if not pane: return
         path, _ = QFileDialog.getSaveFileName(self, "Export source energy values", "energies.csv", "CSV (*.csv)")
         if path:
-            try: Path(path).write_text(pane.energy_plot.csv(), encoding="utf-8")
+            try: Path(path).write_bytes(pane.energy_plot.csv().encode("utf-8"))
             except OSError as error: self.show_error(str(error))
 
     def copy_xyz(self):
