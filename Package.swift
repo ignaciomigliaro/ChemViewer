@@ -3,10 +3,12 @@ import PackageDescription
 
 var products: [Product] = [
     .library(name: "ChemCraftCore", targets: ["ChemCraftCore"]),
+    .executable(name: "ChemViewerService", targets: ["ChemViewerService"]),
     .executable(name: "ChemViewerPortable", targets: ["ChemViewerPortable"])
 ]
 var targets: [Target] = [
     .target(name: "ChemCraftCore"),
+    .executableTarget(name: "ChemViewerService", dependencies: ["ChemCraftCore"]),
     .executableTarget(name: "ChemViewerPortable", dependencies: ["ChemCraftCore"], resources: [.copy("viewer.html")]),
     .testTarget(name: "ChemCraftCoreTests", dependencies: ["ChemCraftCore"]),
     .testTarget(name: "IntegratedBuildingTests", dependencies: ["ChemCraftCore"], path: "Tests/IntegratedBuilding")

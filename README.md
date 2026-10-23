@@ -1,5 +1,9 @@
 # ChemViewer
 
+Windows-first native Qt desktop work is underway on the development branch.
+See [desktop build, controls and acceptance checks](docs/windows-desktop.md).
+The released 0.12.0 portable viewer remains distinct from this desktop port.
+
 Molecular visualization and computational chemistry workflows for macOS, with a
 shared-parser portable viewer preview for Windows and Linux.
 

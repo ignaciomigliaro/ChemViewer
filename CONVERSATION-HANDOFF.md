@@ -1134,3 +1134,81 @@ Do not clear saved user state or use open -F. Logs: /private/tmp/chemviewer-ci-
 postfix-{remote-session,bostmc}-smoke-test.log. Final source render evidence:
 /private/tmp/chemviewer-0120-final-isolated-render.log. Both installation copies
 have been refreshed after the resource fix; running user work was not closed.
+
+## Windows-first native desktop implementation — 2026-10-23 (unreleased)
+
+After the user correctly challenged incomplete Windows/Linux parity, they
+explicitly authorized starting a Windows-first Qt port. Branch:
+`feature/windows-desktop`. Preserve existing `AGENTS.md` and `.vscode/` user edits.
+
+Implemented `ChemViewerService` (Swift core-backed private stdio process),
+`desktop/` Qt Widgets/PySide6 frontend and instanced OpenGL viewport. Native
+window/file/document lifecycle, coordinate edits, add/delete, fragments,
+measurements, numeric distances/angles, undo/redo, trajectory and imaginary-mode
+animation, source/properties, energy plot/CSV, XYZ/PNG export and `.cvdesktop`
+portable projects are present. Original source and ORCA-input companions are
+embedded in projects; geometry edits invalidate source properties and affected
+modes. No changes to Mac UI or scientific core algorithms.
+
+Local: `swift build --product ChemViewerService`, 14 service tests and eight live
+Qt GUI tests passed. Source app `--acceptance-report` also passed real render,
+picking, water-distance/edit/undo/PNG on this physical Mac. A premature OpenGL
+program validation initially failed because Qt's widget framebuffer does not
+exist during initializeGL; compile/link is now checked there and actual drawing
+is tested after framebuffer creation. PySide's matrix/vector operator binding
+failed on this build; explicit affine `map` performs the projection/unprojection.
+
+`swift test` attempted before work: full Xcode remains absent (`no such module
+XCTest` under CLT); standalone checks and hosted XCTest remain required.
+Packaging/CI checks are in progress. No new release version or tag is claimed:
+full Windows/Linux parity, physical Windows GPU/HiDPI acceptance, complete
+scientific presentation, drawing, ChemRefine, SSH and BosTMC remain outstanding.
+See docs/windows-desktop.md for the full implemented/open inventory and commands.
+
+Desktop follow-up evidence: the frozen macOS desktop ZIP passed its relocated
+GUI acceptance with developer PATH removed. The suite now has 13 GUI workflows
+(save/open/export dialog flows, unsaved-close cancellation, invalid coordinate
+rollback, plotting and packaged-acceptance paths included). Desktop Python
+coverage is about 87% lines+branches locally, enforced per module; only the
+Windows-only GL adapter is exempt on non-Windows hosts.
+
+Initial hosted Windows service failure was a test fixture's text-mode CRLF
+translation, not source corruption: fixture generation now writes explicit UTF-8
+bytes, retaining exact source comparisons. The initial Linux Qt plugin failure
+was missing libxcb-shape0; Linux platform/runtime dependencies are explicit.
+Real Linux arm64 Xvfb/Mesa testing then caught a renderer-state bug after labels:
+QPainter leaves GL blending/scissor/depth-write state changed. The viewport now
+restores explicit 3D state before the next clear/draw. The overlapping placement
+in the display-control test was also removed to avoid ambiguous depth ties.
+These failures were retained and fixed, not skipped or counted as acceptance.
+
+The suite now has 15 desktop GUI workflows, including a real core-process failure
+that preserves the visible document and fails subsequent requests immediately,
+and hermetic bundled/explicit/missing service locator checks. All 15 pass on the
+physical Mac and Linux arm64 Xvfb/Mesa; both reports pass module coverage floors.
+Mac native release build/signature/arm64 check also passed; both canonical Mac
+installations were refreshed with `install-macos.sh --no-build` without terminating
+user sessions. Desktop source remains separate from that native Mac installation.
+
+Hosted 4fad170 checks: Linux and macOS platform/package jobs, scientific Python
+and native Mac gates passed. Windows core XCTest and all 14 service regressions
+passed, then the actual desktop GPU test failed because Qt's bundled Windows
+Mesa exposes GL 3.0 / GLSL 1.30, not GLSL 3.30. No pass was claimed. The renderer
+now has an explicitly bound GLSL 1.30/ARB-instancing path sharing identical
+meshes/depth rendering with the modern path. The complete 15-test GUI suite also
+runs in CI under a Linux Mesa GL 3.0/GLSL 130 constraint, which reproduced the
+compatibility requirement independently. Text labels now use a raster QWidget
+overlay plus QImage export compositing; they no longer invoke Qt text GL painting
+inside the molecular framebuffer. This also avoids old-context text-driver
+state errors. Package reports record the actual GL version/renderer/shader path.
+
+Project persistence now serializes only elements/coordinates, without inserting
+BuildingProject's internal default charge/multiplicity into scientific files.
+Reopening compares saved coordinates with parsed source coordinates and
+invalidates source energies/modes whenever they differ, even if an edited-frame
+flag was removed from the JSON. The fifteenth service regression independently
+changes a saved synthetic geometry and verifies that original calculation
+values cannot be reused. All 15 service and 15 GUI workflows pass locally.
+CSV export writes UTF-8 bytes to avoid Windows CRCRLF translation, with a row-count
+and byte regression. These are scientific/portability corrections, not a new
+release version; required Windows GUI/package checks are still pending.

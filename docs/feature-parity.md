@@ -429,3 +429,21 @@ and SSH configuration are unchanged. Native persistent transport/cache regressio
 and 73 Python tests pass, including successful/failed publication and old socket
 preservation. Actual connection authenticated, but trivial commands and SFTP still
 stalled outside the application; successful live remote browsing is not claimed.
+
+## Windows-first native desktop branch (2026-10-23, unreleased)
+
+A Qt Widgets/OpenGL frontend is now implemented in `desktop/`, backed by the
+same Swift chemistry core through `ChemViewerService`. It adds native windows,
+instanced rendering, picking/measurements, coordinate/element edits,
+add/delete, fragments, internal distance/angle editing, undo/redo, document tabs,
+trajectory/mode animation, source/properties, energy plotting/CSV, XYZ/PNG export
+and portable desktop projects. 15 live Qt tests and 15 service tests
+pass locally on Apple Silicon. Hosted Windows/Linux evidence is tracked in the
+handoff; physical Windows/Linux GPU/HiDPI/desktop acceptance remains open.
+
+This supersedes the prior statement that the browser viewer is the only porting
+implementation, but does not change 0.12.0's released scope. Full spectra,
+thermochemistry/NEB presentation, drawing, ChemRefine, SSH, BosTMC, advanced
+builder/export/settings controls still require migration. The complete Mac
+feature inventory remains the target; this desktop foundation is not 1.0 parity.
+See [desktop status and commands](windows-desktop.md).
