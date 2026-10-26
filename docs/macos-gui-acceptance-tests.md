@@ -473,3 +473,19 @@ after starting the instance if no window appears. Do not use `open -F`, clear
 saved user state or terminate a running user app. Capture stdout and stderr
 together; several native assertions report to stderr. Canonicalize paths before
 checking bundle containment because macOS aliases /tmp and /private/tmp.
+
+## BOS-TMC coordinating atoms — 0.12.1
+
+CV-BOSTMC-007: Confirm the tab/header read BOS-TMC. Index a controlled CSV with
+coordination numbers 1,2,10,11 and missing values. Add Coordination number: options
+must be numeric, and ascending/descending table sorting must keep missing values
+last. Add Coordinating atoms under Coordination geometry. Open the dropdown:
+all 118 elements are available; choose N/O, toggle Na on/off, verify the table
+stays open and highlights selected elements. Done/Escape closes it. Apply must
+require both N and O while allowing additional S; N-only and Na/O must fail.
+Combine with metal and numeric criteria; export must retain original donor lists
+and every source column. Clear selection requires a new choice before Apply.
+No source CSV or previous index cache may be deleted or modified.
+
+Run `--bostmc-smoke-test` for the controlled native workflow and retain the
+existing `--atom-editing-smoke-test` for single-element placement/replacement.

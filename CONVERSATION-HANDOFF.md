@@ -1134,3 +1134,73 @@ Do not clear saved user state or use open -F. Logs: /private/tmp/chemviewer-ci-
 postfix-{remote-session,bostmc}-smoke-test.log. Final source render evidence:
 /private/tmp/chemviewer-0120-final-isolated-render.log. Both installation copies
 have been refreshed after the resource fix; running user work was not closed.
+
+## BOS-TMC coordination-filter release — 2026-10-26 (0.12.1 / build 39)
+
+User requested BOS-TMC spelling, numeric coordination-number sorting and a
+multi-select periodic-table donor filter requiring every selected element while
+allowing additional donor elements. Work is isolated in `fix/bos-tmc-coordination`
+from main; the Windows desktop work remains in PR 6. Preserve user AGENTS.md and
+.vscode changes. Internal BosTMC identifiers/legacy BossTMC preference/cache keys
+and actual data folder names are intentionally retained.
+
+Implemented numeric categorical sorting, a virtual coordinating_atom/elements_all
+criterion, indexed donor membership in cache v3 and a 118-element multi-selection
+popover. JSON/Python-literal donor arrays are read from coordinating_atoms, with
+singular-header compatibility. Exact symbols prevent N/Na or C/Cl substring
+matches; missing/invalid data fails closed. Old caches and source CSV are retained.
+
+Python 3.12 validation: 104 tests pass (three optional proprietary-fixture skips),
+BOS-TMC combined line/branch coverage 92.6% with all existing module floors passed.
+Initial local .build/qa-venv was Python 3.9 without RDKit/ChemRefine, so its full
+suite failed for missing dependencies; this was corrected using the pinned
+requirements in .build/bostmc-qa, not by skipping tests or lowering floors.
+Local swift test remains blocked by Command Line Tools lacking XCTest; standalone
+44 core and three migrated assertions pass, and real XCTest is required in CI.
+
+Read-only full-catalog oracle: 263,235 rows, N/O 83,923, Fe + N/O 6,079; indexed
+sets equal an independent full CSV/literal scan. Coordination categories 0–17
+sort numerically. Source size/mtime unchanged; index plus oracle about 62 sec.
+No source records/calculations are committed. Native build and existing expanded
+catalog smoke passed; final actual-dropdown/single-atom GUI and hosted release
+checks are being completed before publishing/installing the version.
+
+Physical Mac actual-dropdown acceptance passed: the real BOS-TMC filter button
+opens its popover; all 118 native element buttons are present; N/O stay selected
+while Na is toggled on/off; Escape dismisses it; AND membership includes the
+synthetic N4/O/S record and excludes the N6 record. Single-element builder smoke
+also passed. General Metal/render/source/XYZ/PNG smoke exited 0 and printed its
+actual "ChemViewer smoke test PASS" marker; an outer wrapper initially expected
+SMOKE_PASS and incorrectly raised after that successful result. The marker is
+corrected for the final release run. Native screenshots use synthetic data only.
+
+Final physical source-app checks passed on build39: --bostmc-smoke-test opens the
+actual native dropdown, --atom-editing-smoke-test retains builder behavior, and
+--smoke-test passes Metal/render/XYZ/source/PNG regression. All required markers
+and exit codes were checked. The illustrated guide includes actual synthetic
+popover and catalog captures. BOS-TMC's 36 standard-library tests are now also
+required in the Windows/Linux/macOS portable CI jobs; spin-folder path assertions
+use real path components to preserve their semantics on Windows.
+
+Hosted Windows catalog tests exposed existing open index.sqlite handles from
+status(): sqlite3's transaction context manager does not close the connection.
+status now uses contextlib.closing, with an explicit connection-lifetime test.
+The background-index test also retains and waits for its own child before
+removing its temporary directory, eliminating the legitimate Windows index.log
+cleanup race without skipping tests. Cross-platform spin-directory assertions
+use Path.parts. Full suite count is now 102, with 34 portable catalog cases.
+
+The second hosted Windows run exposed os.kill(pid, 0) sending CTRL_C_EVENT
+instead of performing a POSIX liveness probe. Windows now queries process state
+using OpenProcess/GetExitCodeProcess and always closes acquired handles. Tests
+cover live/exited actual processes on each OS and the Win32 query/cleanup contract
+without sending signals. Latest full Python suite: 104 cases, three optional
+proprietary-fixture skips, 36 portable catalog cases; BOS-TMC coverage 92.64%, all
+module floors pass. Final hosted Windows rerun is required before release.
+
+Windows' third run passed real process liveness and background indexing, then
+exposed WinError206 in three embedded-agent tests: the generated agent exceeded
+Windows argv limits. The harness now streams its unchanged generated agent as a
+base64 first line over stdin, followed by the actual JSON protocol; execution
+still occurs in a real child Python with the complete local/remote dispatch.
+No platform skips or production SSH changes were introduced.

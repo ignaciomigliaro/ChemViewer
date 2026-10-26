@@ -14,8 +14,15 @@ final class BosTMCStore: ObservableObject {
         var property: String
         var mode = "range"
         var lower = "", upper = "", text = ""
+        var elements: [String] = []
         func payload() throws -> [String:Any] {
             var result: [String:Any] = ["property":property,"mode":mode]
+            if mode == "elements_all" {
+                guard !elements.isEmpty, elements.allSatisfy({ $0 != "X" && BuildingProject.elements.contains($0) }) else {
+                    throw ParseError.malformed("Choose at least one coordinating element from the periodic table.")
+                }
+                result["elements"] = elements
+            }
             if mode == "contains" || mode == "exact" { result["text"] = text }
             if ["range","any","all","mean","min","max"].contains(mode) {
                 for (key,value) in [("lower",lower),("upper",upper)] where !value.trimmingCharacters(in:.whitespaces).isEmpty {
@@ -73,6 +80,7 @@ final class BosTMCStore: ObservableObject {
     private var polling: Task<Void,Never>?
     private var loadedKey = ""
     private var key: String { "\(remote ? RemoteConnection.shared.explorerIdentity : "local")\0\(csvPath)\0\(rootPath)\0\(cachePath)" }
+    var hasCoordinatingAtoms: Bool { headers.contains("coordinating_atoms") || headers.contains("coordinating_atom") }
     var validCatalog: Bool { !headers.isEmpty && loadedKey == key }
     func invalidate() {
         generation += 1; selectionGeneration += 1; polling?.cancel(); polling = nil
@@ -120,7 +128,7 @@ final class BosTMCStore: ObservableObject {
                         categories=(result["categories"] as? [String:[[String:Any]]] ?? [:]).mapValues{$0.compactMap{$0["value"] as? String}}
                         headers=result["headers"] as? [String] ?? [];total=result["total"] as? Int ?? 0
                         columns=columns.filter{headers.contains($0)};if columns.isEmpty{columns=Array(headers.prefix(6))}
-                        filters=filters.filter{headers.contains($0.property)};loadedKey=identity;busy=false
+                        filters=filters.filter{headers.contains($0.property) || ($0.property=="coordinating_atom" && hasCoordinatingAtoms)};loadedKey=identity;busy=false
                         status="Indexed \(total.formatted()) records. Source values and units are preserved."
                         query(reset:true);loadGraph();return
                     case "error":throw ParseError.malformed(result["error"] as? String ?? "Indexing failed.")
@@ -252,7 +260,7 @@ final class BosTMCStore: ObservableObject {
             target.multiplicity=spin;target.document?.multiplicity=spin
             if let charge{target.charge=charge;target.document?.charge=charge}
             target.document?.title=(source["refcode"] ?? xyzURL.lastPathComponent)+" · mult \(spin)"
-            let provenance="BosTMC CSV record \(recordID): multiplicity \(spin)"+(charge.map{" and charge \($0)"} ?? "; charge missing/invalid—set it before calculation")+". Descriptors remain sourced from the CSV."
+            let provenance="BOS-TMC CSV record \(recordID): multiplicity \(spin)"+(charge.map{" and charge \($0)"} ?? "; charge missing/invalid—set it before calculation")+". Descriptors remain sourced from the CSV."
             if target.document?.warnings.contains(provenance) != true{target.document?.warnings.append(provenance)}
         }
     }
@@ -264,7 +272,7 @@ final class BosTMCStore: ObservableObject {
     }
     func export() {
         guard validCatalog,!busy else{return}
-        let panel=NSSavePanel();panel.nameFieldStringValue="BosTMC-candidates.csv";guard panel.runModal() == .OK,let target=panel.url else{return}
+        let panel=NSSavePanel();panel.nameFieldStringValue="BOS-TMC-candidates.csv";guard panel.runModal() == .OK,let target=panel.url else{return}
         busy=true;let identity=key
         Task {
             let temporary=target.deletingLastPathComponent().appendingPathComponent(".bostmc-export-"+UUID().uuidString)

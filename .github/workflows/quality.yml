@@ -40,6 +40,8 @@ jobs:
         run: python scripts/check-coverage.py --swift "$(swift test --show-codecov-path)"
       - name: Migrated parser, editing and state assertions
         run: python scripts/check-building.py
+      - name: BOS-TMC catalog numeric and coordinating-element regressions
+        run: python -m unittest discover -s python_tests -p test_bostmc.py -v
       - name: Portable executable regression
         run: python scripts/check-portable.py --binary .build/debug/ChemViewerPortable${{ runner.os == 'Windows' && '.exe' || '' }}
       - name: Install browser harness
