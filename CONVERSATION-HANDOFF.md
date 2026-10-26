@@ -1197,3 +1197,10 @@ cover live/exited actual processes on each OS and the Win32 query/cleanup contra
 without sending signals. Latest full Python suite: 104 cases, three optional
 proprietary-fixture skips, 36 portable catalog cases; BOS-TMC coverage 92.64%, all
 module floors pass. Final hosted Windows rerun is required before release.
+
+Windows' third run passed real process liveness and background indexing, then
+exposed WinError206 in three embedded-agent tests: the generated agent exceeded
+Windows argv limits. The harness now streams its unchanged generated agent as a
+base64 first line over stdin, followed by the actual JSON protocol; execution
+still occurs in a real child Python with the complete local/remote dispatch.
+No platform skips or production SSH changes were introduced.

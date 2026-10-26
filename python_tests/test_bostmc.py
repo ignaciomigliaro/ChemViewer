@@ -5,6 +5,12 @@ from unittest.mock import patch, Mock
 ROOT=Path(__file__).resolve().parents[1]/'Sources/ChemCraftMacApp/Resources'
 spec=importlib.util.spec_from_file_location('bostmc_catalog',ROOT/'bostmc_catalog.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);Catalog=module.BosTMCCatalog
 
+def run_embedded_agent(source,payload):
+ # Keep the complete generated agent and JSON protocol, without Windows argv limits.
+ bootstrap="import base64,sys;exec(compile(base64.b64decode(sys.stdin.buffer.readline()),'<chemviewer-remote>','exec'))"
+ wire=base64.b64encode(source.encode()).decode()+'\n'+json.dumps(payload)
+ return subprocess.run([sys.executable,'-c',bootstrap],input=wire,text=True,capture_output=True,check=True)
+
 class BosTMCTests(unittest.TestCase):
  def setUp(self):
   self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
@@ -131,8 +137,7 @@ class BosTMCTests(unittest.TestCase):
   bridge_spec=importlib.util.spec_from_file_location('bridge',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(bridge_spec);bridge_spec.loader.exec_module(bridge)
   source=bridge.remote_agent_source().decode()
   payload=dict(self.request,action='bostmc-query',filters=[dict(property='metal',mode='exact',text='Co')])
-  code="import sys;sys.argv=['-c'];exec(compile("+repr(source)+",'<chemviewer-remote>','exec'))"
-  result=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  result=run_embedded_agent(source,payload)
   response=json.loads(result.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['rows'][0]['refcode'],'CO_TEST')
 
 class LocalCatalogTests(unittest.TestCase):
@@ -163,8 +168,7 @@ class LocalCatalogTests(unittest.TestCase):
   self.assertEqual(r['files'][0]['name'],'calc.dat')
   bridge_spec=importlib.util.spec_from_file_location('bridge_hybrid',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(bridge_spec);bridge_spec.loader.exec_module(bridge)
   payload=dict(action='bostmc-resolve',root=str(self.root/'dataset'),record=dict(refcode='REMOTE',spinmult='4',xyz=''))
-  code="import sys;sys.argv=['-c'];exec(compile("+repr(bridge.remote_agent_source().decode())+",'<chemviewer-remote>','exec'))"
-  wire=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  wire=run_embedded_agent(bridge.remote_agent_source().decode(),payload)
   response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['files'][0]['name'],'calc.dat')
 
  def test_categorical_index_and_ordering_do_not_require_full_scan_sort(self):
@@ -254,8 +258,7 @@ class CoordinatingAtomTests(unittest.TestCase):
  def test_embedded_remote_dispatch_has_same_element_semantics(self):
   spec=importlib.util.spec_from_file_location('donor_bridge',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
   payload=dict(self.request,action='bostmc-query',filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O'])])
-  code="import sys;sys.argv=['-c'];exec(compile("+repr(bridge.remote_agent_source().decode())+",'<chemviewer-remote>','exec'))"
-  wire=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  wire=run_embedded_agent(bridge.remote_agent_source().decode(),payload)
   response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1])
   self.assertTrue(response['ok'],response);self.assertEqual([r['refcode'] for r in response['result']['rows']],['A','B'])
 
