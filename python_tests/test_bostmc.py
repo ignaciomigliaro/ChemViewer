@@ -52,7 +52,7 @@ class BosTMCTests(unittest.TestCase):
    folder=self.root/'dataset'/name/'HUNJAE_comp_0';folder.mkdir(parents=True)
    (folder/'geometry.xyz').write_text('2\nH2\nH 0 0 0\nH 0 0 .74\n');(folder/'psi4.dat').write_text('Synthetic source text')
   first=Catalog.files(dict(self.request,id=1));second=Catalog.files(dict(self.request,id=2))
-  self.assertTrue(all('/singlets/' in f['path'] for f in first['files']));self.assertTrue(all('/triplets/' in f['path'] for f in second['files']));self.assertEqual({f['kind'] for f in first['files']},{'xyz','dat'})
+  self.assertTrue(all('singlets' in Path(f['path']).parts for f in first['files']));self.assertTrue(all('triplets' in Path(f['path']).parts for f in second['files']));self.assertEqual({f['kind'] for f in first['files']},{'xyz','dat'})
  def test_structured_bond_records_exclude_atom_indices(self):
   self.assertEqual(Catalog.numbers('[{"atom1":0,"atom2":1,"length":2.0},{"atom1":0,"atom2":2,"length":1.9}]'),[2.0,1.9])
   self.assertEqual(Catalog.numbers('[{"index":0,"charge":-0.4},{"index":1,"charge":0.4}]'),[-0.4,0.4])
@@ -138,5 +138,89 @@ class LocalCatalogTests(unittest.TestCase):
   self.assertIn('SEARCH',plan)
   plan=' '.join(r[3] for r in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates ORDER BY refcode COLLATE NOCASE,__id LIMIT 50'))
   self.assertNotIn('TEMP B-TREE',plan);db.close()
+
+
+
+class CoordinatingAtomTests(unittest.TestCase):
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+  self.csv=self.root/'donor catalog.csv'
+  self.headers=['refcode','xyz','spinmult','metal','coordination_number','charge','coordinating_atoms']
+  donors=["['N', 'O', 'S']",'["N", "O", "Cl"]',"['N', 'N']","['Na', 'O']","['Cl']",'[]','NaN',"['N', bad]",'{"N":2}', '["N",null]', '["Br","O"]','N','[7,8]','["Og"]']
+  numbers=['1','2','10','11','3','','NaN','4','5','6','7','8','9','12']
+  self.records=[[chr(65+i),'g.xyz','1','Co' if i==1 else 'Fe',cn,['-2','2','10'][i%3],raw] for i,(cn,raw) in enumerate(zip(numbers,donors))]
+  self.request=dict(csv=str(self.csv),root=str(self.root),cache_dir=str(self.root/'cache'))
+  self.build()
+ def tearDown(self):self.temp.cleanup()
+ def build(self):
+  with self.csv.open('w',newline='',encoding='utf-8') as f:
+   writer=csv.writer(f);writer.writerow(self.headers);writer.writerows(self.records)
+  Catalog.build(self.request);self.assertEqual(Catalog.status(self.request)['phase'],'ready')
+ def query(self,elements,**extras):
+  return Catalog.query(dict(self.request,filters=[dict(property='coordinating_atom',mode='elements_all',elements=elements)],**extras))
+ def test_numeric_dropdown_categories_and_numeric_table_order(self):
+  metadata=Catalog.status(self.request)
+  self.assertEqual([r['value'] for r in metadata['categories']['coordination_number']],[str(i) for i in range(1,13)])
+  self.assertEqual([r['value'] for r in metadata['categories']['charge']],['-2','2','10'])
+  for descending in (False,True):
+   rows=Catalog.query(dict(self.request,sort='coordination_number',descending=descending))['rows']
+   self.assertEqual([int(r['coordination_number']) for r in rows[:-2]],list(range(12,0,-1) if descending else range(1,13)))
+   self.assertEqual({r['coordination_number'] for r in rows[-2:]},{'','NaN'})
+ def test_contains_every_requested_donor_and_allows_extras(self):
+  before=hashlib.sha256(self.csv.read_bytes()).digest()
+  self.assertEqual([r['refcode'] for r in self.query(['N','O'])['rows']],['A','B'])
+  self.assertEqual([r['refcode'] for r in self.query(['N','O','Cl'])['rows']],['B'])
+  self.assertEqual(self.query(['N','O','P'])['total'],0)
+  self.assertEqual(hashlib.sha256(self.csv.read_bytes()).digest(),before)
+ def test_element_tokens_do_not_match_substrings_or_atom_counts(self):
+  self.assertEqual([r['refcode'] for r in self.query(['N'])['rows']],['A','B','C','L'])
+  self.assertEqual([r['refcode'] for r in self.query(['Na'])['rows']],['D'])
+  self.assertEqual([r['refcode'] for r in self.query(['Cl'])['rows']],['B','E'])
+  self.assertEqual(self.query(['C'])['total'],0)
+  self.assertEqual([r['refcode'] for r in self.query(['N','N'])['rows']],['A','B','C','L'])
+  self.assertEqual([r['refcode'] for r in self.query(['Og'])['rows']],['N'])
+ def test_declared_donors_only_and_invalid_values_fail_closed(self):
+  for raw in (None,'','NaN','[]','null','true','[7,8]','["N",null]','{"N":2}',"['N',bad]",'NH3','["N","X"]'):
+   self.assertEqual(Catalog.coordinating_elements(raw),set(),raw)
+  self.assertEqual(Catalog.coordinating_elements("('n', 'o', 'CL')"),{'N','O','Cl'})
+  self.assertEqual(Catalog.coordinating_elements('"O"'),{'O'})
+  self.assertEqual(Catalog.coordinating_elements(' Cl '),{'Cl'})
+  self.assertEqual(Catalog.coordinating_elements('Na'),{'Na'})
+  self.assertEqual(Catalog.coordinating_elements('NA'),set())
+ def test_filters_combine_with_other_properties_and_export_keeps_source(self):
+  filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O']),dict(property='metal',mode='exact',text='Fe'),dict(property='coordination_number',mode='range',lower=1,upper=2)]
+  request=dict(self.request,filters=filters)
+  self.assertEqual([r['refcode'] for r in Catalog.query(request)['rows']],['A'])
+  rows=list(csv.DictReader(io.StringIO(Catalog.export(request)['csv'])))
+  self.assertEqual(len(rows),1);self.assertEqual(list(rows[0]),self.headers)
+  self.assertEqual(rows[0]['coordinating_atoms'],self.records[0][-1])
+ def test_invalid_requests_are_rejected(self):
+  for elements in ([],None,'N',[None],['X'],['cl'],["N'); DROP TABLE candidates; --"],['N']*119):
+   with self.assertRaises(ValueError):self.query(elements)
+  self.assertEqual(self.query(['N'])['total'],4)
+ def test_missing_header_is_not_inferred_from_other_fields(self):
+  self.headers[-1]='molecular_formula';self.build()
+  with self.assertRaisesRegex(ValueError,'no declared'):self.query(['N'])
+ def test_singular_source_column_is_supported(self):
+  self.headers[-1]='coordinating_atom';self.build()
+  self.assertEqual([r['refcode'] for r in self.query(['N','O'])['rows']],['A','B'])
+ def test_old_cache_is_retained_and_new_index_uses_element_keys(self):
+  info=self.csv.stat()
+  old=hashlib.sha256((str(self.csv.absolute())+'\0'+str(info.st_size)+'\0'+str(info.st_mtime_ns)+'\0v2').encode()).hexdigest()
+  oldfile=self.root/'cache'/old/'index.sqlite';oldfile.parent.mkdir();oldfile.write_bytes(b'preserve old cache')
+  self.assertNotEqual(Catalog.location(self.request)[2],old)
+  self.assertEqual(oldfile.read_bytes(),b'preserve old cache')
+  db,m=Catalog.connect(self.request)
+  where,args=Catalog.selection(dict(filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O'])]),m)
+  plan=' '.join(row[3] for row in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates'+where,args))
+  self.assertIn('SEARCH coordinating_elements USING PRIMARY KEY',plan)
+  self.assertNotIn('cvraw',where);db.close()
+ def test_embedded_remote_dispatch_has_same_element_semantics(self):
+  spec=importlib.util.spec_from_file_location('donor_bridge',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
+  payload=dict(self.request,action='bostmc-query',filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O'])])
+  code="import sys;sys.argv=['-c'];exec(compile("+repr(bridge.remote_agent_source().decode())+",'<chemviewer-remote>','exec'))"
+  wire=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1])
+  self.assertTrue(response['ok'],response);self.assertEqual([r['refcode'] for r in response['result']['rows']],['A','B'])
 
 if __name__=='__main__':unittest.main()

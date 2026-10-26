@@ -543,3 +543,27 @@ on this physical Mac. Its general render smoke reached the shader-location
 assertion but falsely rejected /tmp versus /private/tmp aliases. The assertion
 now canonicalizes both paths and requires a directory boundary; final physical
 render acceptance uses that correction, without relaxing resource containment.
+
+## BOS-TMC coordination filters — 0.12.1 (2026-10-26)
+
+Ten new independently authored catalog tests cover numeric 1–12 dropdown/table
+ordering (including missing values and reverse order), required-element subset
+matching, extra donors, exact N/Na and C/Cl distinction, duplicate donors, malformed
+and absent data, singular header compatibility, combined criteria, raw CSV export,
+retained old caches, indexed query plans and embedded remote-helper dispatch.
+The full Python suite passes 101 cases with three optional proprietary-fixture
+skips; BOS-TMC line/branch coverage is 92.41%, above the existing 91% floor.
+
+Read-only acceptance on the supplied 263,235-record catalog compared the complete
+indexed N/O result-ID set against an independent `csv` + `ast.literal_eval` scan:
+83,923 N-and-O records and 6,079 when also requiring Fe. Numeric categories are
+0 through 17 in numeric order. The source size and modification time did not
+change. Index construction plus the independent scan took about 62 seconds on
+the development Mac. These checks concern declared descriptor membership and do
+not establish catalytic activity or a structural bond-assignment algorithm.
+
+Native acceptance exercises all 118 periodic-table buttons, N/O selection and
+Na toggle/removal, subset filtering with additional S donors, original property
+filters, source precision, separate spin records and unchanged source CSV. Shared
+single-element builder periodic-table acceptance is rerun separately. Physical
+native results and hosted release checks are recorded in the continuation handoff.

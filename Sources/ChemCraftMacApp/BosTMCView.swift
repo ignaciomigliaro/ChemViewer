@@ -14,7 +14,7 @@ struct BosTMCView: View {
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
             HStack {
-                Label("BosTMC · Catalyst candidates",systemImage:"line.3.horizontal.decrease.circle").font(.headline)
+                Label("BOS-TMC · Catalyst candidates",systemImage:"line.3.horizontal.decrease.circle").font(.headline)
                 Spacer()
                 Picker("CSV location",selection:$catalog.remote){Text("Remote CSV").tag(true);Text("Local CSV").tag(false)}.pickerStyle(.segmented).labelsHidden().frame(width:220).disabled(catalog.busy)
                 Button("Dataset settings"){configuration.toggle()}
@@ -60,7 +60,7 @@ struct BosTMCView: View {
         .onChange(of:catalog.graphProperty){_ in catalog.loadGraph()}
         .onChange(of:connection.explorerIdentity){_ in if catalog.remote || catalog.filesRemote{catalog.invalidate()}}
         .sheet(item:$picker){kind in
-            RemoteWorkflowPicker(kind:kind, title:pickingRoot ? "Choose BosTMC dataset root":"Choose BosTMC property CSV",buttonTitle:pickingRoot ? "Use folder":"Use CSV") {path in
+            RemoteWorkflowPicker(kind:kind, title:pickingRoot ? "Choose BOS-TMC dataset root":"Choose BOS-TMC property CSV",buttonTitle:pickingRoot ? "Use folder":"Use CSV") {path in
                 if pickingRoot{catalog.rootPath=path}else{catalog.csvPath=path}
             }
         }
@@ -74,7 +74,11 @@ struct BosTMCView: View {
             TextField("Refcode, formula, metal or geometry",text:$catalog.search).textFieldStyle(.roundedBorder).onSubmit{catalog.query(reset:true)}
             Menu("Add property") {
                 ForEach(["Composition","Coordination geometry","Electronic structure","Spin-state & atomization energies","Data quality"],id:\.self){group in
-                    Menu(group){ForEach(catalog.headers.filter{!BosTMCProperties.hidden.contains($0) && BosTMCProperties.group($0)==group},id:\.self){field in
+                    Menu(group){
+                        if group == "Coordination geometry" && catalog.hasCoordinatingAtoms {
+                            Button("Coordinating atoms"){addFilter("coordinating_atom")}
+                        }
+                        ForEach(catalog.headers.filter{!BosTMCProperties.hidden.contains($0) && BosTMCProperties.group($0)==group},id:\.self){field in
                         Button(BosTMCProperties.title(field)){addFilter(field)}
                     }}
                 }
@@ -82,7 +86,9 @@ struct BosTMCView: View {
             ScrollView {VStack(spacing:12){ForEach($catalog.filters){$criterion in
                 VStack(alignment:.leading,spacing:7){
                     HStack{Text(BosTMCProperties.title(criterion.property)).font(.caption.bold()).help(criterion.property);Spacer();Button{catalog.filters.removeAll{$0.id==criterion.id}}label:{Image(systemName:"xmark")}.buttonStyle(.plain)}
-                    if BosTMCProperties.categorical.contains(criterion.property),let values=catalog.categories[criterion.property]{
+                    if criterion.property == "coordinating_atom" {
+                        BosTMCCoordinatingAtomsFilter(elements:$criterion.elements).environmentObject(workspace)
+                    }else if BosTMCProperties.categorical.contains(criterion.property),let values=catalog.categories[criterion.property]{
                         Picker("Value",selection:$criterion.text){Text("Choose…").tag("");ForEach(values,id:\.self){Text($0).tag($0)}}.labelsHidden()
                     }else if BosTMCStore.numericProperties.contains(criterion.property){
                         if let stat=catalog.summary[criterion.property],let low=stat["min"],let high=stat["max"],high>low{
@@ -141,7 +147,7 @@ struct BosTMCView: View {
         }
     }
     private func addFilter(_ field:String){
-        var criterion=BosTMCStore.Criterion(property:field,mode:BosTMCProperties.categorical.contains(field) ? "exact":BosTMCStore.numericProperties.contains(field) ? "range":"contains")
+        var criterion=BosTMCStore.Criterion(property:field,mode:field == "coordinating_atom" ? "elements_all":BosTMCProperties.categorical.contains(field) ? "exact":BosTMCStore.numericProperties.contains(field) ? "range":"contains")
         if let values=catalog.categories[field],let first=values.first{criterion.text=first}
         if let stat=catalog.summary[field]{criterion.lower=stat["min"].map{String($0)} ?? "";criterion.upper=stat["max"].map{String($0)} ?? ""}
         catalog.filters.append(criterion)
@@ -149,6 +155,6 @@ struct BosTMCView: View {
     private func choose(root: Bool){
         pickingRoot=root
         if (root && (catalog.remote || catalog.filesRemote)) || (!root && catalog.remote){picker=root ? .folder:.catalogCSV}
-        else{let panel=NSOpenPanel();panel.canChooseDirectories=root;panel.canChooseFiles = !root;panel.message=root ? "Choose the dataset root":"Choose the BosTMC CSV";if panel.runModal() == .OK,let url=panel.url{if root{catalog.rootPath=url.path}else{catalog.csvPath=url.path}}}
+        else{let panel=NSOpenPanel();panel.canChooseDirectories=root;panel.canChooseFiles = !root;panel.message=root ? "Choose the dataset root":"Choose the BOS-TMC CSV";if panel.runModal() == .OK,let url=panel.url{if root{catalog.rootPath=url.path}else{catalog.csvPath=url.path}}}
     }
 }

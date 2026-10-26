@@ -413,9 +413,9 @@ without regard to case and numbered names sort naturally. Your choice is saved.
 Double-click a folder name to enter it; its disclosure arrow still expands the
 folder tree. Home and Parent return to other locations using the existing channel.
 
-## BosTMC catalyst screening — 0.11.0
+## BOS-TMC catalyst screening — 0.11.0
 
-Open **BosTMC** to screen a BosTMC property CSV on **SSH / HPC** or **This Mac**.
+Open **BOS-TMC** to screen a BOS-TMC property CSV on **SSH / HPC** or **This Mac**.
 For HPC data, connect using **SSH settings…**, browse to the CSV, and set **Root**
 to the directory containing `singlets`, `doublets`, `triplets`, `quartets`,
 `quintets`, and `sextets`. Click **Index CSV**. An optional **Index cache** path
@@ -442,13 +442,13 @@ Psi4 results parser. **Export candidates…** writes all source columns for the
 current criteria to a local CSV. The source dataset is never edited.
 
 The supplied 43-column schema, synthetic local catalog, native preview, document
-metadata, and synthetic SSH workflow are tested. The user's actual BosTMC CSV,
+metadata, and synthetic SSH workflow are tested. The user's actual BOS-TMC CSV,
 array encodings, folder names, and large-catalog performance require validation
 against the real dataset paths.
 
-## Local BosTMC catalog with SSH structures — 0.11.1
+## Local BOS-TMC catalog with SSH structures — 0.11.1
 
-Choose **BosTMC → Local CSV** and select your downloaded property catalog.
+Choose **BOS-TMC → Local CSV** and select your downloaded property catalog.
 The supplied `~/Documents/BosTMC/BOSTMC-complete.csv` is suggested when present.
 Enable **Structure/output files on SSH**, select the SSH connection, and set
 **Root** to the remote folder containing the spin-state directories. **Index CSV**
@@ -498,3 +498,14 @@ including on a newly authenticated connection. The recovery change fixes reuse
 of a stalled connection; it does not claim to repair that external session stall.
 For continuing failures, see the official ORCD troubleshooting guide:
 https://orcd-docs.mit.edu/accessing-orcd/ssh-troubleshooting/ .
+
+## BOS-TMC donor filters — 0.12.1
+
+The panel is named **BOS-TMC**. Coordination-number dropdowns sort numerically.
+Choose **Add property → Coordination geometry → Coordinating atoms**, select
+one or more elements in the periodic-table dropdown, then apply the filter.
+Every selected donor element is required; extra donor elements are allowed.
+For example, N + O includes N/O/S complexes and excludes N-only or Na/O records.
+The filter uses the declared CSV donor list, never a formula substring.
+Re-index once to build the new donor-element index; existing caches are retained.
+See the [illustrated screening guide](docs/user-guide.md#bos-tmc-catalyst-screening).
