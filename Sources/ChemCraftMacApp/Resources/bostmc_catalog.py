@@ -2,6 +2,7 @@
 import ast
 import base64
 import csv
+from contextlib import closing
 import hashlib
 import io
 import json
@@ -173,7 +174,7 @@ class BosTMCCatalog:
     def status(cls,request):
         source,cache,fingerprint=cls.location(request)
         if (cache/'index.sqlite').exists():
-            with sqlite3.connect(cache/'index.sqlite') as db: result=json.loads(db.execute('SELECT data FROM metadata').fetchone()[0])
+            with closing(sqlite3.connect(cache/'index.sqlite')) as db: result=json.loads(db.execute('SELECT data FROM metadata').fetchone()[0])
             return result
         try: result=json.loads((cache/'status.json').read_text())
         except (OSError,ValueError): return dict(phase='not_indexed',rows=0,fingerprint=fingerprint)

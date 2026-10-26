@@ -1150,8 +1150,8 @@ popover. JSON/Python-literal donor arrays are read from coordinating_atoms, with
 singular-header compatibility. Exact symbols prevent N/Na or C/Cl substring
 matches; missing/invalid data fails closed. Old caches and source CSV are retained.
 
-Python 3.12 validation: 101 tests pass (three optional proprietary-fixture skips),
-BOS-TMC combined line/branch coverage 92.41% with all existing module floors passed.
+Python 3.12 validation: 102 tests pass (three optional proprietary-fixture skips),
+BOS-TMC combined line/branch coverage 92.4% with all existing module floors passed.
 Initial local .build/qa-venv was Python 3.9 without RDKit/ChemRefine, so its full
 suite failed for missing dependencies; this was corrected using the pinned
 requirements in .build/bostmc-qa, not by skipping tests or lowering floors.
@@ -1178,6 +1178,14 @@ Final physical source-app checks passed on build39: --bostmc-smoke-test opens th
 actual native dropdown, --atom-editing-smoke-test retains builder behavior, and
 --smoke-test passes Metal/render/XYZ/source/PNG regression. All required markers
 and exit codes were checked. The illustrated guide includes actual synthetic
-popover and catalog captures. BOS-TMC's 33 standard-library tests are now also
+popover and catalog captures. BOS-TMC's 34 standard-library tests are now also
 required in the Windows/Linux/macOS portable CI jobs; spin-folder path assertions
 use real path components to preserve their semantics on Windows.
+
+Hosted Windows catalog tests exposed existing open index.sqlite handles from
+status(): sqlite3's transaction context manager does not close the connection.
+status now uses contextlib.closing, with an explicit connection-lifetime test.
+The background-index test also retains and waits for its own child before
+removing its temporary directory, eliminating the legitimate Windows index.log
+cleanup race without skipping tests. Cross-platform spin-directory assertions
+use Path.parts. Full suite count is now 102, with 34 portable catalog cases.

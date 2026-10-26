@@ -1,6 +1,7 @@
 """Independent synthetic CSV catalog oracles; no BosTMC data redistributed."""
 import base64,csv,hashlib,importlib.util,io,json,os,subprocess,sys,tempfile,time,unittest
 from pathlib import Path
+from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]/'Sources/ChemCraftMacApp/Resources'
 spec=importlib.util.spec_from_file_location('bostmc_catalog',ROOT/'bostmc_catalog.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);Catalog=module.BosTMCCatalog
 
@@ -17,6 +18,16 @@ class BosTMCTests(unittest.TestCase):
   with self.csv.open('w',newline='',encoding='utf-8-sig') as stream:
    writer=csv.writer(stream);writer.writerow(self.headers);writer.writerows(self.records)
  def query(self,**kwargs): return Catalog.query(dict(self.request,**kwargs))
+ def test_status_releases_sqlite_connection(self):
+  opened=[];connect=module.sqlite3.connect
+  class TrackedConnection(module.sqlite3.Connection):
+   closed=False
+   def close(self):self.closed=True;super().close()
+  def open_connection(*args,**kwargs):
+   db=connect(*args,**kwargs,factory=TrackedConnection);opened.append(db);return db
+  with patch.object(module.sqlite3,'connect',side_effect=open_connection):
+   self.assertEqual(Catalog.status(self.request)['phase'],'ready')
+  self.assertEqual(len(opened),1);self.assertTrue(opened[0].closed)
  def test_quoted_csv_and_source_precision(self):
   before=self.csv.read_bytes();d=Catalog.detail(dict(self.request,id=1))['values']
   self.assertEqual(d['note'],'quoted, text\nsecond line');self.assertEqual(d['electronic_energy_Eh'],'-1543.123456789012');self.assertEqual(before,self.csv.read_bytes())
@@ -64,12 +75,20 @@ class BosTMCTests(unittest.TestCase):
   state=Catalog.status(self.request);self.assertEqual(state['phase'],'error');self.assertIn('cells',state['error'])
  def test_background_index_protocol_and_csv_path_with_spaces(self):
   other=self.root/'another.csv';other.write_bytes(self.csv.read_bytes());request=dict(self.request,csv=str(other))
-  state=Catalog.start(request)
-  for _ in range(200):
-   state=Catalog.status(request)
-   if state['phase'] in ('ready','error'):break
-   time.sleep(.025)
-  self.assertEqual(state['phase'],'ready',state);self.assertEqual(state['total'],4)
+  children=[];spawn=subprocess.Popen
+  def launch(*args,**kwargs):
+   child=spawn(*args,**kwargs);children.append(child);return child
+  try:
+   with patch.object(module.subprocess,'Popen',side_effect=launch):state=Catalog.start(request)
+   for _ in range(200):
+    state=Catalog.status(request)
+    if state['phase'] in ('ready','error'):break
+    time.sleep(.025)
+   self.assertEqual(state['phase'],'ready',state);self.assertEqual(state['total'],4)
+  finally:
+   for child in children:
+    try:child.wait(timeout=10)
+    except subprocess.TimeoutExpired:child.terminate();child.wait(timeout=5);raise
  def test_inline_xyz_still_locates_associated_output(self):
   self.records[0][1]='2\ninline XYZ\nH 0 0 0\nH 0 0 .74\n';self.write();Catalog.build(self.request)
   folder=self.root/'dataset/singlets/HUNJAE_comp_0';folder.mkdir(parents=True);(folder/'psi4.dat').write_text('source')

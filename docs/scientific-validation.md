@@ -551,8 +551,8 @@ ordering (including missing values and reverse order), required-element subset
 matching, extra donors, exact N/Na and C/Cl distinction, duplicate donors, malformed
 and absent data, singular header compatibility, combined criteria, raw CSV export,
 retained old caches, indexed query plans and embedded remote-helper dispatch.
-The full Python suite passes 101 cases with three optional proprietary-fixture
-skips; BOS-TMC line/branch coverage is 92.41%, above the existing 91% floor.
+The full Python suite passes 102 cases with three optional proprietary-fixture
+skips; BOS-TMC line/branch coverage is 92.4%, above the existing 91% floor.
 
 Read-only acceptance on the supplied 263,235-record catalog compared the complete
 indexed N/O result-ID set against an independent `csv` + `ast.literal_eval` scan:
