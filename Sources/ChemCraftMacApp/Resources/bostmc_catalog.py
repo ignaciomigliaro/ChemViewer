@@ -170,6 +170,28 @@ class BosTMCCatalog:
         log=(cache/'index.log').open('ab')
         child=subprocess.Popen([sys.executable,'-c',bootstrap],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True);log.close()
         return dict(phase='indexing',rows=0,pid=child.pid,fingerprint=fingerprint)
+    @staticmethod
+    def process_alive(pid):
+        if not isinstance(pid, int) or isinstance(pid, bool) or not 0 < pid <= 0xffffffff: return False
+        if os.name == 'nt':
+            # os.kill(pid, 0) is CTRL_C_EVENT on Windows, not a liveness probe.
+            import ctypes
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel.OpenProcess.argtypes = [ctypes.c_uint, ctypes.c_int, ctypes.c_uint]
+            kernel.OpenProcess.restype = ctypes.c_void_p
+            kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)]
+            kernel.GetExitCodeProcess.restype = ctypes.c_int
+            kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+            kernel.CloseHandle.restype = ctypes.c_int
+            handle = kernel.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+            if not handle: return ctypes.get_last_error() == 5  # Access denied is not proof of death.
+            try:
+                code = ctypes.c_uint()
+                return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(code)) and code.value == 259)  # STILL_ACTIVE
+            finally: kernel.CloseHandle(handle)
+        try: os.kill(pid, 0); return True
+        except OSError: return False
+
     @classmethod
     def status(cls,request):
         source,cache,fingerprint=cls.location(request)
@@ -179,8 +201,7 @@ class BosTMCCatalog:
         try: result=json.loads((cache/'status.json').read_text())
         except (OSError,ValueError): return dict(phase='not_indexed',rows=0,fingerprint=fingerprint)
         if result.get('phase')=='indexing':
-            try: os.kill(result['pid'],0)
-            except (OSError,KeyError): return dict(phase='error',error='Indexing stopped. Click Index CSV to retry.',rows=result.get('rows',0))
+            if not cls.process_alive(result.get('pid')): return dict(phase='error',error='Indexing stopped. Click Index CSV to retry.',rows=result.get('rows',0))
         return result
     @classmethod
     def raw(cls,db,metadata,row_id):

@@ -1,7 +1,7 @@
 """Independent synthetic CSV catalog oracles; no BosTMC data redistributed."""
 import base64,csv,hashlib,importlib.util,io,json,os,subprocess,sys,tempfile,time,unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 ROOT=Path(__file__).resolve().parents[1]/'Sources/ChemCraftMacApp/Resources'
 spec=importlib.util.spec_from_file_location('bostmc_catalog',ROOT/'bostmc_catalog.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);Catalog=module.BosTMCCatalog
 
@@ -18,6 +18,23 @@ class BosTMCTests(unittest.TestCase):
   with self.csv.open('w',newline='',encoding='utf-8-sig') as stream:
    writer=csv.writer(stream);writer.writerow(self.headers);writer.writerows(self.records)
  def query(self,**kwargs): return Catalog.query(dict(self.request,**kwargs))
+ def test_process_liveness_never_signals_current_process(self):
+  self.assertTrue(Catalog.process_alive(os.getpid()))
+  for invalid in (None,True,0,-1,'123',2**32):self.assertFalse(Catalog.process_alive(invalid))
+  child=subprocess.Popen([sys.executable,'-c','pass']);child.wait(timeout=10)
+  self.assertFalse(Catalog.process_alive(child.pid))
+ def test_windows_liveness_contract_closes_handles_without_signals(self):
+  import ctypes
+  for handle,error,exit_code,probe_ok,expected in [(123,0,259,1,True),(123,0,0,1,False),(None,5,0,0,True),(None,87,0,0,False),(123,0,259,0,False)]:
+   kernel=Mock();kernel.OpenProcess.return_value=handle
+   def probe(h,code):code._obj.value=exit_code;return probe_ok
+   kernel.GetExitCodeProcess.side_effect=probe
+   with patch.object(module.os,'name','nt'),patch.object(ctypes,'WinDLL',return_value=kernel,create=True),patch.object(ctypes,'get_last_error',return_value=error,create=True),patch.object(module.os,'kill') as signal:
+    self.assertEqual(Catalog.process_alive(42),expected)
+    signal.assert_not_called()
+   kernel.OpenProcess.assert_called_once_with(0x1000,False,42)
+   if handle:kernel.CloseHandle.assert_called_once_with(handle)
+   else:kernel.CloseHandle.assert_not_called()
  def test_status_releases_sqlite_connection(self):
   opened=[];connect=module.sqlite3.connect
   class TrackedConnection(module.sqlite3.Connection):

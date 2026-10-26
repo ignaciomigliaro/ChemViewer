@@ -693,3 +693,8 @@ list. The BOS-TMC dropdown remains open while elements toggle; Done/Escape close
 it, and Apply submits the criterion. Existing single-element builder selection
 retains its arm-and-dismiss behavior. Local and SSH catalog helpers use the same
 query implementation; reindexing uses a new cache without deleting version 2.
+
+Catalog worker liveness uses a read-only Win32 process handle on Windows, with
+explicit handle closure; POSIX hosts use signal zero. Windows signal zero is
+CTRL_C_EVENT and must never be used as a liveness probe. Real child-process and
+Win32 handle-lifetime regressions run with the portable catalog suite.
