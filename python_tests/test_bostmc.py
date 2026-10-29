@@ -1,8 +1,15 @@
 """Independent synthetic CSV catalog oracles; no BosTMC data redistributed."""
 import base64,csv,hashlib,importlib.util,io,json,os,subprocess,sys,tempfile,time,unittest
 from pathlib import Path
+from unittest.mock import patch, Mock
 ROOT=Path(__file__).resolve().parents[1]/'Sources/ChemCraftMacApp/Resources'
 spec=importlib.util.spec_from_file_location('bostmc_catalog',ROOT/'bostmc_catalog.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);Catalog=module.BosTMCCatalog
+
+def run_embedded_agent(source,payload):
+ # Keep the complete generated agent and JSON protocol, without Windows argv limits.
+ bootstrap="import base64,sys;exec(compile(base64.b64decode(sys.stdin.buffer.readline()),'<chemviewer-remote>','exec'))"
+ wire=base64.b64encode(source.encode()).decode()+'\n'+json.dumps(payload)
+ return subprocess.run([sys.executable,'-c',bootstrap],input=wire,text=True,capture_output=True,check=True)
 
 class BosTMCTests(unittest.TestCase):
  def setUp(self):
@@ -17,6 +24,33 @@ class BosTMCTests(unittest.TestCase):
   with self.csv.open('w',newline='',encoding='utf-8-sig') as stream:
    writer=csv.writer(stream);writer.writerow(self.headers);writer.writerows(self.records)
  def query(self,**kwargs): return Catalog.query(dict(self.request,**kwargs))
+ def test_process_liveness_never_signals_current_process(self):
+  self.assertTrue(Catalog.process_alive(os.getpid()))
+  for invalid in (None,True,0,-1,'123',2**32):self.assertFalse(Catalog.process_alive(invalid))
+  child=subprocess.Popen([sys.executable,'-c','pass']);child.wait(timeout=10)
+  self.assertFalse(Catalog.process_alive(child.pid))
+ def test_windows_liveness_contract_closes_handles_without_signals(self):
+  import ctypes
+  for handle,error,exit_code,probe_ok,expected in [(123,0,259,1,True),(123,0,0,1,False),(None,5,0,0,True),(None,87,0,0,False),(123,0,259,0,False)]:
+   kernel=Mock();kernel.OpenProcess.return_value=handle
+   def probe(h,code):code._obj.value=exit_code;return probe_ok
+   kernel.GetExitCodeProcess.side_effect=probe
+   with patch.object(module.os,'name','nt'),patch.object(ctypes,'WinDLL',return_value=kernel,create=True),patch.object(ctypes,'get_last_error',return_value=error,create=True),patch.object(module.os,'kill') as signal:
+    self.assertEqual(Catalog.process_alive(42),expected)
+    signal.assert_not_called()
+   kernel.OpenProcess.assert_called_once_with(0x1000,False,42)
+   if handle:kernel.CloseHandle.assert_called_once_with(handle)
+   else:kernel.CloseHandle.assert_not_called()
+ def test_status_releases_sqlite_connection(self):
+  opened=[];connect=module.sqlite3.connect
+  class TrackedConnection(module.sqlite3.Connection):
+   closed=False
+   def close(self):self.closed=True;super().close()
+  def open_connection(*args,**kwargs):
+   db=connect(*args,**kwargs,factory=TrackedConnection);opened.append(db);return db
+  with patch.object(module.sqlite3,'connect',side_effect=open_connection):
+   self.assertEqual(Catalog.status(self.request)['phase'],'ready')
+  self.assertEqual(len(opened),1);self.assertTrue(opened[0].closed)
  def test_quoted_csv_and_source_precision(self):
   before=self.csv.read_bytes();d=Catalog.detail(dict(self.request,id=1))['values']
   self.assertEqual(d['note'],'quoted, text\nsecond line');self.assertEqual(d['electronic_energy_Eh'],'-1543.123456789012');self.assertEqual(before,self.csv.read_bytes())
@@ -52,7 +86,7 @@ class BosTMCTests(unittest.TestCase):
    folder=self.root/'dataset'/name/'HUNJAE_comp_0';folder.mkdir(parents=True)
    (folder/'geometry.xyz').write_text('2\nH2\nH 0 0 0\nH 0 0 .74\n');(folder/'psi4.dat').write_text('Synthetic source text')
   first=Catalog.files(dict(self.request,id=1));second=Catalog.files(dict(self.request,id=2))
-  self.assertTrue(all('/singlets/' in f['path'] for f in first['files']));self.assertTrue(all('/triplets/' in f['path'] for f in second['files']));self.assertEqual({f['kind'] for f in first['files']},{'xyz','dat'})
+  self.assertTrue(all('singlets' in Path(f['path']).parts for f in first['files']));self.assertTrue(all('triplets' in Path(f['path']).parts for f in second['files']));self.assertEqual({f['kind'] for f in first['files']},{'xyz','dat'})
  def test_structured_bond_records_exclude_atom_indices(self):
   self.assertEqual(Catalog.numbers('[{"atom1":0,"atom2":1,"length":2.0},{"atom1":0,"atom2":2,"length":1.9}]'),[2.0,1.9])
   self.assertEqual(Catalog.numbers('[{"index":0,"charge":-0.4},{"index":1,"charge":0.4}]'),[-0.4,0.4])
@@ -64,12 +98,20 @@ class BosTMCTests(unittest.TestCase):
   state=Catalog.status(self.request);self.assertEqual(state['phase'],'error');self.assertIn('cells',state['error'])
  def test_background_index_protocol_and_csv_path_with_spaces(self):
   other=self.root/'another.csv';other.write_bytes(self.csv.read_bytes());request=dict(self.request,csv=str(other))
-  state=Catalog.start(request)
-  for _ in range(200):
-   state=Catalog.status(request)
-   if state['phase'] in ('ready','error'):break
-   time.sleep(.025)
-  self.assertEqual(state['phase'],'ready',state);self.assertEqual(state['total'],4)
+  children=[];spawn=subprocess.Popen
+  def launch(*args,**kwargs):
+   child=spawn(*args,**kwargs);children.append(child);return child
+  try:
+   with patch.object(module.subprocess,'Popen',side_effect=launch):state=Catalog.start(request)
+   for _ in range(200):
+    state=Catalog.status(request)
+    if state['phase'] in ('ready','error'):break
+    time.sleep(.025)
+   self.assertEqual(state['phase'],'ready',state);self.assertEqual(state['total'],4)
+  finally:
+   for child in children:
+    try:child.wait(timeout=10)
+    except subprocess.TimeoutExpired:child.terminate();child.wait(timeout=5);raise
  def test_inline_xyz_still_locates_associated_output(self):
   self.records[0][1]='2\ninline XYZ\nH 0 0 0\nH 0 0 .74\n';self.write();Catalog.build(self.request)
   folder=self.root/'dataset/singlets/HUNJAE_comp_0';folder.mkdir(parents=True);(folder/'psi4.dat').write_text('source')
@@ -95,8 +137,7 @@ class BosTMCTests(unittest.TestCase):
   bridge_spec=importlib.util.spec_from_file_location('bridge',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(bridge_spec);bridge_spec.loader.exec_module(bridge)
   source=bridge.remote_agent_source().decode()
   payload=dict(self.request,action='bostmc-query',filters=[dict(property='metal',mode='exact',text='Co')])
-  code="import sys;sys.argv=['-c'];exec(compile("+repr(source)+",'<chemviewer-remote>','exec'))"
-  result=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  result=run_embedded_agent(source,payload)
   response=json.loads(result.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['rows'][0]['refcode'],'CO_TEST')
 
 class LocalCatalogTests(unittest.TestCase):
@@ -127,8 +168,7 @@ class LocalCatalogTests(unittest.TestCase):
   self.assertEqual(r['files'][0]['name'],'calc.dat')
   bridge_spec=importlib.util.spec_from_file_location('bridge_hybrid',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(bridge_spec);bridge_spec.loader.exec_module(bridge)
   payload=dict(action='bostmc-resolve',root=str(self.root/'dataset'),record=dict(refcode='REMOTE',spinmult='4',xyz=''))
-  code="import sys;sys.argv=['-c'];exec(compile("+repr(bridge.remote_agent_source().decode())+",'<chemviewer-remote>','exec'))"
-  wire=subprocess.run([sys.executable,'-c',code],input=json.dumps(payload),text=True,capture_output=True,check=True)
+  wire=run_embedded_agent(bridge.remote_agent_source().decode(),payload)
   response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1]);self.assertTrue(response['ok'],response);self.assertEqual(response['result']['files'][0]['name'],'calc.dat')
 
  def test_categorical_index_and_ordering_do_not_require_full_scan_sort(self):
@@ -138,5 +178,88 @@ class LocalCatalogTests(unittest.TestCase):
   self.assertIn('SEARCH',plan)
   plan=' '.join(r[3] for r in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates ORDER BY refcode COLLATE NOCASE,__id LIMIT 50'))
   self.assertNotIn('TEMP B-TREE',plan);db.close()
+
+
+
+class CoordinatingAtomTests(unittest.TestCase):
+ def setUp(self):
+  self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
+  self.csv=self.root/'donor catalog.csv'
+  self.headers=['refcode','xyz','spinmult','metal','coordination_number','charge','coordinating_atoms']
+  donors=["['N', 'O', 'S']",'["N", "O", "Cl"]',"['N', 'N']","['Na', 'O']","['Cl']",'[]','NaN',"['N', bad]",'{"N":2}', '["N",null]', '["Br","O"]','N','[7,8]','["Og"]']
+  numbers=['1','2','10','11','3','','NaN','4','5','6','7','8','9','12']
+  self.records=[[chr(65+i),'g.xyz','1','Co' if i==1 else 'Fe',cn,['-2','2','10'][i%3],raw] for i,(cn,raw) in enumerate(zip(numbers,donors))]
+  self.request=dict(csv=str(self.csv),root=str(self.root),cache_dir=str(self.root/'cache'))
+  self.build()
+ def tearDown(self):self.temp.cleanup()
+ def build(self):
+  with self.csv.open('w',newline='',encoding='utf-8') as f:
+   writer=csv.writer(f);writer.writerow(self.headers);writer.writerows(self.records)
+  Catalog.build(self.request);self.assertEqual(Catalog.status(self.request)['phase'],'ready')
+ def query(self,elements,**extras):
+  return Catalog.query(dict(self.request,filters=[dict(property='coordinating_atom',mode='elements_all',elements=elements)],**extras))
+ def test_numeric_dropdown_categories_and_numeric_table_order(self):
+  metadata=Catalog.status(self.request)
+  self.assertEqual([r['value'] for r in metadata['categories']['coordination_number']],[str(i) for i in range(1,13)])
+  self.assertEqual([r['value'] for r in metadata['categories']['charge']],['-2','2','10'])
+  for descending in (False,True):
+   rows=Catalog.query(dict(self.request,sort='coordination_number',descending=descending))['rows']
+   self.assertEqual([int(r['coordination_number']) for r in rows[:-2]],list(range(12,0,-1) if descending else range(1,13)))
+   self.assertEqual({r['coordination_number'] for r in rows[-2:]},{'','NaN'})
+ def test_contains_every_requested_donor_and_allows_extras(self):
+  before=hashlib.sha256(self.csv.read_bytes()).digest()
+  self.assertEqual([r['refcode'] for r in self.query(['N','O'])['rows']],['A','B'])
+  self.assertEqual([r['refcode'] for r in self.query(['N','O','Cl'])['rows']],['B'])
+  self.assertEqual(self.query(['N','O','P'])['total'],0)
+  self.assertEqual(hashlib.sha256(self.csv.read_bytes()).digest(),before)
+ def test_element_tokens_do_not_match_substrings_or_atom_counts(self):
+  self.assertEqual([r['refcode'] for r in self.query(['N'])['rows']],['A','B','C','L'])
+  self.assertEqual([r['refcode'] for r in self.query(['Na'])['rows']],['D'])
+  self.assertEqual([r['refcode'] for r in self.query(['Cl'])['rows']],['B','E'])
+  self.assertEqual(self.query(['C'])['total'],0)
+  self.assertEqual([r['refcode'] for r in self.query(['N','N'])['rows']],['A','B','C','L'])
+  self.assertEqual([r['refcode'] for r in self.query(['Og'])['rows']],['N'])
+ def test_declared_donors_only_and_invalid_values_fail_closed(self):
+  for raw in (None,'','NaN','[]','null','true','[7,8]','["N",null]','{"N":2}',"['N',bad]",'NH3','["N","X"]'):
+   self.assertEqual(Catalog.coordinating_elements(raw),set(),raw)
+  self.assertEqual(Catalog.coordinating_elements("('n', 'o', 'CL')"),{'N','O','Cl'})
+  self.assertEqual(Catalog.coordinating_elements('"O"'),{'O'})
+  self.assertEqual(Catalog.coordinating_elements(' Cl '),{'Cl'})
+  self.assertEqual(Catalog.coordinating_elements('Na'),{'Na'})
+  self.assertEqual(Catalog.coordinating_elements('NA'),set())
+ def test_filters_combine_with_other_properties_and_export_keeps_source(self):
+  filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O']),dict(property='metal',mode='exact',text='Fe'),dict(property='coordination_number',mode='range',lower=1,upper=2)]
+  request=dict(self.request,filters=filters)
+  self.assertEqual([r['refcode'] for r in Catalog.query(request)['rows']],['A'])
+  rows=list(csv.DictReader(io.StringIO(Catalog.export(request)['csv'])))
+  self.assertEqual(len(rows),1);self.assertEqual(list(rows[0]),self.headers)
+  self.assertEqual(rows[0]['coordinating_atoms'],self.records[0][-1])
+ def test_invalid_requests_are_rejected(self):
+  for elements in ([],None,'N',[None],['X'],['cl'],["N'); DROP TABLE candidates; --"],['N']*119):
+   with self.assertRaises(ValueError):self.query(elements)
+  self.assertEqual(self.query(['N'])['total'],4)
+ def test_missing_header_is_not_inferred_from_other_fields(self):
+  self.headers[-1]='molecular_formula';self.build()
+  with self.assertRaisesRegex(ValueError,'no declared'):self.query(['N'])
+ def test_singular_source_column_is_supported(self):
+  self.headers[-1]='coordinating_atom';self.build()
+  self.assertEqual([r['refcode'] for r in self.query(['N','O'])['rows']],['A','B'])
+ def test_old_cache_is_retained_and_new_index_uses_element_keys(self):
+  info=self.csv.stat()
+  old=hashlib.sha256((str(self.csv.absolute())+'\0'+str(info.st_size)+'\0'+str(info.st_mtime_ns)+'\0v2').encode()).hexdigest()
+  oldfile=self.root/'cache'/old/'index.sqlite';oldfile.parent.mkdir();oldfile.write_bytes(b'preserve old cache')
+  self.assertNotEqual(Catalog.location(self.request)[2],old)
+  self.assertEqual(oldfile.read_bytes(),b'preserve old cache')
+  db,m=Catalog.connect(self.request)
+  where,args=Catalog.selection(dict(filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O'])]),m)
+  plan=' '.join(row[3] for row in db.execute('EXPLAIN QUERY PLAN SELECT __id FROM candidates'+where,args))
+  self.assertIn('SEARCH coordinating_elements USING PRIMARY KEY',plan)
+  self.assertNotIn('cvraw',where);db.close()
+ def test_embedded_remote_dispatch_has_same_element_semantics(self):
+  spec=importlib.util.spec_from_file_location('donor_bridge',ROOT/'remote_bridge.py');bridge=importlib.util.module_from_spec(spec);spec.loader.exec_module(bridge)
+  payload=dict(self.request,action='bostmc-query',filters=[dict(property='coordinating_atom',mode='elements_all',elements=['N','O'])])
+  wire=run_embedded_agent(bridge.remote_agent_source().decode(),payload)
+  response=json.loads(wire.stdout.split('CHEMVIEWER_JSON:')[-1])
+  self.assertTrue(response['ok'],response);self.assertEqual([r['refcode'] for r in response['result']['rows']],['A','B'])
 
 if __name__=='__main__':unittest.main()

@@ -447,3 +447,13 @@ thermochemistry/NEB presentation, drawing, ChemRefine, SSH, BosTMC, advanced
 builder/export/settings controls still require migration. The complete Mac
 feature inventory remains the target; this desktop foundation is not 1.0 parity.
 See [desktop status and commands](windows-desktop.md).
+## 0.12.1 — BOS-TMC name, numeric categories and donor filter
+
+The panel/tab name is BOS-TMC. Coordination-number categorical options sort by
+numeric value. A coordinating-atom periodic-table dropdown supports multiple
+required elements: all selected elements must occur in the declared donor list;
+extra donor types are allowed. N and Na are distinct. The same indexed filter
+runs locally and through the remote helper, combines with existing criteria and
+preserves source CSV export. Missing donor data is excluded without inference.
+The version 3 cache requires reindexing once and retains old caches. Existing
+single-element builder behavior and saved user settings remain compatible.

@@ -157,18 +157,32 @@ cluster chemistry completion is still a separate acceptance gate.
 [Remote setup](remote-connections-2026-10-20.md),
 [shared destination](remote-connections-2026-10-20.md).
 
-## BosTMC catalyst screening
+## BOS-TMC catalyst screening
 
-![Native BosTMC panel showing synthetic FeN6 screening, a selected molecule and histogram](images/native-bostmc.png)
+![Native BOS-TMC panel showing synthetic FeN6 screening, a selected molecule and histogram](images/native-bostmc.png)
 
 The native screenshot uses two independently authored synthetic spin records,
-not production BosTMC data or a calculated catalyst ranking.
+not production BOS-TMC data or a calculated catalyst ranking.
 
-Choose **BosTMC**, then a local CSV or SSH source, a structure/output root and
+Choose **BOS-TMC**, then a local CSV or SSH source, a structure/output root and
 optionally an index cache. A local downloaded catalog can filter and preview its
 embedded XYZ without SSH; enable remote structure/output lookup only when needed.
 Indexing is streamed into a compact SQLite cache and leaves the CSV unchanged.
 Keep that CSV available: large raw fields are read from source offsets on demand.
+
+In **Add property → Coordination geometry → Coordinating atoms**, open the
+periodic-table dropdown and select the donor elements you require. Click elements
+to toggle them, then **Done** and **Apply filters**. Selecting N and O matches
+records whose declared `coordinating_atoms` list contains **both** elements;
+additional donors such as S are allowed. N never matches Na. This is element
+presence, not a request for a particular count of each element. Missing or invalid
+donor lists do not match; no donors are inferred from the formula or XYZ.
+
+![Coordinating-atom periodic table with N and O selected](images/bos-tmc-coordinating-atoms.png)
+
+Coordination-number dropdown options and table sorting use numeric order
+(0, 1, 2, …, 10, 11), preserving the original CSV values. Re-index the CSV once
+for 0.12.1's donor-element index; existing caches and the source CSV are retained.
 
 Apply combines criteria with AND semantics. Scalar ranges support one-sided
 bounds; categories come from the catalog. Array any/all/mean have distinct meanings.
@@ -182,7 +196,7 @@ valid CSV charge/spin; separate spin records remain separate documents. Psi4 out
 is source inspection, not a claim of complete Psi4 result parsing. Filtering
 selects records; it does not establish catalytic activity.
 
-[Screening implementation and acceptance](../README.md#bostmc-catalyst-screening--0110),
+[Screening implementation and acceptance](../README.md#bos-tmc-catalyst-screening--0110),
 [local catalog and graph validation](scientific-validation.md#local-bostmc-actual-catalog-validation--0111--build36-2026-10-22).
 
 ## Supported scope and troubleshooting

@@ -703,3 +703,29 @@ workflows are mandatory under a constrained Linux Mesa context in CI. Labels
 use a transparent raster QWidget overlay and are composited into exported
 QImages, keeping Qt text painting out of the molecular GL context. Package
 reports record actual GL version, renderer and shader path.
+## 0.12.1 — BOS-TMC donor-element filtering
+
+The display name is BOS-TMC; tab identifiers, saved preference keys, source paths
+and legacy cache directories retain their previous values for compatibility.
+Numeric categorical metadata orders by the indexed scalar value, fixing the
+coordination-number dropdown's lexical ordering without rewriting source strings.
+
+Cache fingerprint version 3 adds a compact `coordinating_elements` table keyed by
+(element, candidate_id). The virtual `coordinating_atom` filter sends
+`mode: elements_all` and explicit element symbols. Indexed membership clauses are
+combined with AND, allowing additional donors. The source field is
+`coordinating_atoms` (or singular `coordinating_atom` when that is the CSV header).
+JSON/Python literal string lists and canonical scalar symbols are accepted;
+malformed/missing lists fail closed. Neither molecular formulas nor geometries
+supply missing donor information. CSV exports retain original columns and values.
+
+The existing 118-element native periodic table now optionally binds a multi-select
+list. The BOS-TMC dropdown remains open while elements toggle; Done/Escape closes
+it, and Apply submits the criterion. Existing single-element builder selection
+retains its arm-and-dismiss behavior. Local and SSH catalog helpers use the same
+query implementation; reindexing uses a new cache without deleting version 2.
+
+Catalog worker liveness uses a read-only Win32 process handle on Windows, with
+explicit handle closure; POSIX hosts use signal zero. Windows signal zero is
+CTRL_C_EVENT and must never be used as a liveness probe. Real child-process and
+Win32 handle-lifetime regressions run with the portable catalog suite.

@@ -21,7 +21,7 @@ struct ContentView: View {
             HStack(spacing: 5) {
                 ForEach(tabs, id: \.self) { tab in
                     Button { workspace.activeTab = tab } label: {
-                        Text(tab).font(.system(size: 17, weight: workspace.activeTab == tab ? .semibold : .regular))
+                        Text(tab == "BosTMC" ? "BOS-TMC" : tab).font(.system(size: 17, weight: workspace.activeTab == tab ? .semibold : .regular))
                             .frame(width: tab == "Image/Abs" ? 115 : 100, height: 31)
                             .background(workspace.activeTab == tab ? Color.white : Color.clear)
                             .overlay(Rectangle().stroke(workspace.activeTab == tab ? Color.accentColor : .clear, lineWidth: 1))
