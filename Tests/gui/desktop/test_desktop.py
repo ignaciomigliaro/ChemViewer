@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "desktop"))
-from main import MainWindow, configure_graphics
+from main import MainWindow, apply_theme, configure_graphics
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QImage
 from PySide6.QtTest import QTest
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QApplication, QTableWidgetItem, QMessageBox
 
 configure_graphics()
 APP = QApplication.instance() or QApplication(["ChemViewer desktop acceptance"])
+apply_theme(APP)
 
 
 def wait_until(predicate, timeout=15):
@@ -101,7 +102,7 @@ class DesktopAcceptance(unittest.TestCase):
 
     def test_coordinate_edit_undo_redo_shared_core(self):
         pane = self.open(); original = pane.data["frames"][0]["atoms"][1]["position"][:]
-        pane.views.setCurrentIndex(1)
+        pane.mode_tabs.setCurrentIndex(3)
         pane.coordinates.setItem(1, 1, QTableWidgetItem("1.5"))
         wait_until(lambda: pane.dirty)
         self.assertEqual(pane.data["frames"][0]["atoms"][1]["position"][0], 1.5)
@@ -175,7 +176,7 @@ class DesktopAcceptance(unittest.TestCase):
             value = frame.get("energyHartree")
             self.assertEqual(row[1], "" if value is None else repr(value))
         pane.energy_plot.set_points([(1, -1.123456789012), (2, None), (3, -1.0)])
-        pane.views.setCurrentWidget(pane.energy_plot); QTest.qWait(50)
+        pane.show_energy(); QTest.qWait(50)
         self.assertIn("2,\r\n", pane.energy_plot.csv())
         self.assertIn("-1.123456789012", pane.energy_plot.csv())
 
@@ -204,7 +205,7 @@ class DesktopAcceptance(unittest.TestCase):
             self.window.export_png()
         self.assert_molecule_pixels(QImage(str(png)))
         csv_path = directory / "energy.csv"
-        pane.views.setCurrentWidget(pane.energy_plot); QTest.qWait(50)
+        pane.show_energy(); QTest.qWait(50)
         with patch("main.QFileDialog.getSaveFileName", return_value=(str(csv_path), "")):
             self.window.export_energy()
         self.assertIn("Energy / Hartree", csv_path.read_text())
@@ -221,7 +222,7 @@ class DesktopAcceptance(unittest.TestCase):
 
     def test_invalid_coordinate_edits_restore_authoritative_state(self):
         pane = self.open(); original = pane.data["frames"][0]["atoms"][:]
-        pane.views.setCurrentIndex(1)
+        pane.mode_tabs.setCurrentIndex(3)
         pane.coordinates.setItem(1, 1, QTableWidgetItem("nan"))
         self.assertIn("finite", self.window.errors.pop())
         self.assertEqual(float(pane.coordinates.item(1, 1).text()), original[1]["position"][0])
@@ -254,6 +255,31 @@ class DesktopAcceptance(unittest.TestCase):
         self.assert_molecule_pixels(exported)
         self.assertNotEqual(bytes(raw.constBits()), bytes(exported.constBits()))
         self.assertEqual(pane.viewport.style, "Space filling")
+        self.assertTrue(pane.viewport.labels)
+
+    def test_mac_workspace_shell_layout_and_modes(self):
+        pane = self.open()
+        self.assertEqual(
+            [pane.mode_tabs.tabText(i) for i in range(pane.mode_tabs.count())],
+            ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BOS-TMC"],
+        )
+        self.assertTrue(pane.explorer.isVisible())
+        self.assertFalse(pane.builder.isVisible())
+        self.assertEqual(pane.geometry_list.count(), pane.frames.count())
+        self.assertEqual(pane.geometry_list.currentRow(), pane.frame)
+        self.assertEqual(pane.explorer_title.text(), pane.data["title"])
+        self.assertEqual(pane.selection_title.text(), "Selection (0)")
+        inspector = pane.findChild(type(pane.image_content), "selectionInspector")
+        self.assertIsNotNone(inspector)
+        self.assertEqual(inspector.height(), 140)
+        pane.toggle_builder(True)
+        self.assertTrue(pane.builder.isVisible())
+        pane.mode_tabs.setCurrentIndex(4)
+        self.assertIs(pane.views.currentWidget(), pane.combined_page)
+        pane.mode_tabs.setCurrentIndex(0)
+        self.assertIs(pane.views.currentWidget(), pane.image_page)
+        pane.set_label_mode("Element + number")
+        self.assertEqual(pane.viewport.label_mode, "Element + number")
         self.assertTrue(pane.viewport.labels)
 
     def test_packaged_acceptance_path_checks_actual_gui(self):

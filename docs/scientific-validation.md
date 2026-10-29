@@ -546,7 +546,7 @@ render acceptance uses that correction, without relaxing resource containment.
 
 ## Qt desktop port — development acceptance
 
-The Windows-first branch adds 15 real-service protocol regressions and 15
+The Windows-first branch adds 15 real-service protocol regressions and 16
 Qt/OpenGL GUI regressions. Service oracles include water O–H 0.95720 Å,
 H–O–H 104.52°, signed dihedral 116.56505°, explicit numeric geometry edits,
 negative frequency −250 cm⁻¹, separate missing Raman/IR intensity 7.5, exact
@@ -560,7 +560,7 @@ and energy test parsing/display only and do not establish physical accuracy of
 a computed H2 transition state. The water/dihedral fixtures retain the existing
 independent geometric oracles.
 
-All 15 desktop tests passed on the physical Apple Silicon Mac using real Qt
+The original 15 desktop tests passed on the physical Apple Silicon Mac using real Qt
 windows and OpenGL framebuffers. They inspect molecular pixels, picking,
 measurement, coordinate edit/undo/redo, per-document camera/playback lifetime,
 trajectory/equilibrium export, negative-mode animation/invalidation, builder
@@ -568,12 +568,28 @@ project reload and source-only inputs. This does not establish physical Windows
 or Linux interactive acceptance. CI now requires service, GUI and relocated
 frozen-package checks on each platform; results are recorded in the handoff.
 
+The added shell-parity regression checks the eight Mac-ordered modes, visible
+result explorer, hidden-by-default builder, geometry synchronization, fixed
+140-point selection inspector, combined Image/Abs reuse and caption state. All
+16 GUI tests then passed on physical Windows 11 at 96 DPI using the immutable
+validated service from Actions run 40026145513. Separate acceptance reports
+passed NVIDIA OpenGL 3.3/GLSL 330 and Qt Mesa OpenGL 3.0/GLSL 130. Both checked
+nonblank molecular pixels, analytic picking, 0.95720 Ã… measurement, edit/undo,
+PNG capture and the full window without errors. This is source acceptance, not
+a complete feature-parity result. A fresh frozen Windows ZIP using the same
+hash-verified service subsequently passed relocation with developer PATH removed,
+the NVIDIA render/pick/measure/edit/undo/PNG gate, and the required missing-service
+negative control. Its SHA-256 is
+`defa8be1468d3fe116337ae3a739ef79c0806154fd55803270a35e7f134ebb94`.
+Physical high-density display and a hosted source-service rebuild remain open.
+
 Desktop line+branch coverage is approximately 87% on the development Mac, with
 per-module floors and exact source inventory in `Tests/desktop-coverage-floors.json`.
 The platform-specific software-OpenGL adapter must execute on Windows; its
 absence from Mac/Linux execution is explicit in the policy. Linux arm64 Mesa
 validation caught and reproduced a QPainter-to-3D GL-state regression after label
 rendering; the viewport now resets blend/scissor/depth-write state before drawing.
+
 ## BOS-TMC coordination filters — 0.12.1 (2026-10-26)
 
 Ten new independently authored catalog tests cover numeric 1–12 dropdown/table

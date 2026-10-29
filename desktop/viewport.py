@@ -98,7 +98,8 @@ class MoleculeViewport(QOpenGLWidget):
         self.setMinimumSize(360, 300)
         self.atoms = []; self.bonds = []; self.positions = []
         self.selected = []; self.style = "Ball and stick"; self.labels = False
-        self.yaw = -20.0; self.pitch = 15.0; self.distance = 8.0
+        self.label_mode = "Element + number"
+        self.yaw = -20.0; self.pitch = 15.0; self.roll = 0.0; self.distance = 8.0
         self.pan = [0.0, 0.0]; self.center = QVector3D()
         self.last_mouse = None; self.press_mouse = None
         self.program = None; self.gpu_meshes = []; self.upload_needed = True
@@ -124,7 +125,22 @@ class MoleculeViewport(QOpenGLWidget):
             self.distance = radius / math.sin(math.atan(math.tan(math.radians(20)) * min(1, aspect))) * 1.15
         else:
             self.center = QVector3D(); self.distance = 8.0
-        self.pan = [0.0, 0.0]; self.yaw = -20; self.pitch = 15
+        self.pan = [0.0, 0.0]; self.yaw = -20; self.pitch = 15; self.roll = 0
+        self.update()
+
+    def nudge(self, action):
+        """Mirror the compact camera rail used by the native Mac workspace."""
+        if action == "left": self.yaw -= 10
+        elif action == "right": self.yaw += 10
+        elif action == "up": self.pitch -= 10
+        elif action == "down": self.pitch += 10
+        elif action == "roll_left": self.roll -= 10
+        elif action == "roll_right": self.roll += 10
+        elif action == "pan_up": self.pan[1] += self.distance * 0.035
+        elif action == "pan_down": self.pan[1] -= self.distance * 0.035
+        elif action == "zoom_in": self.distance = max(0.2, self.distance * 0.82)
+        elif action == "zoom_out": self.distance = min(1e6, self.distance / 0.82)
+        elif action == "fit": self.fit(); return
         self.update()
 
     def initializeGL(self):
@@ -232,7 +248,7 @@ class MoleculeViewport(QOpenGLWidget):
         projection = QMatrix4x4()
         projection.perspective(40.0, self.width() / max(1, self.height()), max(0.01, self.distance / 1000), self.distance + 10000)
         view = QMatrix4x4(); view.translate(self.pan[0], self.pan[1], -self.distance)
-        view.rotate(self.pitch, 1, 0, 0); view.rotate(self.yaw, 0, 1, 0); view.translate(-self.center)
+        view.rotate(self.roll, 0, 0, 1); view.rotate(self.pitch, 1, 0, 0); view.rotate(self.yaw, 0, 1, 0); view.translate(-self.center)
         return projection * view
 
     def paintGL(self):
@@ -241,7 +257,7 @@ class MoleculeViewport(QOpenGLWidget):
         GL.glDisable(GL.GL_BLEND); GL.glDisable(GL.GL_SCISSOR_TEST)
         GL.glDepthMask(GL.GL_TRUE); GL.glDepthFunc(GL.GL_LESS)
         GL.glColorMask(True, True, True, True)
-        GL.glClearColor(0.96, 0.97, 0.99, 1.0)
+        GL.glClearColor(1.0, 1.0, 1.0, 1.0)
         GL.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT)
         if not self.program or self.error:
             return
@@ -266,7 +282,11 @@ class MoleculeViewport(QOpenGLWidget):
         painter.setPen(QColor("#172b42"))
         for i, atom in enumerate(self.atoms):
             x, y = self.project(self.positions[i])
-            painter.drawText(int(x + 8), int(y - 8), f"{i + 1} {atom['element']}")
+            if self.label_mode == "Numbers": text = str(i + 1)
+            elif self.label_mode == "Elements": text = atom["element"]
+            else: text = f"{atom['element']}{i + 1}"
+            bounds = painter.fontMetrics().boundingRect(text)
+            painter.drawText(int(x - bounds.width() / 2), int(y + bounds.height() / 3), text)
 
     def export_image(self):
         image = self.grabFramebuffer()

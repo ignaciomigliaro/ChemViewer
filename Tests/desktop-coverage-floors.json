@@ -5,5 +5,6 @@
   "gl_platform.py": 100,
   "main.py": 85,
   "plots.py": 95,
+  "theme.py": 100,
   "viewport.py": 80
 }

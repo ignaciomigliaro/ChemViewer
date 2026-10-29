@@ -672,7 +672,7 @@ The relocated ZIP gate also removes one temporary helper and verifies refusal.
 This corrects a real crash in the separately downloaded CI app that was hidden
 by local build-tree fallback, despite successful signing and compilation.
 
-## Windows-first Qt desktop (development branch, 2026-10-23)
+## Windows-first Qt desktop (development branch, updated 2026-10-29)
 
 `desktop/main.py` uses PySide6 Qt Widgets for desktop integration and
 `desktop/viewport.py` uses QOpenGLWidget/OpenGL 3.3 (or GL 3.0 plus ARB instancing/GLSL 1.30)
@@ -693,8 +693,10 @@ The `.cvdesktop` project format is separate from the native Mac builder format.
 The frozen desktop package embeds the chemistry service as a binary dependency;
 PyInstaller resolves runtime libraries. A relocated package check strips toolchain
 PATH and verifies the actual GUI/GPU and process boundary. Windows software GL
-uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Physical Windows
-GPU/HiDPI acceptance and complete feature parity remain separate open gates.
+uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Source execution
+now passes on a physical Windows NVIDIA OpenGL 3.3 path and the software Mesa 3.0
+path. HiDPI, frozen-package acceptance and complete feature parity remain separate
+open gates.
 See [desktop scope and reproducible checks](windows-desktop.md).
 
 Qt's bundled Windows Mesa exposes GL 3.0/GLSL 1.30; the compatible path binds
@@ -703,6 +705,16 @@ workflows are mandatory under a constrained Linux Mesa context in CI. Labels
 use a transparent raster QWidget overlay and are composited into exported
 QImages, keeping Qt text painting out of the molecular GL context. Package
 reports record actual GL version, renderer and shader path.
+
+`desktop/theme.py` and the rebuilt `DocumentPane` reproduce the native Mac shell
+without coupling chemistry to presentation. A fixed `ModeTabBar` owns the eight
+Mac workspace modes; a `QStackedWidget` owns their content. The Image and
+Image/Abs modes reparent one persistent viewport rather than duplicating GL
+contexts. The result explorer and builder are independent splitter children,
+with the builder hidden by default. Selection has a fixed-height inspector so
+camera projection cannot change when the selected-atom count changes. The
+platform-neutral theme uses deterministic light colors and control geometry;
+scientific values, transactions and invalidation remain service-owned.
 ## 0.12.1 — BOS-TMC donor-element filtering
 
 The display name is BOS-TMC; tab identifiers, saved preference keys, source paths

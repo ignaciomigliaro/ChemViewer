@@ -17,16 +17,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--no-build", action="store_true")
+parser.add_argument("--service", help="Use an explicitly validated ChemViewerService binary instead of building one")
 parser.add_argument("--build-path", default=str(ROOT / ".build"))
 parser.add_argument("--output-dir", default=str(ROOT / "dist"))
 args = parser.parse_args()
 build_path = Path(args.build_path).resolve()
 output_dir = Path(args.output_dir).resolve()
-swift_build = ["swift", "build", "--scratch-path", str(build_path)]
-if not args.no_build:
-    subprocess.run(swift_build + ["-c", "release", "--product", "ChemViewerService"], cwd=ROOT, check=True)
-bin_dir = Path(subprocess.check_output(swift_build + ["-c", "release", "--show-bin-path"], cwd=ROOT, text=True).strip())
-service = bin_dir / ("ChemViewerService.exe" if sys.platform == "win32" else "ChemViewerService")
+if args.service:
+    service = Path(args.service).resolve()
+else:
+    swift_build = ["swift", "build", "--scratch-path", str(build_path)]
+    if not args.no_build:
+        subprocess.run(swift_build + ["-c", "release", "--product", "ChemViewerService"], cwd=ROOT, check=True)
+    bin_dir = Path(subprocess.check_output(swift_build + ["-c", "release", "--show-bin-path"], cwd=ROOT, text=True).strip())
+    service = bin_dir / ("ChemViewerService.exe" if sys.platform == "win32" else "ChemViewerService")
 if not service.exists(): raise SystemExit("Missing release service: " + str(service))
 command = [sys.executable, "-m", "PyInstaller", "--noconfirm", "--clean", "--onedir", "--windowed",
            "--name", "ChemViewerDesktop", "--distpath", str(output_dir / "desktop"),

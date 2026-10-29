@@ -1281,3 +1281,46 @@ Windows argv limits. The harness now streams its unchanged generated agent as a
 base64 first line over stdin, followed by the actual JSON protocol; execution
 still occurs in a real child Python with the complete local/remote dispatch.
 No platform skips or production SSH changes were introduced.
+
+## Windows workspace rebuild — 2026-10-29 (unreleased)
+
+The user reported that the Qt Windows app looked unrelated to the Apple app and
+requested the same appearance and functionality. Work continues on
+`feature/windows-desktop`; current `main`/0.12.1 was merged first so the port
+retains the validated BOS-TMC coordination fixes.
+
+The desktop shell was rebuilt around the Mac `ContentView` geometry. It now has
+document tabs; fixed Image/Abstract/Source/Coord/Image/Abs/ChemRefine/Draw/BOS-TMC
+mode tabs; a compact classic toolbar; default-visible result explorer; white
+OpenGL canvas; camera rail; fixed-height selection inspector; status row; and a
+hidden-by-default Build & Edit panel. Image/Abs reuses the same live viewport.
+The empty window has Mac-equivalent New/Open entry points. `desktop/theme.py`
+provides the deterministic light styling. Atom labels are centered and offer
+element, number, combined or none; the camera rail adds roll/pan/zoom/fit nudges.
+
+This is visual/workspace parity for the already ported features, not full Mac
+functional parity. ChemRefine, Draw and BOS-TMC show explicit porting-boundary
+pages; spectra, displacement vectors, full Mac builder/project interoperability,
+SSH and advanced exports remain open. Do not call those features implemented.
+
+Windows source validation used Python 3.9.13/PySide6 6.8.3 with the immutable
+service from successful Actions run 40026145513 (SHA-256
+ba76bcc8dec81d7d8d780299606db4461fedd6c9f3f47f3dc60dee48e7055963).
+All 16 live Qt workflows pass. Full-window acceptance passes both the ordinary
+NVIDIA GeForce RTX 5070 Ti OpenGL 3.3/GLSL 330 path and Qt's Mesa llvmpipe
+OpenGL 3.0/GLSL 130 path at 96 DPI. A separate 150% Qt scale run also passes
+without tab/toolbar/explorer/inspector clipping; physical high-density display
+acceptance remains open. The screenshot in
+`docs/images/native-qt-desktop.png` is the actual Windows GPU result, not a
+mockup. Desktop line/branch coverage remains above every existing module floor;
+new `theme.py` is 100%.
+
+A fresh 78,672,026-byte `dist/ChemViewer-desktop-win32.zip` was frozen from the
+rebuilt UI with the immutable validated service and passed the relocated package
+gate with developer PATH removed on NVIDIA OpenGL 3.3. Deleting the service only
+inside the temporary relocated copy produced the expected explicit failure and
+no development fallback. ZIP SHA-256:
+`defa8be1468d3fe116337ae3a739ef79c0806154fd55803270a35e7f134ebb94`.
+The packaging script now accepts `--service` for this evidence-backed reuse path;
+normal release CI still builds its own service from source. A physical HiDPI run,
+hosted checks and the remaining Mac functionality are required before a release/tag.
