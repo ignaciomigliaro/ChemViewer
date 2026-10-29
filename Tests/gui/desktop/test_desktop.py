@@ -94,6 +94,20 @@ class DesktopAcceptance(unittest.TestCase):
         QTest.mouseMove(viewport, QPoint(180, 130), 50)
         QTest.mouseRelease(viewport, Qt.RightButton, Qt.NoModifier, QPoint(180, 130))
         self.assertNotEqual(viewport.yaw, before)
+        # Exercise every native-Mac-style camera-rail action explicitly. Besides
+        # checking the controls, this keeps branch coverage deterministic across
+        # Windows, Linux/Xvfb, and macOS event-delivery implementations.
+        camera_before = (viewport.yaw, viewport.pitch, viewport.roll, tuple(viewport.pan), viewport.distance)
+        for action in ("left", "right", "up", "down", "roll_left", "roll_right",
+                       "pan_up", "pan_down", "zoom_in", "zoom_out"):
+            viewport.nudge(action)
+        self.assertAlmostEqual(viewport.yaw, camera_before[0])
+        self.assertAlmostEqual(viewport.pitch, camera_before[1])
+        self.assertAlmostEqual(viewport.roll, camera_before[2])
+        self.assertAlmostEqual(viewport.pan[0], camera_before[3][0])
+        self.assertAlmostEqual(viewport.pan[1], camera_before[3][1])
+        self.assertAlmostEqual(viewport.distance, camera_before[4])
+        viewport.nudge("fit")
         pane.fit.click(); self.assertEqual(viewport.yaw, -20)
         image = viewport.grabFramebuffer(); path = Path(self.tmp.name) / "native molecule.png"
         self.assertTrue(image.save(str(path), "PNG")); self.assert_molecule_pixels(QImage(str(path)))
