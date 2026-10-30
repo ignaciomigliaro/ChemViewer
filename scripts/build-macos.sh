@@ -33,7 +33,13 @@ if [[ -n "$resource_bundle" ]]; then
     # Replace generated resources rather than retaining obsolete Python bytecode
     # or removed assets from an earlier local build.
     rm -rf "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
-    ditto "$resource_bundle" "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
+    # Swift 6.4's build engine emits a standard Contents/Resources bundle;
+    # earlier SwiftPM emits flat resources. Ship one flat layout on both.
+    if [[ -d "$resource_bundle/Contents/Resources" ]]; then
+        ditto "$resource_bundle/Contents/Resources" "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
+    else
+        ditto "$resource_bundle" "$app_dir/Contents/Resources/$(basename "$resource_bundle")"
+    fi
 else
     echo "missing SwiftPM Metal resource bundle" >&2; exit 1
 fi

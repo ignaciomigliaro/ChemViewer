@@ -698,3 +698,33 @@ Catalog worker liveness uses a read-only Win32 process handle on Windows, with
 explicit handle closure; POSIX hosts use signal zero. Windows signal zero is
 CTRL_C_EVENT and must never be used as a liveness probe. Real child-process and
 Win32 handle-lifetime regressions run with the portable catalog suite.
+
+## Vibration freeze and displaced seeds — 0.13.0
+
+ChemCraftCore/Vibration.swift owns the monotonic display clock and original
+Cartesian displacement calculation. WorkspaceStore and the Metal viewport share
+the same clock, so pause, extrema and displaced XYZ export use one signed phase.
+Speed changes preserve phase; source/frame/mode changes reset it. The display
+rate is independent of the signed physical frequency. The original frame and
+mode remain intact; derived frames clear energy and energy-bearing comments.
+
+The dedicated control row uses native AppKit buttons for accessibility and
+physical-GUI regression. Paton instance alpha is a whitening mask, not opacity:
+displacement arrows now use zero for this channel with dark violet RGB and
+thicker shafts. Raw Metal source is copied into the resource bundle explicitly
+for runtime compilation; Swift 6.4's default build engine otherwise attempts a
+build-time metal compiler unavailable in Command Line Tools installations.
+
+The macOS packager normalizes Swift 6.4's nested Contents/Resources bundle and
+earlier SwiftPM flat resources to the existing flat shipped layout. The existing
+relocated-resource and removed-helper negative controls remain unchanged.
+
+Catalog status rechecks published index/terminal status after a worker exits,
+closing a TOCTOU window where fast successful builds appeared stopped. Two
+controlled interleaving regressions cover completed indexes and original errors.
+
+Background catalog workers execute a unique private cache script rather than
+placing the embedded helper in argv, keeping Windows launches below command
+limits. Completed workers remove their script; launch failures remove it and
+close the log handle. A padded 64 KB embedded source exercises the real child
+process, and a failed-launch regression verifies cleanup on every platform.

@@ -17,7 +17,8 @@
     "Thermochemistry.swift": 98,
     "VectorMath.swift": 100,
     "XYZParser.swift": 94,
-    "XYZWriter.swift": 100
+    "XYZWriter.swift": 100,
+    "Vibration.swift": 95
   },
   "python": {
     "bostmc_catalog.py": 91,

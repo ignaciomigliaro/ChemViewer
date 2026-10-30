@@ -1204,3 +1204,72 @@ Windows argv limits. The harness now streams its unchanged generated agent as a
 base64 first line over stdin, followed by the actual JSON protocol; execution
 still occurs in a real child Python with the complete local/remote dispatch.
 No platform skips or production SSH changes were introduced.
+
+## Vibration controls — 2026-10-30 (0.13.0 candidate)
+
+User requested vector toggle, freeze/resume and maximum displacement to prepare
+imaginary-mode follow-up structures, then identified white vectors on white.
+Root cause: arrow instance alpha=1 is the Paton whitening mask. Corrected to
+zero with dark-violet RGB and thicker shafts. A dedicated native-button row
+adds vectors, freeze/resume, both signed maxima and frozen displaced XYZ save.
+Core clock is shared by workspace/renderer/export, with phase-preserving speed
+changes. Derived seeds clear calculated energy; original frame/mode untouched.
+
+Baseline plain swift test was blocked first by sandbox cache writes, then by
+Swift 6.4 default resource processing attempting absent build-time metal. Native
+build-system retry confirms XCTest is still absent under CLT. Raw shader resource
+now explicitly uses .copy for runtime compilation. Standalone 47 core checks pass
+(44 existing plus three new), including independent Cartesian/XYZ and clock
+oracles. Current arm64 host: macOS27.2/Swift6.4.2 CLT, no full Xcode.
+User AGENTS.md and .vscode changes remain excluded. Native build/GUI, full Python,
+hosted coverage, installation and release publication remain pending.
+
+Local validation completed: arm64/signature build passes with SDKROOT pointing
+to the installed MacOSX26.5.sdk. The new 27.2 SDK lacks SwiftUIMacros, so its
+otherwise successful build fails on existing @State declarations. No SDK/system
+files were edited. Plain/post-change swift test remains blocked by absent XCTest
+under CLT; standalone47 and all three migrated suites pass.
+
+Physical native --vibration-smoke-test passes: actual buttons, frozen phase and
+resume, both signed maxima, independent XYZ coordinates/no inherited energy,
+unchanged source/modes and phase reset. Five-style violet pixel counts are
+5005/4013/4001/204/9806 (Paton/Publication/Soft/Large/Sticks). Captures under
+/private/tmp/chemviewer-vibration-evidence/44B6EF09-E551-4318-AC40-548A3CA4C715.
+General --smoke-test, --document-workspace-smoke-test (50 tab switches), and
+--animation-smoke-test pass. Full Python104 passes (three optional skips), all
+coverage floors pass. Sandbox-only loopback/process failures were resolved by
+running the unchanged suite outside the sandbox, not skips or relaxed checks.
+Hosted CI, downloaded app acceptance, installation and publishing are next.
+
+The unchanged relocated gate caught Swift 6.4's new nested resource layout.
+Runtime Bundle lookup worked, but the shipping validator expects the historical
+flat bundle. build-macos.sh now copies the resource payload from either build
+layout into the same flat shipped bundle; neither gate nor resource containment
+requirements were relaxed. Rebuilt package/negative-control rerun is required.
+
+Final normalized package passes the unchanged positive/removed-helper controls
+and strict signature verification. Physical packaged --vibration-smoke-test passes
+again with identical five-style violet counts. Final evidence folder:
+/private/tmp/chemviewer-vibration-evidence/2A1DF493-72B2-4BCA-967E-9462FC63F1BE.
+Version 0.13.0 build40; branch feature/vibration-freeze. Hosted checks and
+independent downloaded-app acceptance remain required before publishing.
+
+First hosted source run5511572 passed Linux/Mac science/core/coverage, but
+Windows exposed an existing status() TOCTOU race: a fast worker can publish its
+index and exit after the first file/status read, before process_alive returns.
+Status now rechecks the published index/terminal status before declaring failure.
+Two deterministic tests publish ready/error results at that exact boundary; no
+retries, skips or weaker Windows checks. Full suite106/catalog38 after this fix.
+
+Post-race full suite106 passes (three optional proprietary skips); BOS-TMC
+line/branch coverage92.79%, all unchanged floors pass. Core vibration functions
+and native UI are unchanged by the race fix. Final helper is repackaged for
+BOS-TMC native and relocated-resource regression before installation.
+
+The next Windows run exposed argv >32767 characters in the background launcher
+after helper growth, plus an unclosed log on failed Popen. Workers now run from
+unique mode600 private cache scripts, self-remove after completion, and close
+logs/remove scripts on launch failure. The actual-child regression pads embedded
+source by64KB and checks bounded argv and cleanup; a launch-failure oracle checks
+that Windows can unlink the log. Full Python107/catalog39 pass; BOS-TMC92.90%,
+all floors unchanged. Repackaging and exact-source CI are required again.

@@ -440,3 +440,15 @@ runs locally and through the remote helper, combines with existing criteria and
 preserves source CSV export. Missing donor data is excluded without inference.
 The version 3 cache requires reindexing once and retains old caches. Existing
 single-element builder behavior and saved user settings remain compatible.
+
+## 0.13.0 — vibration freeze, extrema and arrow contrast
+
+Implemented visible vector toggling, current-phase freeze/resume, positive and
+negative extrema, and separate frozen displaced-XYZ export. Source structures,
+frequencies, intensity/activity values and modes are retained; derived seeds
+carry no calculated energy. Dark violet arrows fix the Paton alpha-mask
+whitening bug. Independent core arithmetic/clock regressions pass via the
+standalone runner. Native button/renderer checks pass for all five styles, along with general
+Metal/export, 50 document switches and GIF regressions. Hosted release gates
+remain pending.
+No optimization convergence or imaginary-frequency removal is guaranteed.

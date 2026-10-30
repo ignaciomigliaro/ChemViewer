@@ -119,7 +119,9 @@ final class WorkspaceStore: ObservableObject {
     @Published var showExplorer = true
     @Published var showHydrogens = true
     @Published var atomCaption: AtomCaption = .none
-    @Published var vibrationSpeed: Float = 0.48
+    @Published var vibrationSpeed: Float = 0.48 {
+        didSet { vibrationPlayback.setSpeed(Double(vibrationSpeed), at: ProcessInfo.processInfo.systemUptime) }
+    }
     @Published var charge = 0
     @Published var multiplicity = 1
     @Published var calculationFacts: [CalculationFact] = []
@@ -191,9 +193,16 @@ final class WorkspaceStore: ObservableObject {
     @Published var renderingStyle: MolecularStyle = .paton
     @Published var sourceText = ""
     @Published var document: ParsedDocument?
-    @Published var frameIndex = 0
-    @Published var selectedModeIndex: Int?
-    @Published var isVibrating = true
+    @Published var frameIndex = 0 {
+        didSet { if frameIndex != oldValue { vibrationPlayback.reset(at: ProcessInfo.processInfo.systemUptime) } }
+    }
+    @Published var selectedModeIndex: Int? {
+        didSet { if selectedModeIndex != oldValue { vibrationPlayback.reset(at: ProcessInfo.processInfo.systemUptime) } }
+    }
+    @Published private(set) var vibrationPlayback = VibrationPlayback(time: ProcessInfo.processInfo.systemUptime)
+    @Published var isVibrating = true {
+        didSet { vibrationPlayback.setPlaying(isVibrating, at: ProcessInfo.processInfo.systemUptime) }
+    }
     @Published var vibrationAmplitude: Float = 0.6
     @Published var isImporterPresented = false
     @Published var isExporterPresented = false
@@ -211,6 +220,7 @@ final class WorkspaceStore: ObservableObject {
     private var trajectoryTask: Task<Void, Never>?
 
     func open(_ url: URL, externalXYZFiles: [String:URL] = [:]) {
+        vibrationPlayback.reset(at: ProcessInfo.processInfo.systemUptime)
         if viewportURL?.standardizedFileURL != url.standardizedFileURL { viewportEpoch += 1; viewportState = nil }
         viewportURL = url
         finishAtomDrag()
@@ -260,6 +270,7 @@ final class WorkspaceStore: ObservableObject {
                 savedGeometryRevision = geometryRevision
                 if parsed.0.frames.isEmpty { activeTab = "Source" }
                 selectedAtomIndices = parsed.2?.selection ?? []
+                vibrationPlayback.reset(at: ProcessInfo.processInfo.systemUptime)
                 selectedModeIndex = parsed.0.vibrationalModes.first(where: {
                     abs($0.frequencyCM1) > 1 && !$0.displacements.isEmpty
                 })?.index
@@ -337,6 +348,31 @@ final class WorkspaceStore: ObservableObject {
         do {
             let result = try GeometryEditor.settingAngle(in: frame, first: selectedAtomIndices[0], vertex: selectedAtomIndices[1], third: selectedAtomIndices[2], toDegrees: value, movement: movement)
             replaceCurrentAtoms(result.atoms)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    var canDisplaceMode: Bool {
+        guard let frame = currentFrame, let mode = selectedMode else { return false }
+        return !frame.atoms.isEmpty && mode.displacements.count == frame.atoms.count
+    }
+    func freezeVibrationAtMaximum(negative: Bool = false) {
+        guard canDisplaceMode else { return }
+        isVibrating = false
+        vibrationPlayback.freezeAtMaximum(negative: negative, at: ProcessInfo.processInfo.systemUptime)
+    }
+    func displacedVibrationFrame() throws -> MoleculeFrame {
+        guard !isVibrating, let frame = currentFrame, let mode = selectedMode else {
+            throw ParseError.malformed("Freeze a selected vibrational mode before saving its displaced geometry.")
+        }
+        return try NormalModeGeometry.displaced(frame, mode: mode, amplitude: vibrationAmplitude,
+            phase: vibrationPlayback.factor(at: ProcessInfo.processInfo.systemUptime))
+    }
+    func saveDisplacedVibrationXYZ() {
+        do {
+            let frame = try displacedVibrationFrame()
+            let panel = NSSavePanel(); panel.nameFieldStringValue = "mode-\(selectedModeIndex ?? 0)-displaced.xyz"
+            guard panel.runModal() == .OK, let url = panel.url else { return }
+            try XYZWriter.string(frame: frame).write(to: url, atomically: true, encoding: .utf8)
         } catch { errorMessage = error.localizedDescription }
     }
 

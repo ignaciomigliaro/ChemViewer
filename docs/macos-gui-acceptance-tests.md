@@ -489,3 +489,23 @@ No source CSV or previous index cache may be deleted or modified.
 
 Run `--bostmc-smoke-test` for the controlled native workflow and retain the
 existing `--atom-editing-smoke-test` for single-element placement/replacement.
+
+## Vibration controls — 0.13.0
+
+CV-VIB-001: Open Tests/fixtures/integrated-building/synthetic-modes.out, select
+mode 8 (-250 cm⁻¹). Toggle Vectors in the dedicated row; arrows must be visibly
+violet on the white background, including Paton style, and hide when toggled
+off. Check all five display styles with sufficient display amplitude for arrows
+to extend beyond atom spheres. Freeze must hold the current displacement and
+Resume must continue without a phase jump; changing speed preserves phase.
+
+CV-VIB-002: Set amplitude 0.5. Max + must give O x=0.1 and first H x=0.708;
+Max − must give O x=-0.1 and first H x=0.808. Save displaced XYZ, reopen and
+compare all coordinates with source + amplitude × signed printed vector. No
+original energy may be attached. The source file/geometry and negative frequency
+remain unchanged. Changing mode/frame/source resets the held phase. Save is
+disabled during animation and unavailable without complete mode vectors.
+
+Run --vibration-smoke-test for native button/renderer and numeric/export checks.
+Also run --smoke-test, --document-workspace-smoke-test and the relocated-resource
+negative control; downloaded CI app acceptance is separate from a local build.

@@ -2,6 +2,89 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testVibrationPlaybackFreezeResumeAndSpeedContinuity() {
+        var clock = VibrationPlayback(time: 10, speed: 0.5)
+        XCTAssertEqual(clock.factor(at: 10.5), 1, accuracy: 1e-6)
+        clock.setPlaying(false, at: 10.25)
+        let held = Float(sqrt(0.5))
+        XCTAssertEqual(clock.factor(at: 99), held, accuracy: 1e-6)
+        clock.setSpeed(1, at: 99)
+        XCTAssertEqual(clock.factor(at: 200), held, accuracy: 1e-6)
+        clock.setPlaying(true, at: 200)
+        XCTAssertEqual(clock.factor(at: 200), held, accuracy: 1e-6)
+        XCTAssertEqual(clock.factor(at: 200.125), 1, accuracy: 1e-6)
+        clock.setSpeed(0.5, at: 200.125)
+        XCTAssertEqual(clock.factor(at: 200.625), 0, accuracy: 1e-6)
+        clock.reset(at: 201)
+        XCTAssertEqual(clock.factor(at: 201), 0)
+        clock.freezeAtMaximum(negative: false, at: 300)
+        XCTAssertTrue(!clock.isPlaying)
+        XCTAssertEqual(clock.factor(at: 900), 1)
+        clock.freezeAtMaximum(negative: true, at: 900)
+        XCTAssertEqual(clock.factor(at: 1000), -1)
+        clock.setPlaying(true, at: 1000)
+        XCTAssertEqual(clock.factor(at: 1000), -1)
+        clock.reset(at: 1001)
+        XCTAssertEqual(clock.factor(at: 1001), 0)
+    }
+
+    func testDisplacedModeIndependentCartesianAndXYZOracles() throws {
+        let original = MoleculeFrame(id: 7, atoms: [
+            Atom(id: 11, element: "O", position: Vector3(1, 2, 3)),
+            Atom(id: 12, element: "H", position: Vector3(-1, 0, 2))],
+            comment: "energy_hartree=-75.0 | original", energyHartree: -75)
+        let mode = VibrationalMode(index: 8, frequencyCM1: -250,
+            infraredIntensity: 4.2, ramanActivity: 7.3,
+            displacements: [Vector3(0.2, -0.4, 0.6), Vector3(-0.8, 0, 0.2)])
+        let positive = try NormalModeGeometry.displaced(original, mode: mode, amplitude: 0.5, phase: 1)
+        let negative = try NormalModeGeometry.displaced(original, mode: mode, amplitude: 0.5, phase: -1)
+        for (actual, expected) in zip(positive.atoms.map(\.position), [Vector3(1.1, 1.8, 3.3), Vector3(-1.4, 0, 2.1)]) {
+            XCTAssertEqual(actual.x, expected.x, accuracy: 1e-6)
+            XCTAssertEqual(actual.y, expected.y, accuracy: 1e-6)
+            XCTAssertEqual(actual.z, expected.z, accuracy: 1e-6)
+        }
+        XCTAssertEqual(negative.atoms[0].position.x, 0.9, accuracy: 1e-6)
+        XCTAssertEqual(negative.atoms[0].position.y, 2.2, accuracy: 1e-6)
+        XCTAssertEqual(negative.atoms[0].position.z, 2.7, accuracy: 1e-6)
+        XCTAssertEqual(positive.atoms.map(\.id), [11, 12])
+        XCTAssertEqual(positive.atoms.map(\.element), ["O", "H"])
+        XCTAssertTrue(positive.energyHartree == nil)
+        XCTAssertTrue(!positive.comment.contains("energy_hartree="))
+        XCTAssertTrue(positive.comment.contains("frequency_cm-1=-250"))
+        let parsed = try XYZParser.parse(text: XYZWriter.string(frame: positive))
+        XCTAssertEqual(parsed.frames[0].atoms.map(\.position), positive.atoms.map(\.position))
+        XCTAssertTrue(parsed.frames[0].energyHartree == nil)
+        XCTAssertEqual(original.atoms[0].position, Vector3(1, 2, 3))
+        XCTAssertEqual(original.energyHartree, -75)
+        XCTAssertEqual(mode.frequencyCM1, -250)
+        XCTAssertEqual(mode.infraredIntensity, 4.2)
+        XCTAssertEqual(mode.ramanActivity, 7.3)
+        let equilibrium = try NormalModeGeometry.displaced(original, mode: mode, amplitude: 1, phase: 0)
+        XCTAssertEqual(equilibrium.atoms, original.atoms)
+    }
+
+    func testDisplacedModeRejectsIncompleteOrNonfiniteGeometry() {
+        let atom = Atom(id: 0, element: "H", position: .zero)
+        let frame = MoleculeFrame(id: 0, atoms: [atom])
+        let mode = VibrationalMode(index: 1, frequencyCM1: -1, displacements: [Vector3(1, 0, 0)])
+        var cases: [(MoleculeFrame, VibrationalMode, Float, Float)] = [
+            (MoleculeFrame(id: 0, atoms: []), mode, 1, 1),
+            (frame, VibrationalMode(index: 1, frequencyCM1: -1), 1, 1),
+            (frame, mode, -1, 1), (frame, mode, .nan, 1), (frame, mode, 1, .infinity), (frame, mode, 1, 1.1)]
+        var invalid = mode; invalid.displacements[0].x = .nan
+        cases.append((frame, invalid, 1, 1))
+        var invalidFrame = frame; invalidFrame.atoms[0].position.z = .infinity
+        cases.append((invalidFrame, mode, 1, 1))
+        invalid = mode; invalid.displacements[0].x = .greatestFiniteMagnitude
+        cases.append((frame, invalid, 2, 1))
+        for (f, m, a, p) in cases {
+            var rejected = false
+            do { _ = try NormalModeGeometry.displaced(f, mode: m, amplitude: a, phase: p) } catch { rejected = true }
+            XCTAssertTrue(rejected)
+        }
+    }
+
+
     func testPortableVectorMathHasIndependentCartesianOracles() {
         let x = SIMD3<Double>(1, 0, 0), y = SIMD3<Double>(0, 1, 0)
         XCTAssertEqual(VectorMath.cross(x, y), SIMD3<Double>(0, 0, 1))
