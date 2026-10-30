@@ -1253,3 +1253,15 @@ again with identical five-style violet counts. Final evidence folder:
 /private/tmp/chemviewer-vibration-evidence/2A1DF493-72B2-4BCA-967E-9462FC63F1BE.
 Version 0.13.0 build40; branch feature/vibration-freeze. Hosted checks and
 independent downloaded-app acceptance remain required before publishing.
+
+First hosted source run5511572 passed Linux/Mac science/core/coverage, but
+Windows exposed an existing status() TOCTOU race: a fast worker can publish its
+index and exit after the first file/status read, before process_alive returns.
+Status now rechecks the published index/terminal status before declaring failure.
+Two deterministic tests publish ready/error results at that exact boundary; no
+retries, skips or weaker Windows checks. Full suite106/catalog38 after this fix.
+
+Post-race full suite106 passes (three optional proprietary skips); BOS-TMC
+line/branch coverage92.79%, all unchanged floors pass. Core vibration functions
+and native UI are unchanged by the race fix. Final helper is repackaged for
+BOS-TMC native and relocated-resource regression before installation.

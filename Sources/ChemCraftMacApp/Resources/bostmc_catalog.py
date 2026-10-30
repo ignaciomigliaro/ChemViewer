@@ -201,7 +201,14 @@ class BosTMCCatalog:
         try: result=json.loads((cache/'status.json').read_text())
         except (OSError,ValueError): return dict(phase='not_indexed',rows=0,fingerprint=fingerprint)
         if result.get('phase')=='indexing':
-            if not cls.process_alive(result.get('pid')): return dict(phase='error',error='Indexing stopped. Click Index CSV to retry.',rows=result.get('rows',0))
+            if not cls.process_alive(result.get('pid')):
+                # The worker may have published the final index/status since the first read.
+                if (cache/'index.sqlite').exists(): return cls.status(request)
+                try:
+                    final=json.loads((cache/'status.json').read_text())
+                    if final.get('phase') in ('ready','error'): return final
+                except (OSError,ValueError): pass
+                return dict(phase='error',error='Indexing stopped. Click Index CSV to retry.',rows=result.get('rows',0))
         return result
     @classmethod
     def raw(cls,db,metadata,row_id):

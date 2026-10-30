@@ -41,6 +41,23 @@ class BosTMCTests(unittest.TestCase):
    kernel.OpenProcess.assert_called_once_with(0x1000,False,42)
    if handle:kernel.CloseHandle.assert_called_once_with(handle)
    else:kernel.CloseHandle.assert_not_called()
+ def test_status_observes_index_published_during_liveness_check(self):
+  _,cache,_=Catalog.location(self.request)
+  index=cache/'index.sqlite';pending=cache/'completed.tmp';index.replace(pending)
+  Catalog.atomic(cache/'status.json',dict(phase='indexing',pid=42,rows=0))
+  def finish(pid):
+   pending.replace(index)
+   return False
+  with patch.object(Catalog,'process_alive',side_effect=finish):state=Catalog.status(self.request)
+  self.assertEqual(state['phase'],'ready');self.assertEqual(state['total'],4)
+ def test_status_retains_worker_error_published_during_liveness_check(self):
+  _,cache,_=Catalog.location(self.request);(cache/'index.sqlite').unlink()
+  Catalog.atomic(cache/'status.json',dict(phase='indexing',pid=42,rows=0))
+  def finish(pid):
+   Catalog.atomic(cache/'status.json',dict(phase='error',error='CSV changed while indexing',rows=3))
+   return False
+  with patch.object(Catalog,'process_alive',side_effect=finish):state=Catalog.status(self.request)
+  self.assertEqual(state,dict(phase='error',error='CSV changed while indexing',rows=3))
  def test_status_releases_sqlite_connection(self):
   opened=[];connect=module.sqlite3.connect
   class TrackedConnection(module.sqlite3.Connection):

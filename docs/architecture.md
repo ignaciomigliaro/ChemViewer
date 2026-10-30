@@ -718,3 +718,7 @@ build-time metal compiler unavailable in Command Line Tools installations.
 The macOS packager normalizes Swift 6.4's nested Contents/Resources bundle and
 earlier SwiftPM flat resources to the existing flat shipped layout. The existing
 relocated-resource and removed-helper negative controls remain unchanged.
+
+Catalog status rechecks published index/terminal status after a worker exits,
+closing a TOCTOU window where fast successful builds appeared stopped. Two
+controlled interleaving regressions cover completed indexes and original errors.

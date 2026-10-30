@@ -588,6 +588,6 @@ pixel in each dimension) were Paton 5,005; Publication 4,013; Soft spheres 4,001
 Large spheres 204; Sticks 9,806. Large-sphere visibility uses display amplitude
 1.5 so arrows extend past spheres; coordinate extrema use amplitude 0.5.
 General Metal/source/XYZ, 50 document-switch and GIF regressions also pass.
-All 104 Python cases pass with three optional proprietary-fixture skips and all
+All 106 Python cases pass with three optional proprietary-fixture skips and all
 module coverage floors. Hosted coverage/XCTest gates remain pending. No physical
 claim follows from CI.
