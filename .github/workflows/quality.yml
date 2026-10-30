@@ -20,7 +20,7 @@ jobs:
     container: ${{ matrix.os == 'ubuntu-24.04' && 'swift:6.1.3@sha256:04b28d4aff67fa4ff4029d6e27dd40f9737cc69cc558a37b06f18b3dceb8942f' || '' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: compnerd/gha-setup-swift@775d3f4111c5be58a0f62f2efdd353bb8fac15c7
+      - uses: compnerd/gha-setup-swift@57fe462cd3c7b05ae8fcff79b00719312e305257
         if: runner.os == 'Windows'
         with:
           swift-version: swift-6.1.3-release
