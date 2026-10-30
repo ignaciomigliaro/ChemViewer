@@ -15,10 +15,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "desktop"))
 from main import MainWindow, apply_theme, configure_graphics
+from viewport import PATON_COLORS
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QImage
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QApplication, QFrame, QScrollArea, QTableWidgetItem, QToolButton, QMessageBox
 
 configure_graphics()
 APP = QApplication.instance() or QApplication(["ChemViewer desktop acceptance"])
@@ -277,6 +278,27 @@ class DesktopAcceptance(unittest.TestCase):
             [pane.mode_tabs.tabText(i) for i in range(pane.mode_tabs.count())],
             ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BOS-TMC"],
         )
+        self.assertEqual(
+            [action.text().replace("&", "") for action in self.window.menuBar().actions()],
+            ["File", "Edit", "Build", "View", "Display", "Tools", "Compute", "Help"],
+        )
+        self.assertEqual(
+            [pane.style.itemText(i) for i in range(pane.style.count())],
+            ["xyzrender · Paton", "Publication", "Soft spheres", "Large spheres", "Sticks"],
+        )
+        self.assertEqual(pane.style.currentText(), "xyzrender · Paton")
+        self.assertEqual(len(PATON_COLORS), 119)
+        self.assertEqual((PATON_COLORS["C"], PATON_COLORS["H"], PATON_COLORS["N"]),
+                         (0xD9D9D9, 0xFAFAFA, 0x7F7FBF))
+        hydrogen = next(button for button in pane.findChildren(QToolButton)
+                        if button.accessibleName() == "Toggle hydrogen visibility")
+        hydrogen.click()
+        self.assertFalse(pane.viewport.show_hydrogens)
+        hydrogen.click()
+        self.assertTrue(pane.viewport.show_hydrogens)
+        self.assertEqual(self.window.tabs.tabBar().height(), 35)
+        self.assertEqual(pane.findChild(QScrollArea, "toolbarScroll").height(), 45)
+        self.assertEqual(pane.findChild(QFrame, "cameraRail").width(), 37)
         self.assertTrue(pane.explorer.isVisible())
         self.assertFalse(pane.builder.isVisible())
         self.assertEqual(pane.geometry_list.count(), pane.frames.count())

@@ -1,4 +1,9 @@
-"""Shared desktop styling that mirrors the native macOS ChemViewer shell."""
+"""Qt translation of the light SwiftUI/AppKit ChemViewer appearance.
+
+Values in this file follow ContentView, FileWorkspaceViews and
+ClassicControls.  They are compatibility constants, not a separate Windows
+design language.
+"""
 
 from PySide6.QtGui import QColor, QPalette
 
@@ -7,7 +12,7 @@ ACCENT = "#0a84ff"
 WINDOW = "#ececec"
 CONTROL = "#f4f4f4"
 CANVAS = "#ffffff"
-TEXT = "#202124"
+TEXT = "#000000"
 SECONDARY = "#6b6f76"
 HAIRLINE = "#b8b8b8"
 
@@ -15,25 +20,29 @@ HAIRLINE = "#b8b8b8"
 STYLESHEET = f"""
 QWidget {{
     color: {TEXT};
-    font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+    font-family: "Segoe UI", sans-serif;
     font-size: 13px;
 }}
 QMainWindow, QWidget#applicationRoot {{ background: {WINDOW}; }}
 QMenuBar {{
-    background: #f7f7f7;
-    border-bottom: 1px solid {HAIRLINE};
-    padding: 2px 4px;
+    background: white;
+    border-bottom: 1px solid #d7d7d7;
+    padding: 4px 12px;
+    spacing: 2px;
+    font-size: 17px;
 }}
-QMenuBar::item {{ padding: 5px 9px; background: transparent; }}
+QMenuBar::item {{ padding: 3px 9px; background: transparent; }}
 QMenuBar::item:selected, QMenu::item:selected {{ background: #dcecff; color: #111; }}
-QMenu {{ background: #fbfbfb; border: 1px solid #9f9f9f; padding: 4px; }}
+QMenu {{ background: #fbfbfb; border: 1px solid #9f9f9f; padding: 4px; font-size: 13px; }}
 QMenu::item {{ padding: 5px 28px 5px 10px; }}
 
 QTabWidget#documentTabs::pane {{ border: 0; background: {WINDOW}; }}
+QTabWidget#documentTabs QTabBar {{ background: {WINDOW}; }}
 QTabWidget#documentTabs QTabBar::tab {{
     min-width: 125px;
-    padding: 8px 13px;
-    background: #e1e1e1;
+    min-height: 19px;
+    padding: 8px 10px;
+    background: {CONTROL};
     border: 0;
     border-right: 1px solid #c8c8c8;
 }}
@@ -52,7 +61,7 @@ QTabBar#modeTabs::tab {{
     margin: 4px 2px;
     background: transparent;
     border: 1px solid transparent;
-    font-size: 16px;
+    font-size: 17px;
 }}
 QTabBar#modeTabs::tab:selected {{
     background: white;
@@ -61,21 +70,20 @@ QTabBar#modeTabs::tab:selected {{
 }}
 QTabBar#modeTabs::tab:disabled {{ color: #989898; }}
 
-QFrame#classicToolbar {{
-    background: #ededed;
-    border-bottom: 1px solid {HAIRLINE};
-}}
+QFrame#classicToolbar {{ background: {WINDOW}; border: 0; }}
+QScrollArea#toolbarScroll {{ background: {WINDOW}; border: 0; }}
 QToolButton#classicToolButton, QPushButton#classicButton {{
     min-width: 25px;
     min-height: 24px;
-    padding: 2px 6px;
+    padding: 2px 5px;
     background: #e8e8e8;
     border: 1px solid #7a7a7a;
-    border-top-color: #ffffff;
-    border-radius: 2px;
+    border-top-color: rgba(255,255,255,204);
+    border-radius: 0;
+    color: black;
 }}
-QToolButton#classicToolButton:hover, QPushButton#classicButton:hover {{ background: #f7f7f7; }}
-QToolButton#classicToolButton:pressed, QPushButton#classicButton:pressed,
+QToolButton#classicToolButton:hover, QPushButton#classicButton:hover {{ background: #f0f0f0; }}
+QToolButton#classicToolButton:pressed, QPushButton#classicButton:pressed {{ background: #c7c7c7; }}
 QToolButton#classicToolButton:checked, QPushButton#classicButton:checked {{
     background: #cfe5ff;
     border-color: {ACCENT};
@@ -92,7 +100,7 @@ QFrame#resultExplorer, QFrame#builderPanel {{
 }}
 QFrame#builderPanel {{ border-right: 0; border-left: 1px solid {HAIRLINE}; }}
 QLabel#sectionTitle {{ font-weight: 600; font-size: 14px; }}
-QLabel#sectionCaption, QLabel#secondaryText {{ color: {SECONDARY}; font-size: 12px; }}
+QLabel#sectionCaption, QLabel#secondaryText, QLabel#brandLabel {{ color: {SECONDARY}; font-size: 12px; }}
 QLabel#warningBanner {{
     background: #fff8d9;
     border-bottom: 1px solid #e5d794;
@@ -136,7 +144,7 @@ QStatusBar {{ background: {WINDOW}; border-top: 1px solid {HAIRLINE}; color: {SE
 
 
 def apply_theme(app):
-    """Use one deterministic light appearance on Windows, Linux and development Macs."""
+    """Apply the deterministic light Mac-compatibility appearance."""
     app.setStyle("Fusion")
     palette = QPalette()
     palette.setColor(QPalette.Window, QColor(WINDOW))

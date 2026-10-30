@@ -570,7 +570,9 @@ frozen-package checks on each platform; results are recorded in the handoff.
 
 The added shell-parity regression checks the eight Mac-ordered modes, visible
 result explorer, hidden-by-default builder, geometry synchronization, fixed
-140-point selection inspector, combined Image/Abs reuse and caption state. All
+140-point selection inspector, combined Image/Abs reuse and caption state. It
+now additionally locks the Mac menu sequence, 35/45/37/140/30-point shell
+dimensions, five style names and hydrogen toggle. All
 16 GUI tests then passed on physical Windows 11 at 96 DPI using the immutable
 validated service from Actions run 40026145513. Separate acceptance reports
 passed NVIDIA OpenGL 3.3/GLSL 330 and Qt Mesa OpenGL 3.0/GLSL 130. Both checked
@@ -580,8 +582,15 @@ a complete feature-parity result. A fresh frozen Windows ZIP using the same
 hash-verified service subsequently passed relocation with developer PATH removed,
 the NVIDIA render/pick/measure/edit/undo/PNG gate, and the required missing-service
 negative control. Its SHA-256 is
-`defa8be1468d3fe116337ae3a739ef79c0806154fd55803270a35e7f134ebb94`.
+`86e1f8a37d7fb8423adf7edd4db813c03a65d3bedbdfa48378a174bc8d28c097`.
 Physical high-density display and a hosted source-service rebuild remain open.
+
+The renderer fidelity change is presentation-only but still passed the complete
+scientific interaction gate. It translates the checked-in Metal Paton CPK table,
+sRGB/linear boundary, HLS focal gradient, outline threshold, atom radii and black
+bond radius. The water fixture remained pickable and measured 0.95720 Å after
+the rendering change; hiding hydrogens affects only draw/pick/caption visibility,
+not stored atoms, source coordinates, measurements or exports.
 
 Desktop line+branch coverage is approximately 87% on the development Mac, with
 per-module floors and exact source inventory in `Tests/desktop-coverage-floors.json`.

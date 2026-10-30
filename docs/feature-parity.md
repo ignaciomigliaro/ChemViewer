@@ -439,12 +439,18 @@ add/delete, fragments, internal distance/angle editing, undo/redo, document tabs
 trajectory/mode animation, source/properties, energy plotting/CSV, XYZ/PNG export
 and portable desktop projects. Its window shell now matches the Mac workspace's
 mode order and main geometry: result explorer, classic toolbar, white viewport,
-camera rail, stable selection inspector, status row and optional builder.
+camera rail, stable selection inspector, status row and optional builder. A
+follow-up replaced Windows emoji/font approximations with bundled monochrome
+vector drawing and translated the actual Mac Paton palette, HLS gradient, radii,
+black bonds, hydrogen toggle and five display-style names. The regression locks
+the Mac menu order and fixed document/mode/toolbar/rail/inspector/status geometry.
 
 Sixteen live Qt tests pass on Windows with both the NVIDIA OpenGL 3.3 path and
 Qt Mesa OpenGL 3.0 software path; 15 service tests remain the scientific/process
 gate. This establishes source-workspace acceptance at 96 DPI, not HiDPI or a
-fresh frozen installer. Hosted checks for this change are still pending.
+signed installer. The refreshed frozen ZIP passes relocated
+render/pick/measure/edit/undo/PNG acceptance with developer PATH removed. Hosted
+checks for this follow-up are still pending.
 
 This supersedes the prior statement that the browser viewer is the only porting
 implementation, but does not change 0.12.0's released scope. Full spectra,

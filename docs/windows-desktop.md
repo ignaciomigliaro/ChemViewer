@@ -39,22 +39,28 @@ location can be set with `CHEMVIEWER_SERVICE`.
 
 ![Windows Qt desktop using the Apple-style ChemViewer workspace and independently authored water fixture](images/native-qt-desktop.png)
 
-The screenshot is the actual source implementation running on Windows 11 at
-96 DPI with the normal NVIDIA OpenGL 3.3 path. It is not a mockup. The same
-workflow also passes Qt's bundled Mesa OpenGL 3.0/GLSL 1.30 software path.
+The screenshot is the actual frozen implementation running on Windows 11 at
+96 DPI. It is not a mockup. The same workflow also passes Qt's bundled Mesa
+OpenGL 3.0/GLSL 1.30 software path.
 
 ## Interface alignment with the Mac application
 
 - Image, Abstract, Source, Coord, Image/Abs, ChemRefine, Draw and BOS-TMC use
   the same order and fixed tab geometry as the Apple workspace.
+- The compatibility shell takes its dimensions directly from the SwiftUI views:
+  35-point document strip, fixed 100/115-by-39 mode tabs, 45-point toolbar,
+  37-point camera rail, 140-point inspector and 30-point status row. Menus use
+  the Mac order: File, Edit, Build, View, Display, Tools, Compute and Help.
+- Toolbar artwork is dependency-free monochrome vector drawing corresponding to
+  the Mac SF Symbols. It does not depend on Windows emoji or a locally installed
+  icon font, so the packaged executable cannot substitute colored emoji or boxes.
 - Result geometries and frequencies live in the left explorer instead of an
   always-open form column. Build & Edit is hidden until requested.
 - Image keeps one renderer, a narrow camera rail, a fixed 140-point selection
   inspector and a 30-point status row, so selection does not resize the view.
 - Abstract contains the calculation summary and absolute-Hartree energy plot;
   Image/Abs reuses the same live renderer beside that panel.
-- The empty window has the same new/open workspace entry points. Menus cover
-  File, Edit, View, Display, Tools, Compute and Help.
+- The empty window has the same new/open workspace entry points.
 - ChemRefine, Draw and BOS-TMC tabs are present but explicitly report their
   current porting boundary. They do not imitate successful Mac-only work.
 
@@ -62,8 +68,10 @@ workflow also passes Qt's bundled Mesa OpenGL 3.0/GLSL 1.30 software path.
 
 - New/Open, multiple document tabs, local drag-and-drop, duplicate-file activation,
   per-document camera and edit history, unsaved-change cancellation.
-- Instanced, depth-tested spheres and cylinders, element colors, ball-and-stick
-  and illustrative space-filling display sizes, labels, Fit and PNG export.
+- Instanced, depth-tested spheres and cylinders; the native Mac Paton CPK table,
+  HLS gradient, thin black bonds, display radii and outline threshold; Publication,
+  Soft spheres, Large spheres and Sticks alternatives; hydrogen visibility;
+  centered element/number captions; Fit and PNG export.
 - Drag rotates; Shift-drag or middle-drag pans; wheel zooms. Click selects;
   Ctrl-click extends an ordered selection. Two/three/four atoms measure distance,
   angle and signed dihedral through the shared Swift algorithms.
@@ -129,9 +137,11 @@ The source UI was paired with the immutable service from successful Actions run
 That isolates this visual-shell change from parser drift. A newly frozen package
 from the changed source also passes the relocated, developer-PATH-stripped gate
 on the NVIDIA OpenGL path. Removing only the temporary relocated service copy
-produces the required explicit failure rather than a fallback. The 78,672,026-byte
-ZIP has SHA-256
-`defa8be1468d3fe116337ae3a739ef79c0806154fd55803270a35e7f134ebb94`.
+produces the required explicit failure rather than a fallback. After the direct
+Mac-UI constant and complete 119-element Paton-renderer translation, the
+78,676,938-byte ZIP has
+SHA-256
+`86e1f8a37d7fb8423adf7edd4db813c03a65d3bedbdfa48378a174bc8d28c097`.
 This local package deliberately reuses the immutable validated service because
 Swift is absent on this host; a hosted build of that service from the merged
 source and cross-platform checks are still required before release.

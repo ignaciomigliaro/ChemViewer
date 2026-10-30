@@ -2,11 +2,15 @@
 
 import argparse
 import math
+import os
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QTimer, Signal, QSignalBlocker
-from PySide6.QtGui import QAction, QActionGroup, QColor, QKeySequence, QSurfaceFormat
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, Signal, QSignalBlocker
+from PySide6.QtGui import (
+    QAction, QActionGroup, QColor, QIcon, QKeySequence, QPainter, QPainterPath,
+    QPen, QPixmap, QSurfaceFormat,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QButtonGroup, QCheckBox, QComboBox,
     QDoubleSpinBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QInputDialog,
@@ -19,6 +23,61 @@ from bridge import CoreBridge
 from plots import ScientificPlot
 from theme import apply_theme
 from viewport import MoleculeViewport
+
+
+VECTOR_TOOLS = {
+    "Open chemistry file", "Export PNG image", "Add atom", "Show result explorer",
+    "Undo coordinate edit", "Redo coordinate edit", "Export XYZ coordinates",
+    "Rotate left", "Rotate right", "Rotate up", "Rotate down", "Roll left",
+    "Roll right", "Pan up", "Pan down", "Zoom in", "Zoom out", "Fit and center",
+    "Fit and center molecule",
+}
+
+
+def tool_icon(name):
+    """Draw dependency-free monochrome equivalents of the Mac SF Symbols."""
+    pixmap = QPixmap(36, 36)
+    pixmap.fill(Qt.transparent)
+    pixmap.setDevicePixelRatio(2)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setPen(QPen(QColor("#202124"), 1.5, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    if name == "Open chemistry file":
+        path = QPainterPath(QPointF(2.5, 6.5)); path.lineTo(7, 6.5); path.lineTo(8.5, 8.5)
+        path.lineTo(15.5, 8.5); path.lineTo(14.2, 15); path.lineTo(2.5, 15); path.closeSubpath(); painter.drawPath(path)
+    elif name == "Export PNG image":
+        painter.drawRoundedRect(QRectF(2.5, 5.5, 13, 9.5), 1.5, 1.5); painter.drawEllipse(QPointF(9, 10.2), 3, 3)
+        painter.drawLine(5, 5.5, 6.5, 3.8); painter.drawLine(6.5, 3.8, 10, 3.8)
+    elif name == "Add atom":
+        painter.drawEllipse(QPointF(7, 10), 3.5, 3.5); painter.drawLine(12, 4, 12, 9); painter.drawLine(9.5, 6.5, 14.5, 6.5)
+    elif name == "Show result explorer":
+        painter.drawRoundedRect(QRectF(2.5, 3, 13, 13), 1.5, 1.5); painter.drawLine(7, 3.5, 7, 15.5)
+    elif name in ("Undo coordinate edit", "Redo coordinate edit", "Rotate left", "Rotate right", "Roll left", "Roll right"):
+        reverse = name in ("Undo coordinate edit", "Rotate left", "Roll left")
+        painter.drawArc(QRectF(3, 4, 12, 11), 30 * 16, 250 * 16)
+        x = 3.4 if reverse else 14.6
+        painter.drawLine(QPointF(x, 7), QPointF(x + (3 if reverse else -3), 5))
+        painter.drawLine(QPointF(x, 7), QPointF(x + (2.4 if reverse else -2.4), 9.4))
+    elif name == "Export XYZ coordinates":
+        painter.drawLine(9, 2.5, 9, 11); painter.drawLine(5.7, 8, 9, 11.3); painter.drawLine(12.3, 8, 9, 11.3)
+        painter.drawLine(3.5, 14.5, 14.5, 14.5)
+    elif name in ("Rotate up", "Rotate down", "Pan up", "Pan down"):
+        up = name in ("Rotate up", "Pan up")
+        painter.drawLine(9, 3 if up else 15, 9, 15 if up else 3)
+        tip = 3 if up else 15; tail = 6 if up else 12
+        painter.drawLine(9, tip, 6, tail); painter.drawLine(9, tip, 12, tail)
+        if name.startswith("Pan"):
+            painter.drawLine(4, 16 if up else 2, 14, 16 if up else 2)
+    elif name in ("Zoom in", "Zoom out"):
+        painter.drawEllipse(QPointF(7.5, 7.5), 4.5, 4.5); painter.drawLine(11, 11, 15.5, 15.5)
+        painter.drawLine(5.2, 7.5, 9.8, 7.5)
+        if name == "Zoom in": painter.drawLine(7.5, 5.2, 7.5, 9.8)
+    else:  # Fit and center
+        painter.drawEllipse(QPointF(9, 9), 5.5, 5.5); painter.drawEllipse(QPointF(9, 9), 1.5, 1.5)
+        painter.drawLine(9, 1.5, 9, 4); painter.drawLine(9, 14, 9, 16.5)
+        painter.drawLine(1.5, 9, 4, 9); painter.drawLine(14, 9, 16.5, 9)
+    painter.end()
+    return QIcon(pixmap)
 
 
 def configure_graphics():
@@ -76,11 +135,10 @@ class DocumentPane(QWidget):
         self.play.setObjectName("classicButton")
         self.play.setCheckable(True)
         self.play.toggled.connect(self.play_trajectory)
-        self.fit = QPushButton("Fit")
-        self.fit.setObjectName("classicButton")
-        self.fit.clicked.connect(self.viewport.fit)
+        self.fit = self.classic_button("Fit", "Fit and center molecule", self.viewport.fit)
         self.style = QComboBox()
-        self.style.addItems(["Ball and stick", "Space filling"])
+        self.style.addItems(["xyzrender · Paton", "Publication", "Soft spheres", "Large spheres", "Sticks"])
+        self.style.setFixedWidth(135)
         self.style.currentTextChanged.connect(self.change_style)
         self.labels = QCheckBox("Labels")
         self.labels.toggled.connect(self.change_labels)
@@ -190,7 +248,11 @@ class DocumentPane(QWidget):
     def classic_button(self, text, tooltip, callback, checkable=False):
         button = QToolButton()
         button.setObjectName("classicToolButton")
-        button.setText(text)
+        if tooltip in VECTOR_TOOLS:
+            button.setIcon(tool_icon(tooltip))
+            button.setIconSize(QSize(18, 18))
+        else:
+            button.setText(text)
         button.setToolTip(tooltip)
         button.setAccessibleName(tooltip)
         button.setCheckable(checkable)
@@ -219,7 +281,10 @@ class DocumentPane(QWidget):
 
         self.label_group = QButtonGroup(self)
         self.label_group.setExclusive(True)
-        for text, mode in [("H", "Elements"), ("1", "Numbers"), ("C1", "Element + number"), ("●", "None")]:
+        hydrogens = self.classic_button("H", "Toggle hydrogen visibility", self.set_hydrogens, True)
+        hydrogens.setChecked(True)
+        row.addWidget(hydrogens)
+        for text, mode in [("1", "Numbers"), ("C1", "Elements"), ("A", "Element + number"), ("●", "None")]:
             button = self.classic_button(
                 text, "Atom captions: " + mode,
                 lambda checked, label_mode=mode: self.set_label_mode(label_mode) if checked else None, True)
@@ -243,10 +308,11 @@ class DocumentPane(QWidget):
         row.addWidget(self.style)
         row.addStretch()
         brand = QLabel("ChemViewer")
-        brand.setObjectName("secondaryText")
+        brand.setObjectName("brandLabel")
         row.addWidget(brand)
 
         scroll = QScrollArea()
+        scroll.setObjectName("toolbarScroll")
         scroll.setWidget(bar)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -310,7 +376,7 @@ class DocumentPane(QWidget):
     def camera_rail(self):
         rail = QFrame()
         rail.setObjectName("cameraRail")
-        rail.setFixedWidth(38)
+        rail.setFixedWidth(37)
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(5, 6, 5, 6)
         layout.setSpacing(5)
@@ -342,8 +408,8 @@ class DocumentPane(QWidget):
         panel.setMinimumWidth(230)
         panel.setMaximumWidth(380)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(9, 10, 9, 8)
-        layout.setSpacing(5)
+        layout.setContentsMargins(14, 14, 12, 11)
+        layout.setSpacing(7)
         self.explorer_title = QLabel("Untitled")
         self.explorer_title.setObjectName("sectionTitle")
         self.explorer_title.setWordWrap(True)
@@ -457,6 +523,11 @@ class DocumentPane(QWidget):
         self.viewport.labels = mode != "None"
         with QSignalBlocker(self.labels):
             self.labels.setChecked(self.viewport.labels)
+        self.viewport.update()
+
+    def set_hydrogens(self, visible):
+        self.viewport.show_hydrogens = visible
+        self.viewport.upload_needed = True
         self.viewport.update()
 
     def fragments_received(self, reply):
@@ -718,6 +789,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("ChemViewer")
         self.resize(1440, 900)
         self.setMinimumSize(980, 640)
+        requested_geometry = os.environ.get("CHEMVIEWER_WINDOW_GEOMETRY", "")
+        try:
+            if requested_geometry:
+                x, y, width, height = map(int, requested_geometry.split(","))
+                self.setGeometry(x, y, width, height)
+        except (TypeError, ValueError):
+            # A malformed optional placement hint must never prevent startup.
+            pass
         self.setAcceptDrops(True)
         self.errors = []
         self.dialogs_enabled = True
@@ -729,6 +808,7 @@ class MainWindow(QMainWindow):
         self.tabs.setDocumentMode(True)
         self.tabs.setMovable(True)
         self.tabs.setTabsClosable(True)
+        self.tabs.tabBar().setFixedHeight(35)
         self.tabs.tabCloseRequested.connect(self.close_document)
         self.tabs.currentChanged.connect(self.tab_changed)
         self.central = QStackedWidget()
@@ -776,7 +856,7 @@ class MainWindow(QMainWindow):
         return page
 
     def build_menus(self):
-        file_menu = self.menuBar().addMenu("&File")
+        file_menu = self.menuBar().addMenu("File")
         self.action(file_menu, "&New", QKeySequence.New, lambda: self.bridge.request("new", self.opened))
         self.action(file_menu, "&Open…", QKeySequence.Open, self.open_dialog)
         self.action(file_menu, "&Save project…", QKeySequence.Save, self.save_project)
@@ -788,13 +868,19 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         self.action(file_menu, "&Close", QKeySequence.Close, lambda: self.close_document(self.tabs.currentIndex()))
 
-        edit = self.menuBar().addMenu("&Edit")
+        edit = self.menuBar().addMenu("Edit")
         self.undo_action = self.action(edit, "Undo", QKeySequence.Undo, lambda: self.edit_action("undo"))
         self.redo_action = self.action(edit, "Redo", QKeySequence.Redo, lambda: self.edit_action("redo"))
         edit.addSeparator()
         self.action(edit, "Copy current XYZ", None, self.copy_xyz)
 
-        view = self.menuBar().addMenu("&View")
+        build = self.menuBar().addMenu("Build")
+        self.action(build, "Fragment Library…", None, lambda: self.toggle_current("builder"))
+        self.action(build, "Add Atom…", None, lambda: self.pane().add_atom() if self.pane() else None)
+        self.action(build, "Build & Edit Panel", None, lambda: self.toggle_current("builder"))
+        self.action(build, "Finish Placement", None, lambda: self.pane().pick(-1, False) if self.pane() else None)
+
+        view = self.menuBar().addMenu("View")
         for title, shortcut, index in [
             ("Image", "Ctrl+1", 0), ("Abstract", "Ctrl+2", 1), ("Source", "Ctrl+3", 2),
             ("Coordinates", "Ctrl+4", 3), ("Image / Abstract", "Ctrl+5", 4),
@@ -804,19 +890,19 @@ class MainWindow(QMainWindow):
         self.action(view, "Result Explorer", None, lambda: self.toggle_current("explorer"))
         self.action(view, "Build & Edit Panel", None, lambda: self.toggle_current("builder"))
 
-        display = self.menuBar().addMenu("&Display")
+        display = self.menuBar().addMenu("Display")
         style_group = QActionGroup(self)
-        for name in ("Ball and stick", "Space filling"):
+        for name in ("xyzrender · Paton", "Publication", "Soft spheres", "Large spheres", "Sticks"):
             action = self.action(display, name, None, lambda checked=False, selected=name: self.set_display_style(selected))
             action.setCheckable(True)
-            action.setChecked(name == "Ball and stick")
+            action.setChecked(name == "xyzrender · Paton")
             style_group.addAction(action)
-        tools = self.menuBar().addMenu("&Tools")
+        tools = self.menuBar().addMenu("Tools")
         self.action(tools, "Fit and Center", None, lambda: self.pane().viewport.fit() if self.pane() else None)
         self.action(tools, "Energy Landscape", None, lambda: self.pane().show_energy() if self.pane() else None)
-        compute = self.menuBar().addMenu("&Compute")
+        compute = self.menuBar().addMenu("Compute")
         self.action(compute, "ChemRefine…", None, lambda: self.select_mode(5))
-        help_menu = self.menuBar().addMenu("&Help")
+        help_menu = self.menuBar().addMenu("Help")
         self.action(help_menu, "About ChemViewer", None, self.about)
 
     def action(self, menu, title, shortcut, callback):

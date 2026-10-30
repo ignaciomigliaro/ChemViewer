@@ -695,8 +695,8 @@ PyInstaller resolves runtime libraries. A relocated package check strips toolcha
 PATH and verifies the actual GUI/GPU and process boundary. Windows software GL
 uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Source execution
 now passes on a physical Windows NVIDIA OpenGL 3.3 path and the software Mesa 3.0
-path. HiDPI, frozen-package acceptance and complete feature parity remain separate
-open gates.
+path. HiDPI, a signed installer and complete feature parity remain separate open
+gates. The refreshed Windows package passes the relocated actual-GUI gate.
 See [desktop scope and reproducible checks](windows-desktop.md).
 
 Qt's bundled Windows Mesa exposes GL 3.0/GLSL 1.30; the compatible path binds
@@ -713,8 +713,14 @@ Image/Abs modes reparent one persistent viewport rather than duplicating GL
 contexts. The result explorer and builder are independent splitter children,
 with the builder hidden by default. Selection has a fixed-height inspector so
 camera projection cannot change when the selected-atom count changes. The
-platform-neutral theme uses deterministic light colors and control geometry;
-scientific values, transactions and invalidation remain service-owned.
+theme is a direct translation of checked-in SwiftUI constants rather than a
+separate Windows design: menu order and fixed strip dimensions are regression
+locked, and monochrome toolbar artwork is drawn without emoji/icon-font
+dependencies. The OpenGL default translates the Metal Paton pipeline—CPK palette,
+sRGB/linear boundary, HLS focal gradient, outline cutoff, radii and thin black
+bonds—and exposes the same hydrogen/caption controls and five display-style
+names. Scientific values, camera-independent coordinates, transactions and
+invalidation remain service-owned.
 ## 0.12.1 — BOS-TMC donor-element filtering
 
 The display name is BOS-TMC; tab identifiers, saved preference keys, source paths

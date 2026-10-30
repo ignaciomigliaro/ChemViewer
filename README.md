@@ -1,8 +1,9 @@
 # ChemViewer
 
 Windows-first native Qt desktop work is underway on the development branch. Its
-workspace has been rebuilt to follow the native Apple layout while retaining the
-shared Swift scientific core.
+workspace translates the checked-in SwiftUI dimensions, menu order, controls and
+Metal Paton appearance rather than applying a separate Windows design, while
+retaining the shared Swift scientific core.
 See [desktop build, controls and acceptance checks](docs/windows-desktop.md).
 The released 0.12.0 portable viewer remains distinct from this desktop port.
 

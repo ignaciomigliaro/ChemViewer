@@ -1298,6 +1298,16 @@ The empty window has Mac-equivalent New/Open entry points. `desktop/theme.py`
 provides the deterministic light styling. Atom labels are centered and offer
 element, number, combined or none; the camera rail adds roll/pan/zoom/fit nudges.
 
+The first shell pass matched layout but still used Windows emoji/font
+substitutions and an approximate renderer. The direct-fidelity follow-up treats
+the checked-in SwiftUI/Metal implementation as the specification: Mac menu order,
+35-point document strip, fixed mode tabs, 45-point toolbar, 37-point rail,
+140-point inspector and 30-point status are regression locked. Toolbar symbols
+are dependency-free monochrome vectors. The OpenGL default now translates the
+Mac Paton CPK table, HLS gradient, sRGB boundary, outline threshold, display
+radii and thin black bonds; the five Mac style names, hydrogen toggle and four
+caption states are present. No separate rounded "Windows redesign" was retained.
+
 This is visual/workspace parity for the already ported features, not full Mac
 functional parity. ChemRefine, Draw and BOS-TMC show explicit porting-boundary
 pages; spectra, displacement vectors, full Mac builder/project interoperability,
@@ -1315,12 +1325,12 @@ acceptance remains open. The screenshot in
 mockup. Desktop line/branch coverage remains above every existing module floor;
 new `theme.py` is 100%.
 
-A fresh 78,672,026-byte `dist/ChemViewer-desktop-win32.zip` was frozen from the
+A fresh 78,676,938-byte `dist/ChemViewer-desktop-win32.zip` was frozen from the
 rebuilt UI with the immutable validated service and passed the relocated package
 gate with developer PATH removed on NVIDIA OpenGL 3.3. Deleting the service only
 inside the temporary relocated copy produced the expected explicit failure and
 no development fallback. ZIP SHA-256:
-`defa8be1468d3fe116337ae3a739ef79c0806154fd55803270a35e7f134ebb94`.
+`86e1f8a37d7fb8423adf7edd4db813c03a65d3bedbdfa48378a174bc8d28c097`.
 The packaging script now accepts `--service` for this evidence-backed reuse path;
 normal release CI still builds its own service from source. A physical HiDPI run,
 hosted checks and the remaining Mac functionality are required before a release/tag.
