@@ -117,9 +117,11 @@ class BosTMCTests(unittest.TestCase):
   other=self.root/'another.csv';other.write_bytes(self.csv.read_bytes());request=dict(self.request,csv=str(other))
   children=[];spawn=subprocess.Popen
   def launch(*args,**kwargs):
+   self.assertLess(len(subprocess.list2cmdline(args[0])),8000)
    child=spawn(*args,**kwargs);children.append(child);return child
   try:
-   with patch.object(module.subprocess,'Popen',side_effect=launch):state=Catalog.start(request)
+   source=(ROOT/'bostmc_catalog.py').read_text()+'\n#'+'x'*64_000+'\n'
+   with patch.dict(module.__dict__,{'_BOSTMC_SOURCE':source}),patch.object(module.subprocess,'Popen',side_effect=launch):state=Catalog.start(request)
    for _ in range(200):
     state=Catalog.status(request)
     if state['phase'] in ('ready','error'):break
@@ -129,6 +131,14 @@ class BosTMCTests(unittest.TestCase):
    for child in children:
     try:child.wait(timeout=10)
     except subprocess.TimeoutExpired:child.terminate();child.wait(timeout=5);raise
+  self.assertEqual(list(Catalog.location(request)[1].glob('index-worker-*.py')),[])
+ def test_background_launch_failure_closes_log_and_removes_worker(self):
+  other=self.root/'failed launch.csv';other.write_bytes(self.csv.read_bytes());request=dict(self.request,csv=str(other))
+  _,cache,_=Catalog.location(request)
+  with patch.object(module.subprocess,'Popen',side_effect=OSError('Synthetic launch failure')):
+   with self.assertRaisesRegex(OSError,'Synthetic launch failure'):Catalog.start(request)
+  self.assertEqual(list(cache.glob('index-worker-*.py')),[])
+  (cache/'index.log').unlink()  # Windows refuses this if the failed launch leaked its log handle.
  def test_inline_xyz_still_locates_associated_output(self):
   self.records[0][1]='2\ninline XYZ\nH 0 0 0\nH 0 0 .74\n';self.write();Catalog.build(self.request)
   folder=self.root/'dataset/singlets/HUNJAE_comp_0';folder.mkdir(parents=True);(folder/'psi4.dat').write_text('source')

@@ -722,3 +722,9 @@ relocated-resource and removed-helper negative controls remain unchanged.
 Catalog status rechecks published index/terminal status after a worker exits,
 closing a TOCTOU window where fast successful builds appeared stopped. Two
 controlled interleaving regressions cover completed indexes and original errors.
+
+Background catalog workers execute a unique private cache script rather than
+placing the embedded helper in argv, keeping Windows launches below command
+limits. Completed workers remove their script; launch failures remove it and
+close the log handle. A padded 64 KB embedded source exercises the real child
+process, and a failed-launch regression verifies cleanup on every platform.

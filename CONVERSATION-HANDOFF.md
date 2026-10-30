@@ -1265,3 +1265,11 @@ Post-race full suite106 passes (three optional proprietary skips); BOS-TMC
 line/branch coverage92.79%, all unchanged floors pass. Core vibration functions
 and native UI are unchanged by the race fix. Final helper is repackaged for
 BOS-TMC native and relocated-resource regression before installation.
+
+The next Windows run exposed argv >32767 characters in the background launcher
+after helper growth, plus an unclosed log on failed Popen. Workers now run from
+unique mode600 private cache scripts, self-remove after completion, and close
+logs/remove scripts on launch failure. The actual-child regression pads embedded
+source by64KB and checks bounded argv and cleanup; a launch-failure oracle checks
+that Windows can unlink the log. Full Python107/catalog39 pass; BOS-TMC92.90%,
+all floors unchanged. Repackaging and exact-source CI are required again.

@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import sqlite3
 import subprocess
+import tempfile
 import sys
 import time
 
@@ -167,8 +168,16 @@ class BosTMCCatalog:
         if status['phase']=='indexing': return status
         code = globals().get('_BOSTMC_SOURCE') or Path(__file__).read_text()
         bootstrap='import base64,json;exec(compile(base64.b64decode('+repr(base64.b64encode(code.encode()).decode())+'),"<bostmc-index>","exec"));getattr(os,"nice",lambda _:None)(10);BosTMCCatalog.build(json.loads(base64.b64decode('+repr(base64.b64encode(json.dumps(request).encode()).decode())+')))'
-        log=(cache/'index.log').open('ab')
-        child=subprocess.Popen([sys.executable,'-c',bootstrap],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True);log.close()
+        # Keep argv bounded on Windows, including when invoked through an embedded SSH helper.
+        with tempfile.NamedTemporaryFile(mode='w',encoding='utf-8',prefix='index-worker-',suffix='.py',dir=cache,delete=False) as script:
+            worker=Path(script.name)
+            script.write('try:\n '+bootstrap+'\nfinally:\n __import__("pathlib").Path(__file__).unlink(missing_ok=True)\n')
+        try:
+            with (cache/'index.log').open('ab') as log:
+                child=subprocess.Popen([sys.executable,str(worker)],stdin=subprocess.DEVNULL,stdout=log,stderr=log,start_new_session=True)
+        except BaseException:
+            worker.unlink(missing_ok=True)
+            raise
         return dict(phase='indexing',rows=0,pid=child.pid,fingerprint=fingerprint)
     @staticmethod
     def process_alive(pid):
