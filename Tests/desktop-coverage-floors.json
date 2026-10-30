@@ -1,0 +1,10 @@
+{
+  "_note": "Initial branch+line floors from real Qt GUI workflows; Windows must also exercise the Mesa context adapter. Do not lower floors to bypass failures.",
+  "acceptance.py": 90,
+  "bridge.py": 75,
+  "gl_platform.py": 100,
+  "main.py": 85,
+  "plots.py": 95,
+  "theme.py": 100,
+  "viewport.py": 80
+}

@@ -11,3 +11,8 @@ path and SHA-256; they are not copied into the clean-room source tree.
 | `dihedral.xyz` | Four-atom selection and signed dihedral convention | `2c8cf8aaac94de44aff27431ec554814804ef06756acc291cfadf4c99b5e4e14` |
 
 These small geometries were authored for this project and may be committed.
+
+`desktop-imaginary.out` is original, synthetic ORCA-style parser/UI test text.
+It deliberately uses an arbitrary −250 cm⁻¹ H2 mode, IR intensity 7.5 and energy
+−1.123456789012 Hartree. It is not output from a real calculation and makes no
+physical transition-state claim. It may be redistributed with these tests.

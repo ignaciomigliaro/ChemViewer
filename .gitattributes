@@ -9,3 +9,4 @@
 *.json text eol=lf
 *.plist text eol=lf
 *.xyz text eol=lf
+Tests/fixtures/desktop-imaginary.out text eol=lf

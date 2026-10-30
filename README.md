@@ -1,13 +1,20 @@
 # ChemViewer
 
+Windows-first native Qt desktop work is underway on the development branch. Its
+workspace translates the checked-in SwiftUI dimensions, menu order, controls and
+Metal Paton appearance rather than applying a separate Windows design, while
+retaining the shared Swift scientific core.
+See [desktop build, controls and acceptance checks](docs/windows-desktop.md).
+The released 0.12.0 portable viewer remains distinct from this desktop port.
+
 Molecular visualization and computational chemistry workflows for macOS, with a
 shared-parser portable viewer preview for Windows and Linux.
 
 **[Feature guide](docs/user-guide.md) · [Windows/Linux quick start](docs/portable-viewer.md) · [Testing and releases](docs/release-process.md) · [Feature status](docs/feature-parity.md)**
 
-![ChemViewer portable molecule viewer](docs/images/portable-water.png)
+![ChemViewer Windows desktop with the Apple-style workspace](docs/images/native-qt-desktop.png)
 
-Version **0.12.0** prepares the project for 1.0. The native Mac app retains its
+Released version **0.12.1** prepares the project for 1.0. The native Mac app retains its
 full existing interface; the portable viewer currently covers molecular viewing,
 trajectories, modes, source inspection, energy plots and XYZ/JSON/PNG export.
 Cross-platform editing, ChemRefine/SSH/BosTMC UI parity and physical Windows/Linux
@@ -96,6 +103,7 @@ python -m pip install -r requirements-test.txt
 python -m coverage run -m unittest discover -s python_tests -v
 python scripts/check-building.py
 python scripts/check-portable.py --binary .build/debug/ChemViewerPortable
+python Tests/gui/desktop/test_desktop.py
 ```
 
 Use the `.exe` binary suffix on Windows. POSIX transport/engine Python tests run
@@ -125,6 +133,7 @@ settings. See `docs/macos-diagnostics.md`.
 
 - [Feature guide](docs/user-guide.md) — task-oriented instructions for every implemented feature family.
 - [Portable viewer](docs/portable-viewer.md) — Windows/Linux setup, illustrated workflows and limits.
+- [Windows desktop](docs/windows-desktop.md) — native shell, controls, validation and remaining parity work.
 - [Release process](docs/release-process.md) — branch policy, CI coverage and 1.0 acceptance.
 
 - `docs/architecture.md` — modular design and implementation decisions.

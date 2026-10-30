@@ -672,6 +672,55 @@ The relocated ZIP gate also removes one temporary helper and verifies refusal.
 This corrects a real crash in the separately downloaded CI app that was hidden
 by local build-tree fallback, despite successful signing and compilation.
 
+## Windows-first Qt desktop (development branch, updated 2026-10-29)
+
+`desktop/main.py` uses PySide6 Qt Widgets for desktop integration and
+`desktop/viewport.py` uses QOpenGLWidget/OpenGL 3.3 (or GL 3.0 plus ARB instancing/GLSL 1.30)
+with two instanced mesh draws,
+depth testing, explicit camera transforms and analytic sphere picking. This
+frontend is shared by Windows/Linux and can be exercised on macOS without
+replacing the native Apple application. Qt Quick 3D is not a dependency.
+
+`ChemViewerService` links ChemCraftCore and owns document state, transactions,
+scientific edits, per-document undo/redo, invalidation, measurement and export.
+`desktop/bridge.py` uses asynchronous QProcess and correlated JSON-line messages
+on a private child's standard streams. No shell, socket or Python chemistry
+reimplementation is involved. Parse/edit failures leave existing state intact.
+Full presentation snapshots use PortableDocument schema 1; project schema 1
+stores original source, embedded input companions and edited core-built frames.
+The `.cvdesktop` project format is separate from the native Mac builder format.
+
+The frozen desktop package embeds the chemistry service as a binary dependency;
+PyInstaller resolves runtime libraries. A relocated package check strips toolchain
+PATH and verifies the actual GUI/GPU and process boundary. Windows software GL
+uses the Qt wheel's Mesa DLL consistently from Qt and PyOpenGL. Source execution
+now passes on a physical Windows NVIDIA OpenGL 3.3 path and the software Mesa 3.0
+path. HiDPI, a signed installer and complete feature parity remain separate open
+gates. The refreshed Windows package passes the relocated actual-GUI gate.
+See [desktop scope and reproducible checks](windows-desktop.md).
+
+Qt's bundled Windows Mesa exposes GL 3.0/GLSL 1.30; the compatible path binds
+attribute locations explicitly and uses ARB instancing. The same actual GPU-mesh
+workflows are mandatory under a constrained Linux Mesa context in CI. Labels
+use a transparent raster QWidget overlay and are composited into exported
+QImages, keeping Qt text painting out of the molecular GL context. Package
+reports record actual GL version, renderer and shader path.
+
+`desktop/theme.py` and the rebuilt `DocumentPane` reproduce the native Mac shell
+without coupling chemistry to presentation. A fixed `ModeTabBar` owns the eight
+Mac workspace modes; a `QStackedWidget` owns their content. The Image and
+Image/Abs modes reparent one persistent viewport rather than duplicating GL
+contexts. The result explorer and builder are independent splitter children,
+with the builder hidden by default. Selection has a fixed-height inspector so
+camera projection cannot change when the selected-atom count changes. The
+theme is a direct translation of checked-in SwiftUI constants rather than a
+separate Windows design: menu order and fixed strip dimensions are regression
+locked, and monochrome toolbar artwork is drawn without emoji/icon-font
+dependencies. The OpenGL default translates the Metal Paton pipeline—CPK palette,
+sRGB/linear boundary, HLS focal gradient, outline cutoff, radii and thin black
+bonds—and exposes the same hydrogen/caption controls and five display-style
+names. Scientific values, camera-independent coordinates, transactions and
+invalidation remain service-owned.
 ## 0.12.1 — BOS-TMC donor-element filtering
 
 The display name is BOS-TMC; tab identifiers, saved preference keys, source paths

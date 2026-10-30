@@ -5,7 +5,7 @@ import plistlib
 import re
 root=Path(__file__).resolve().parents[1]
 failed=[]
-for name in ['README.md','docs/user-guide.md','docs/portable-viewer.md','docs/release-process.md']:
+for name in ['README.md','docs/user-guide.md','docs/portable-viewer.md','docs/release-process.md','docs/windows-desktop.md']:
     path=root/name
     for target in re.findall(r'\]\(([^)]+)\)',path.read_text()):
         target=target.split('#',1)[0]

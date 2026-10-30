@@ -1,9 +1,11 @@
 # ChemViewer feature guide
 
 ChemViewer is an independent molecular visualization and computational chemistry
-application. The native Mac app has the broadest workflow support; the new
-[portable viewer](portable-viewer.md) provides a shared-parser viewing subset on
-Windows and Linux. Version 0.12.0 is preparation for 1.0, not a full-parity claim.
+application. The native Mac app has the broadest workflow support. The in-progress
+[Windows desktop](windows-desktop.md) now uses the same workspace geometry for
+its ported viewing/editing features; the released [portable viewer](portable-viewer.md)
+provides a smaller shared-parser subset on Windows and Linux. Version 0.12.1 is
+preparation for 1.0, not a full-parity claim.
 
 ## Open and organize calculations
 
