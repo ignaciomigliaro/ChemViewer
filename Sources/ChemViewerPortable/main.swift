@@ -2,7 +2,7 @@ import Foundation
 import ChemCraftCore
 
 let help = """
-ChemViewerPortable 0.12.1 — Windows / Linux / macOS scientific viewer
+ChemViewerPortable 0.13.0 — Windows / Linux / macOS scientific viewer
 Usage: ChemViewerPortable INPUT [--output FILE] [--json | --xyz]
   Default: write a self-contained interactive HTML viewer. Open it in a browser.
   --json   Export versioned scientific data, source values and units.
@@ -15,7 +15,7 @@ The native Mac editor, SSH, ChemRefine and BosTMC UI are not in this viewer.
 
 func run() throws {
     let args = Array(CommandLine.arguments.dropFirst())
-    if args == ["--version"] { print("0.12.1"); return }
+    if args == ["--version"] { print("0.13.0"); return }
     if args.isEmpty || args == ["--help"] { print(help); return }
     var input: String?, output: String?, format = "html", i = 0
     while i < args.count {

@@ -17,7 +17,7 @@ targets.append(.executableTarget(
     name: "ChemViewerApp", dependencies: ["ChemCraftCore"],
     path: "Sources/ChemCraftMacApp",
     exclude: ["Resources/__pycache__"],
-    resources: ["MoleculeShaders.metal", "Fragments.json", "workflow_dashboard.js",
+    resources: [.copy("Resources/MoleculeShaders.metal")] + ["Fragments.json", "workflow_dashboard.js",
                 "remote_agent.py", "remote_bridge.py", "chemistry_bridge.py",
                 "drawing_bridge.py", "bostmc_catalog.py", "energy_landscape.py",
                 "workflow_bridge.py"].map { .process("Resources/" + $0) }

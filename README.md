@@ -509,3 +509,13 @@ For example, N + O includes N/O/S complexes and excludes N-only or Na/O records.
 The filter uses the declared CSV donor list, never a formula substring.
 Re-index once to build the new donor-element index; existing caches are retained.
 See the [illustrated screening guide](docs/user-guide.md#bos-tmc-catalyst-screening).
+
+## Vibration controls and visible vectors — 0.13.0
+
+The dedicated vibration row offers **Vectors: on/off**, **Freeze / Resume**,
+**Max +**, **Max −**, and **Save displaced XYZ…**. Dark violet arrows remain
+visible on the white Paton background. Freeze holds the current phase; the
+maximum buttons select either direction at the chosen display amplitude.
+Displaced XYZ seeds retain atom order and omit the original calculated energy;
+the source calculation remains unchanged. See the [vibration guide](docs/user-guide.md#vibrations-and-spectra)
+for amplitude semantics and imaginary-mode follow-up calculations.

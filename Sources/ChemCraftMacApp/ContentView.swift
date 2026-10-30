@@ -62,6 +62,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--vibration-smoke-test") { await VibrationSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--bostmc-local-smoke-test") { await Task { @MainActor in await BosTMCLocalSmokeTest.run(workspace:workspace) }.value }
             if CommandLine.arguments.contains("--bostmc-smoke-test") { await Task { @MainActor in await BosTMCSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--remote-workflow-smoke-test") { await RemoteWorkflowSmokeTest.run(workspace: workspace) }
@@ -328,7 +329,7 @@ struct ContentView: View {
                     amplitude: workspace.vibrationAmplitude,
                     showDisplacementVectors: workspace.showDisplacementVectors,
                     style: workspace.renderingStyle,
-                    showHydrogens: workspace.showHydrogens, atomCaption: workspace.atomCaption, vibrationSpeed: workspace.vibrationSpeed,
+                    showHydrogens: workspace.showHydrogens, atomCaption: workspace.atomCaption, vibrationPlayback: workspace.vibrationPlayback, vibrationSpeed: workspace.vibrationSpeed,
                     selectedAtomIndices: $workspace.selectedAtomIndices,
                     showMeasurementOverlay: workspace.showMeasurementOverlay, measurementSelections: workspace.pinnedMeasurementSelections,
                     draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
@@ -362,6 +363,10 @@ struct ContentView: View {
                 }.padding(5).frame(width: 37).background(Color(nsColor: .windowBackgroundColor))
                 }
                 Divider()
+                if workspace.selectedMode != nil {
+                    VibrationControls().environmentObject(workspace)
+                    Divider()
+                }
                 // Reserve a stable inspector area: selecting atoms must not resize the camera viewport.
                 GeometryReader { area in
                     ScrollView([.horizontal, .vertical]) {

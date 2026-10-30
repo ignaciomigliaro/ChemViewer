@@ -567,3 +567,27 @@ Na toggle/removal, subset filtering with additional S donors, original property
 filters, source precision, separate spin records and unchanged source CSV. Shared
 single-element builder periodic-table acceptance is rerun separately. Physical
 native results and hosted release checks are recorded in the continuation handoff.
+
+## Vibration controls and displaced XYZ — 0.13.0 (2026-10-30)
+
+Three new core regressions use independent arithmetic for signed displacements,
+clock timing, freeze/resume, speed continuity, maxima and invalid data. For
+source O=(1,2,3), vector=(0.2,-0.4,0.6), amplitude=0.5, the positive seed is
+(1.1,1.8,3.3) and negative seed (0.9,2.2,2.7). XYZ round-trip preserves atom
+identity/order/coordinates and drops source energy. Imaginary frequency, IR
+intensity, Raman activity and original geometry are unchanged. Missing vectors,
+invalid phase/amplitude, nonfinite values and arithmetic overflow are rejected.
+
+The native fixture is the independently authored synthetic-modes.out already in
+Tests/fixtures/integrated-building; it is a parser fixture, not a calculation.
+For its mode 8, amplitude 0.5 gives O x=±0.1 and first H x=0.708/0.808. The
+native harness checks actual buttons, Metal pixels for violet arrows in each
+display style, clock propagation and exported numeric values. Physical Apple Silicon checks passed: native toggles, freeze/resume, both maxima,
+source preservation and XYZ round trip. Violet sample counts (every second
+pixel in each dimension) were Paton 5,005; Publication 4,013; Soft spheres 4,001;
+Large spheres 204; Sticks 9,806. Large-sphere visibility uses display amplitude
+1.5 so arrows extend past spheres; coordinate extrema use amplitude 0.5.
+General Metal/source/XYZ, 50 document-switch and GIF regressions also pass.
+All 104 Python cases pass with three optional proprietary-fixture skips and all
+module coverage floors. Hosted coverage/XCTest gates remain pending. No physical
+claim follows from CI.

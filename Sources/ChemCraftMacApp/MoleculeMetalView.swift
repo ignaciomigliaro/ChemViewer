@@ -32,6 +32,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     var style: MolecularStyle = .paton
     var showHydrogens = true
     var atomCaption: AtomCaption = .none
+    var vibrationPlayback: VibrationPlayback? = nil
     var vibrationSpeed: Float = 0.48
     @Binding var selectedAtomIndices: [Int]
     var showMeasurementOverlay = false
@@ -97,7 +98,7 @@ struct MoleculeMetalView: NSViewRepresentable {
             selectedAtomIndices: selectedAtomIndices,
             style: style,
             showHydrogens: showHydrogens, atomCaption: atomCaption, vibrationSpeed: vibrationSpeed,
-            geometryID: frame.id
+            geometryID: frame.id, vibrationPlayback: vibrationPlayback
         )
         if switched || !context.coordinator.restoredViewport {
             view.resetDocumentViewport()
@@ -152,6 +153,7 @@ struct RenderScene {
     var atomCaption: AtomCaption = .none
     var vibrationSpeed: Float = 0.48
     var geometryID: Int = 0
+    var vibrationPlayback: VibrationPlayback? = nil
 }
 
 private struct MetalVertex {
@@ -517,7 +519,9 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             appendCylinderInstance(from: positions[bond.first], to: positions[bond.second], radius: scene.style == .paton ? 0.07894737 : 0.085, color: color, into: &bondInstances)
         }
         if scene.showDisplacementVectors {
-            let vectorColor = SIMD4<Float>(1.0, 0.62, 0.08, 1)
+            // Instance alpha is the Paton whitening mask, not transparency. A value of 1
+            // turns arrows white; keep it zero and use saturated dark violet.
+            let vectorColor = SIMD4<Float>(0.12, 0.015, 0.32, 0)
             for index in scene.atoms.indices where scene.displacements.indices.contains(index) && (scene.showHydrogens || scene.atoms[index].element != "H") {
                 let origin = SIMD3(
                     scene.atoms[index].position.x,
@@ -745,7 +749,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     private func appendLine(from start: SIMD3<Float>, to end: SIMD3<Float>, color: SIMD4<Float>, into instances: inout [MetalInstance]) {
-        appendCylinderInstance(from: start, to: end, radius: 0.025, color: color, into: &instances)
+        appendCylinderInstance(from: start, to: end, radius: 0.035, color: color, into: &instances)
     }
 
     var viewingRotation: simd_float4x4 { cameraRotation() }
@@ -759,7 +763,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private func displacedPositions() -> [SIMD3<Float>] {
         if let dragPreviewPositions { return dragPreviewPositions }
         let elapsed = scene.animate ? CACurrentMediaTime() - animationStart : animationElapsed
-        let phase = Float(sin(elapsed * Double(scene.vibrationSpeed) * 2 * .pi))
+        let phase = scene.vibrationPlayback?.factor(at: ProcessInfo.processInfo.systemUptime) ?? Float(sin(elapsed * Double(scene.vibrationSpeed) * 2 * .pi))
         return scene.atoms.enumerated().map { index, atom in
             var value = SIMD3(atom.position.x, atom.position.y, atom.position.z)
             if scene.displacements.indices.contains(index) {

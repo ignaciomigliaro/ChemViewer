@@ -82,6 +82,25 @@ vectors show printed Cartesian displacements. Negative frequencies remain
 negative and are marked imaginary; display amplitude and animation rate are
 visual controls, not IR intensity or physical vibrational time.
 
+![Violet normal-mode arrows on the white Paton background, using a synthetic fixture](images/vibration-vectors.png)
+
+The vibration control row below the viewport includes **Vectors: on/off**,
+**Freeze / Resume**, **Max +**, **Max −**, and **Save displaced XYZ…**. Vectors
+are dark violet on white backgrounds. Freeze holds the current phase; Resume
+continues from it. Max + and Max − stop at the two opposite extrema of the
+selected mode. The sign of a normal-mode eigenvector is arbitrary, so inspect
+both directions when preparing a new optimization from an imaginary mode.
+
+Adjust **Amplitude** to choose the displacement scale. A maximum means the
+extremum of the displayed sinusoid at that scale, not an optimized structure or
+a guaranteed path to a minimum. While frozen, **Save displaced XYZ…** writes
+`r_source + amplitude × signed_phase × printed_vector`. It preserves atom order,
+leaves the source calculation unchanged, and omits the original energy because
+it does not describe the displaced geometry. The normal **Export XYZ** action
+continues to export the document geometry. XYZ does not store charge or spin;
+set those explicitly in the follow-up calculation. Arrow lengths are magnified
+fivefold for visibility and are not the exported coordinate displacement.
+
 IR provides sticks and Gaussian/Lorentzian broadening for supported output tables.
 IR source intensity and Raman activity are distinct quantities. Raman spectrum
 conversion and full vibrational-format parity are not implemented. Source values
