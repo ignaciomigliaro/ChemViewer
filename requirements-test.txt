@@ -1,4 +1,4 @@
-coverage==7.10.6
+coverage==7.17.0
 matplotlib==3.11.2
 rdkit==2026.9.1
 ase==3.29.0
