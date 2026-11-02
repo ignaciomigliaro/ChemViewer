@@ -519,3 +519,10 @@ maximum buttons select either direction at the chosen display amplitude.
 Displaced XYZ seeds retain atom order and omit the original calculated energy;
 the source calculation remains unchanged. See the [vibration guide](docs/user-guide.md#vibrations-and-spectra)
 for amplitude semantics and imaginary-mode follow-up calculations.
+
+## Native appearance correction — 0.13.1
+
+Restores the white panels and compact native menus of the 0.12 local build by
+correcting linked-SDK compatibility metadata. The violet vectors and new
+vibration controls remain available. Packaging now verifies SDK identity in
+addition to resource containment and signing.

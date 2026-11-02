@@ -509,3 +509,20 @@ disabled during animation and unavailable without complete mode vectors.
 Run --vibration-smoke-test for native button/renderer and numeric/export checks.
 Also run --smoke-test, --document-workspace-smoke-test and the relocated-resource
 negative control; downloaded CI app acceptance is separate from a local build.
+
+## Appearance baseline — 0.13.1
+
+CV-APPEARANCE-001: Compare the 0.12 reference and new app on the same Mac with
+synthetic water, equal window sizes and fresh isolated preference domains.
+Use --smoke-test --capture-window --render-evidence /path/to/owned/evidence.
+Check white panels, compact File/Edit/Build/View menus, modern borderless Build
+and Display pickers, result sidebar and status-bar background across all five
+tabs. A gray frame and full-width stretched menus reproduce the rejected build.
+Keep all new vibration controls and repeat --vibration-smoke-test.
+
+CV-APPEARANCE-002: Confirm otool's LC_BUILD_VERSION SDK agrees with the selected
+build SDK and packaged DTSDKName. Run the relocated archive gate; both wrong-SDK
+and missing-helper negative controls must reject their disposable copies.
+Download the exact-source CI archive separately, verify its digest and repeat
+the appearance/vibration checks on the physical Mac; source-only evidence does
+not establish the distributed app's appearance.

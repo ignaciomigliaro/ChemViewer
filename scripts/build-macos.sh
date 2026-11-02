@@ -7,7 +7,7 @@ case "${1:-}" in
   *) echo "Usage: bash scripts/build-macos.sh [--require-xctest]" >&2; exit 2 ;;
 esac
 if xcrun --find xctest >/dev/null 2>&1; then
-    swift test
+    swift test --build-system native
 elif [[ "${1:-}" == --require-xctest ]]; then
     echo "XCTest requires full Xcode. Install Xcode and select its Developer directory." >&2
     exit 1
@@ -16,16 +16,20 @@ else
     python3 scripts/check-core.py
 fi
 bash scripts/check-building.sh
-swift build -c release --arch arm64 --product ChemViewer
-bin_dir="$(swift build -c release --arch arm64 --show-bin-path)"
+swift build --build-system native -c release --arch arm64 --product ChemViewer
+bin_dir="$(swift build --build-system native -c release --arch arm64 --show-bin-path)"
 app_dir="$project_dir/dist/ChemViewer.app"
 case "$app_dir" in
     "$project_dir"/dist/*.app) ;;
     *) echo "refusing to replace unexpected path: $app_dir" >&2; exit 2 ;;
 esac
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+# Swift 6.4 swiftbuild incorrectly linked the SDK as the deployment target (13.0).
+# Use native SwiftPM until its replacement preserves linked-SDK compatibility.
 cp "$bin_dir/ChemViewer" "$app_dir/Contents/MacOS/ChemViewer"
+python3 scripts/check-macos-sdk.py --binary "$app_dir/Contents/MacOS/ChemViewer" --sdk-version "$(xcrun --show-sdk-version)"
 cp "$project_dir/Packaging/Info.plist" "$app_dir/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :DTSDKName string macosx$(xcrun --show-sdk-version)" "$app_dir/Contents/Info.plist"
 bash "$project_dir/scripts/build-icon.sh"
 cp "$project_dir/Packaging/ChemViewer.icns" "$app_dir/Contents/Resources/ChemViewer.icns"
 resource_bundle="$(find "$bin_dir" -maxdepth 1 -name '*ChemViewerApp.bundle' -print -quit)"

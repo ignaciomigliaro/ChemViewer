@@ -452,3 +452,13 @@ standalone runner. Native button/renderer checks pass for all five styles, along
 Metal/export, 50 document switches and GIF regressions. Hosted release gates
 remain pending.
 No optimization convergence or imaginary-frequency removal is guaranteed.
+
+## 0.13.1 — restore 0.12 native appearance
+
+Corrected a build-SDK identification regression rather than changing the theme.
+Physical comparison of synthetic water in actual 0.12 and 0.13 executables
+reproduced white/compact versus gray/expanded native controls. A rebuilt 0.13.1
+with correct SDK26.5 metadata restores the white panels and compact controls.
+Violet vectors, freeze/resume, both maxima and displaced XYZ remain intact and
+pass their native checks. Build/archive SDK identity is now gated; hosted and
+downloaded artifact evidence is recorded in the version's release PR.
