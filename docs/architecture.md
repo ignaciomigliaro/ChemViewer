@@ -728,3 +728,22 @@ placing the embedded helper in argv, keeping Windows launches below command
 limits. Completed workers remove their script; launch failures remove it and
 close the log handle. A padded 64 KB embedded source exercises the real child
 process, and a failed-launch regression verifies cleanup on every platform.
+
+## Native SDK identity and appearance — 0.13.1
+
+The 0.13.0 local Swift 6.4 swiftbuild executable reported LC_BUILD_VERSION SDK
+13.0 despite compiling against SDK26.5. Minimum deployment OS13.0 is distinct
+from the build SDK. This changed native framework compatibility behavior: gray
+panels, expanded menu labels and older-looking picker controls. The 0.12 local
+binary identified SDK26.5; its theme/menu source had not changed in 0.13.
+
+The packager now explicitly uses native SwiftPM and checks the executable's SDK
+against xcrun's selected SDK before signing. Generated Info.plist records DTSDKName;
+the relocated archive gate verifies that provenance and rejects a test copy
+mislabeled SDK13.0, alongside the existing missing-helper negative control.
+No restyling or vibration-control changes are needed to restore the earlier look.
+
+Native artifact CI uses macos-26 with Xcode26.5, aligning the distributed app's SDK
+with the accepted local appearance baseline. The portable/test matrix remains
+on its existing systems. GitHub's [runner inventory](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md#xcode)
+lists that Xcode and SDK on this image. The deployment minimum remains macOS13.

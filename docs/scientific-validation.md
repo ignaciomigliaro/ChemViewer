@@ -591,3 +591,20 @@ General Metal/source/XYZ, 50 document-switch and GIF regressions also pass.
 All 107 Python cases pass with three optional proprietary-fixture skips and all
 module coverage floors. Hosted coverage/XCTest gates remain pending. No physical
 claim follows from CI.
+
+## Appearance compatibility regression — 0.13.1 (2026-11-02)
+
+No scientific or vibration algorithm changed. Isolated actual 0.12 and reported
+0.13 apps ran the same synthetic-water --smoke-test/--capture-window sequence on
+the same physical Mac. Captures under /private/tmp/chemviewer-appearance-qa show
+that SDK26.5 produces the accepted white panels/compact menus, while the SDK13.0
+mislabeled 0.13 build produces gray panels, stretched menus and legacy pickers.
+The corrected source app reports SDK26.5, passes core47/three migrated suites,
+general Metal/source/export and the five-style vibration-button/extrema checks.
+
+The SDK metadata gate accepts the preserved real 0.12 executable and rejects
+the installed reported 0.13 executable against the same expected SDK26.5. Archive
+acceptance additionally patches a disposable copy's metadata to reproduce the
+bad SDK and requires rejection; the shipped signed app is not patched. This is
+a packaging/appearance check, not a scientific acceptance claim. Hosted and
+independent downloaded-app results are retained in the release PR.

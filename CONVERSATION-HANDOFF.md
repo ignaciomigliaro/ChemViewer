@@ -1273,3 +1273,27 @@ logs/remove scripts on launch failure. The actual-child regression pads embedded
 source by64KB and checks bounded argv and cleanup; a launch-failure oracle checks
 that Windows can unlink the log. Full Python107/catalog39 pass; BOS-TMC92.90%,
 all floors unchanged. Repackaging and exact-source CI are required again.
+
+## Restore native 0.12 appearance — 2026-11-02 (0.13.1/build41)
+
+User likes the new vibration controls but rejects the overall gray GUI and
+changed menu/picker look. The earlier explanation blaming the vibration row
+was incorrect. ClassicControls.swift/general theme source are unchanged from
+0.12.1. Installed0.13 LC_BUILD_VERSION reports sdk13.0/minos13.0; preserved actual
+0.12 local binary reports sdk26.5/minos13.0. Swift6.4's default swiftbuild linker
+mistagged the SDK as the deployment minimum, altering framework compatibility.
+
+Physical isolated reference/reported --smoke-test --capture-window runs reproduce
+exactly the white compact0.12 versus gray stretched-menu0.13 look. Original
+cached0.12 binary saved under /private/tmp/chemviewer-appearance-qa before rebuild.
+Native SwiftPM rebuild with installed SDK26.5 reports correct sdk26.5 and restores
+white panels/compact menus. General smoke and vibration checks pass unchanged;
+latest five-style violet counts4952/3964/3956/200/9715. No vibration/theme source
+was reverted. Evidence lives under /private/tmp/chemviewer-appearance-qa.
+
+build-macos.sh now selects native build system explicitly; new check-macos-sdk.py
+verifies Mach-O SDK identity against the selected SDK. Generated DTSDKName and
+relocated SDK-13 negative control protect distribution. Native CI moves to
+macos-26/Xcode26.5 so download SDK matches the accepted local baseline; portable
+matrix remains unchanged. Version0.13.1/build41. AGENTS.md/.vscode changes remain
+excluded. Final package/CI/download/install/publication evidence goes in release PR.
