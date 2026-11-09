@@ -276,6 +276,7 @@ final class WorkspaceStore: ObservableObject {
                 selectedModeIndex = parsed.0.vibrationalModes.first(where: {
                     abs($0.frequencyCM1) > 1 && !$0.displacements.isEmpty
                 })?.index
+                isVibrating = selectedModeIndex != nil
             } catch {
                 if generation == loadGeneration { errorMessage = error.localizedDescription }
             }

@@ -1407,3 +1407,9 @@ exact Undo and source bytes preserved. Independent synthetic two-center graph
 tests accompany the separate 4,800-atom inference regression. Private snapshot
 and input hash are in /private/tmp/chemviewer-private-motif-evidence.json; never
 commit the user's XYZ. Core standalone count is 51; full local XCTest is absent.
+
+Downloaded acceptance caught an interaction regression: geometry edits now stop
+vibration, but opening a later frequency file did not restart its initial mode.
+Opening a document now explicitly sets playback from its initial valid mode;
+general smoke checks editing followed by frequency opening, in addition to the
+dedicated vibration acceptance. Final revision must pass downloaded checks.
