@@ -540,3 +540,12 @@ CV-BUILD-016: Choose N and click C: C stays, bonded N is added. Click H with F:
 only H is replaced at its coordinates. Check undo and repeat atom placement.
 Run --manipulation-smoke-test and --atom-editing-smoke-test on the physical Mac,
 plus --vibration-smoke-test and general/document checks for regressions.
+
+
+## Delete selected atoms — 0.13.3
+
+In the molecule view, select atoms and press Delete (Backspace on a Mac keyboard)
+or forward Delete. Only selected atoms are removed; Undo restores them. Text
+editors and open sheets retain normal typing behavior. No selection is a no-op.
+Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
+empty selection and focused text editing. Release evidence is recorded in the PR.

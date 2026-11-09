@@ -238,3 +238,12 @@ A blank or failed renderer should report its error; collect build/runtime eviden
 rather than treating a launched window as a pass. On Mac, build and install using
 `bash scripts/install-macos.sh`; quit and reopen to use the updated installation.
 Reproducible testing and release requirements are in [the release guide](release-process.md).
+
+
+## Delete selected atoms — 0.13.3
+
+In the molecule view, select atoms and press Delete (Backspace on a Mac keyboard)
+or forward Delete. Only selected atoms are removed; Undo restores them. Text
+editors and open sheets retain normal typing behavior. No selection is a no-op.
+Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
+empty selection and focused text editing. Release evidence is recorded in the PR.

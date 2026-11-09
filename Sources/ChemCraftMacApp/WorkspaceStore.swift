@@ -673,7 +673,7 @@ extension WorkspaceStore {
     }
     func deleteSelectedAtoms() {
         guard !selectedAtomIndices.isEmpty else { return }
-        do { applyBuildingProject(try buildingProject().deleting(selectedAtomIndices)) } catch { errorMessage = error.localizedDescription }
+        do { applyBuildingProject(try buildingProject().deleting(selectedAtomIndices)); fragmentBoundary = nil } catch { errorMessage = error.localizedDescription }
     }
     func editElement(_ symbol: String, insert: Bool) {
         guard BuildingProject.elements.contains(symbol) else { errorMessage = "Enter a valid element symbol or X for a dummy site."; return }
