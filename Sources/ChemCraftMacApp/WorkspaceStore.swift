@@ -499,15 +499,27 @@ extension WorkspaceStore {
             case .atom: if let last = previous.last { selectedAtomIndices = [last] }
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
-                if previous.count == 2 {
-                    selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: previous[0], moving: previous[1])
-                    fragmentBoundary = (previous[0], previous[1])
+                if let seed = previous.last {
+                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
                 } else {
                     selectedAtomIndices = []
-                    buildingHint = "Fragment: select the fixed atom, then its bonded moving atom."
+                    buildingHint = "Fragment: click or drag a ligand atom; selection stops at metals."
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
+    }
+
+    func chooseBondSide() {
+        finishAtomDrag()
+        guard let frame = currentFrame, selectedAtomIndices.count == 2 else { errorMessage = "Select the fixed atom, then its bonded moving atom."; return }
+        let fixed = selectedAtomIndices[0], moving = selectedAtomIndices[1]
+        do {
+            let group = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: moving)
+            isDraggingEnabled = true; dragScope = .fragment
+            fragmentBoundary = (fixed, moving); selectedAtomIndices = group
+            buildingHint = "Bond side: drag the selected side; the fixed side stays in place."
+        } catch { errorMessage = error.localizedDescription }
     }
 
     @discardableResult func selectManipulationSeed(_ seed: Int) -> Bool {
@@ -518,12 +530,9 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 guard let boundary = fragmentBoundary else {
-                    if let fixed = selectedAtomIndices.first, fixed != seed {
-                        selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: seed)
-                        fragmentBoundary = (fixed, seed)
-                        buildingHint = "Drag the selected fragment; the other side stays fixed."
-                    } else { selectedAtomIndices = [seed]; buildingHint = "Now select a bonded atom on the moving side." }
-                    return false
+                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
+                    return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }
                 selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: boundary.0, moving: boundary.1)

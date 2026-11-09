@@ -1,0 +1,125 @@
+{
+  "description": "Original synthetic connectivity graph, not an optimized chemical structure. Fe chelate and Ru bridge; separate OH/Cl ligands and disconnected CH. Zero-based ligand oracle: [1,2,3,4,5], [6,7], [9], [10,11].",
+  "atoms": [
+    {
+      "symbol": "Fe",
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "symbol": "N",
+      "x": 2,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "symbol": "C",
+      "x": 3,
+      "y": 1,
+      "z": 0
+    },
+    {
+      "symbol": "C",
+      "x": 2,
+      "y": 2,
+      "z": 0
+    },
+    {
+      "symbol": "N",
+      "x": 0,
+      "y": 2,
+      "z": 0
+    },
+    {
+      "symbol": "H",
+      "x": 3,
+      "y": 2,
+      "z": 0
+    },
+    {
+      "symbol": "O",
+      "x": -2,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "symbol": "H",
+      "x": -3,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "symbol": "Ru",
+      "x": 5,
+      "y": 1,
+      "z": 0
+    },
+    {
+      "symbol": "Cl",
+      "x": 7,
+      "y": 1,
+      "z": 0
+    },
+    {
+      "symbol": "C",
+      "x": 10,
+      "y": 0,
+      "z": 0
+    },
+    {
+      "symbol": "H",
+      "x": 11,
+      "y": 0,
+      "z": 0
+    }
+  ],
+  "explicitBonds": [
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      4
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      3,
+      5
+    ],
+    [
+      0,
+      6
+    ],
+    [
+      6,
+      7
+    ],
+    [
+      2,
+      8
+    ],
+    [
+      8,
+      9
+    ],
+    [
+      10,
+      11
+    ]
+  ],
+  "charge": 0,
+  "multiplicity": 1
+}

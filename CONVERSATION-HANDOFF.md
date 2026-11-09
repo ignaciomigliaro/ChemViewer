@@ -1336,3 +1336,38 @@ or forward Delete. Only selected atoms are removed; Undo restores them. Text
 editors and open sheets retain normal typing behavior. No selection is a no-op.
 Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
 empty selection and focused text editing. Release evidence is recorded in the PR.
+
+
+## Connected motif selection — 0.13.4
+
+Fragment mode selects the whole ligand connected to a clicked/dragged atom,
+including H, while stopping at every metal. Chelating and bridging ligands remain
+together; metals and other ligands stay fixed. A metal seed selects that metal
+alone. Metal-free motifs use ordinary connectivity. Manual bond edits determine
+membership. Source coordination bonds are retained; the cut is for traversal only.
+For the optional one-side boundary workflow, select an ordered fixed/moving
+bonded pair and use Build → Select Bond Side; ring boundaries remain invalid.
+Fragment itself always selects the ligand at the last atom, even when two atoms were
+selected beforehand.
+Native --manipulation-smoke-test exercises rigid whole-motif dragging, switching
+components, direct dragging from no selection, deleted-bond membership and Undo,
+alongside the retained boundary, Delete-key and bond-editing checks. This
+supersedes the mandatory-boundary behavior introduced in 0.13.2. Release evidence
+is recorded in the release PR.
+
+User clarification: stop at metals. --ligand-selection-smoke-test uses an
+original explicit-bond Fe chelate/Ru-bridge graph, with separate OH/Cl ligands
+and a metal-free CH component. Its independent expected ligand is atoms 1–5
+(zero-based), including H; all other coordinates stay fixed under rigid drag.
+Fixture: Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject.
+Core ligand traversal and metal-policy tests accompany native click/drag, Undo,
+unchanged-source and retained-coordination-bond assertions.
+
+Ligand clarification validation: 49 standalone core cases and all three migrated
+building suites pass. Real native --ligand-selection-smoke-test passes the Fe
+chelate/Ru bridge fixture with fixed metals/other ligands, attached H, unchanged
+coordination bonds/source and exact Undo; manipulation and general Metal/export
+checks pass. The harness must yield after changing the drag scope before sending
+native clicks so SwiftUI can publish the interaction mode. Both pre/post swift
+test attempts record missing local XCTest; hosted full-Xcode XCTest is required.
+Final release CI/download/publication evidence belongs in the PR.

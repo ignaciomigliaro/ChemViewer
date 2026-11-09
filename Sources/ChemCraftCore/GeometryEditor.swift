@@ -158,6 +158,19 @@ public enum GeometryEditor {
         return seen.sorted()
     }
 
+    /// Connected ligand after ignoring every edge incident to a metal for traversal only.
+    /// Multiple donor bonds and bridging ligands are handled together; source bonds remain intact.
+    /// A metal seed selects that metal alone.
+    public static func ligandAtoms(in frame: MoleculeFrame, seed: Int) throws -> [Int] {
+        _ = try position(in: frame, atomIndex: seed)
+        if ElementTable.isMetal(frame.atoms[seed].element) { return [seed] }
+        var ligandGraph = frame
+        ligandGraph.explicitBonds = frame.bonds.filter {
+            !ElementTable.isMetal(frame.atoms[$0.first].element) && !ElementTable.isMetal(frame.atoms[$0.second].element)
+        }
+        return try connectedAtoms(in: ligandGraph, seed: seed)
+    }
+
     public static func fragment(in frame: MoleculeFrame, fixed: Int, moving: Int) throws -> [Int] {
         _ = try position(in: frame, atomIndex: fixed)
         _ = try position(in: frame, atomIndex: moving)

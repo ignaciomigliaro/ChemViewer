@@ -637,3 +637,37 @@ or forward Delete. Only selected atoms are removed; Undo restores them. Text
 editors and open sheets retain normal typing behavior. No selection is a no-op.
 Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
 empty selection and focused text editing. Release evidence is recorded in the PR.
+
+
+## Connected motif selection — 0.13.4
+
+Fragment mode selects the whole ligand connected to a clicked/dragged atom,
+including H, while stopping at every metal. Chelating and bridging ligands remain
+together; metals and other ligands stay fixed. A metal seed selects that metal
+alone. Metal-free motifs use ordinary connectivity. Manual bond edits determine
+membership. Source coordination bonds are retained; the cut is for traversal only.
+For the optional one-side boundary workflow, select an ordered fixed/moving
+bonded pair and use Build → Select Bond Side; ring boundaries remain invalid.
+Fragment itself always selects the ligand at the last atom, even when two atoms were
+selected beforehand.
+Native --manipulation-smoke-test exercises rigid whole-motif dragging, switching
+components, direct dragging from no selection, deleted-bond membership and Undo,
+alongside the retained boundary, Delete-key and bond-editing checks. This
+supersedes the mandatory-boundary behavior introduced in 0.13.2. Release evidence
+is recorded in the release PR.
+
+User clarification: stop at metals. --ligand-selection-smoke-test uses an
+original explicit-bond Fe chelate/Ru-bridge graph, with separate OH/Cl ligands
+and a metal-free CH component. Its independent expected ligand is atoms 1–5
+(zero-based), including H; all other coordinates stay fixed under rigid drag.
+Fixture: Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject.
+Core ligand traversal and metal-policy tests accompany native click/drag, Undo,
+unchanged-source and retained-coordination-bond assertions.
+
+Metal boundaries are an explicit element policy (atomic numbers 3–4, 11–13,
+19–31, 37–50, 55–84, 87–116), not oxidation-state or bond-order analysis.
+Common metalloid ligand atoms remain traversable. Periodic-table references:
+[RSC table](https://periodic-table.rsc.org/) and
+[RSC polonium discussion](https://periodic-table.rsc.org/element/84/polonium).
+No reference assets are redistributed. The synthetic fixture is a graph oracle,
+not an equilibrium geometry or independently calculated energy.
