@@ -490,7 +490,6 @@ extension WorkspaceStore {
     func chooseDragScope(_ scope: DragScope) {
         finishAtomDrag()
         let previous = selectedAtomIndices
-        let wasDragging = isDraggingEnabled
         isDraggingEnabled = true
         dragScope = scope
         fragmentBoundary = nil
@@ -500,10 +499,7 @@ extension WorkspaceStore {
             case .atom: if let last = previous.last { selectedAtomIndices = [last] }
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
-                if !wasDragging && previous.count == 2 && frame.bonds.contains(where: { Set([$0.first, $0.second]) == Set(previous) }) {
-                    selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: previous[0], moving: previous[1])
-                    fragmentBoundary = (previous[0], previous[1])
-                } else if let seed = previous.last {
+                if let seed = previous.last {
                     selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
                     buildingHint = "Fragment: drag any atom to move its entire connected motif."
                 } else {
@@ -512,6 +508,18 @@ extension WorkspaceStore {
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
+    }
+
+    func chooseBondSide() {
+        finishAtomDrag()
+        guard let frame = currentFrame, selectedAtomIndices.count == 2 else { errorMessage = "Select the fixed atom, then its bonded moving atom."; return }
+        let fixed = selectedAtomIndices[0], moving = selectedAtomIndices[1]
+        do {
+            let group = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: moving)
+            isDraggingEnabled = true; dragScope = .fragment
+            fragmentBoundary = (fixed, moving); selectedAtomIndices = group
+            buildingHint = "Bond side: drag the selected side; the fixed side stays in place."
+        } catch { errorMessage = error.localizedDescription }
     }
 
     @discardableResult func selectManipulationSeed(_ seed: Int) -> Bool {

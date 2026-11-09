@@ -1343,8 +1343,10 @@ empty selection and focused text editing. Release evidence is recorded in the PR
 Fragment mode selects the entire connected component of a clicked/dragged atom,
 including attached hydrogens. It works immediately without a boundary pair and
 leaves disconnected motifs fixed. Manual bond edits determine connectivity.
-Selecting an ordered fixed/moving bonded pair before choosing Fragment retains
-the optional one-side boundary workflow; ring boundaries remain invalid.
+For the optional one-side boundary workflow, select an ordered fixed/moving
+bonded pair and use Build → Select Bond Side; ring boundaries remain invalid.
+Fragment itself always selects the whole component, even when two atoms were
+selected beforehand.
 Native --manipulation-smoke-test exercises rigid whole-motif dragging, switching
 components, direct dragging from no selection, deleted-bond membership and Undo,
 alongside the retained boundary, Delete-key and bond-editing checks. This

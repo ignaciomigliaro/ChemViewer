@@ -42,7 +42,7 @@ in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
 Distances are in Å, angles in degrees. Choose Fragment, then click or drag an
 atom: its entire connected motif is selected and moves together. Disconnected
 motifs stay fixed. To isolate one side of a bond instead, select the fixed atom
-then its bonded moving atom before choosing Fragment; ring bonds cannot define
+then its bonded moving atom and use Build → Select Bond Side; ring bonds cannot define
 such a boundary. Fragment drags preserve connectivity, including manual bond edits.
 
 [Interaction and measurement evidence](measurements-and-smooth-drag-2026-10-19.md),

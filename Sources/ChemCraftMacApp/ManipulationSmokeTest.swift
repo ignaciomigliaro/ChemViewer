@@ -106,7 +106,7 @@ enum ManipulationSmokeTest {
             workspace.undoGeometry()
             try require(workspace.currentFrame == original && !workspace.canUndoGeometry, "One drag did not create exactly one undo step")
             workspace.isDraggingEnabled = false
-            workspace.selectedAtomIndices = [0]
+            workspace.selectedAtomIndices = [0, 1]
             workspace.chooseDragScope(.fragment)
             try require(workspace.selectedAtomIndices == [0, 1, 2], "Fragment must select the full connected motif")
             try await wait()
@@ -130,7 +130,7 @@ enum ManipulationSmokeTest {
             workspace.undoGeometry(); workspace.clearSelection()
             workspace.isDraggingEnabled = false
             workspace.selectedAtomIndices = [0, 1]
-            workspace.chooseDragScope(.fragment)
+            workspace.chooseBondSide()
             try require(workspace.selectedAtomIndices == [1, 2], "Fragment boundary did not identify second side")
             try await wait()
             try await drag(2, 20, 15)
