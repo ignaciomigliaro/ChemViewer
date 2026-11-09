@@ -204,7 +204,7 @@ may contain unintended relative depth and should be rebuilt or reviewed.
 1. Build → Add Atom (Cmd-Shift-A): verify all 118 buttons and the f-block rows.
    Cancel must leave the document unchanged.
 2. Choose Fe and click empty space: exactly one atom appears. Select Ru in
-   Replace mode and click Fe: atom count and coordinates stay fixed. Undo/Redo
+   Add Ru and click Fe: Fe remains and bonded Ru is added. Undo/Redo
    restores Fe/Ru, and the camera does not change.
 3. Switch to Add bonded atom, choose Cl, click Ru: Ru stays and a bonded Cl is
    inserted at a finite covalent distance. Undo removes this edit. Right-click

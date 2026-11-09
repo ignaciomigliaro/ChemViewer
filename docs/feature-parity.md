@@ -226,14 +226,13 @@ and toolbar. Fragment Library (Cmd-B), Add Atom (Cmd-Shift-A), Build & Edit
 gallery, thumbnails and camera/zoom behavior remain available.
 
 Add Atom opens all 118 elements arranged as a periodic table, with separate
-lanthanide/actinide rows and an X dummy-site button. Choose Replace element or
-Add bonded atom, then choose an element. A left click on an atom substitutes its
-element without moving coordinates in Replace mode. Bond mode retains the
-existing attachment algorithm: use an available terminal H/X site, otherwise
-add along a least-crowded direction. Clicking empty space places a single atom
-in either mode. The active placement banner lets you switch mode or reopen the
-table; right-click finishes. These are starting geometries; no new bond-order
-or chemical-valence inference is introduced by this UI.
+lanthanide/actinide rows and an X dummy-site button. As of 0.13.2, clicking a
+heavy atom attaches the chosen element while preserving the host; clicking H
+replaces H in place. Attachment can use an available terminal H/X site or a
+least-crowded direction. Empty space places an atom; right-click finishes.
+Explicit heavy-element replacement remains in Coord. Placement produces starting
+geometries and does not assign quantum bond orders or optimize valence.
+
 
 Coord now provides editable element fields as well as Cartesian coordinates.
 Symbols are case-insensitive and atomic numbers are accepted. Apply normalizes

@@ -210,12 +210,12 @@ Corrected fragment placement depth so zooming no longer clips newly placed struc
 
 ### Atom placement and editable elements (0.9.3)
 
-Use **Build → Add Atom…** (Cmd-Shift-A) to open the periodic table. Select
-**Replace element** or **Add bonded atom**, then an element and click in the
-molecule view. Empty space places a new atom; right-click finishes. Switch modes
-in the placement bar. **Build → Fragment Library…** (Cmd-B) retains the fragment
-previews. In **Coord**, type an element symbol or atomic number and click
-**Apply**; element edits support Undo and preserve coordinates.
+Use **Build → Add Atom…** (Cmd-Shift-A), choose an element, and click in the
+molecule view. A heavy-atom click adds a bonded atom while preserving the host;
+a hydrogen click replaces H in place. Empty space places a new atom; right-click
+finishes. **Build → Fragment Library…** (Cmd-B) retains the fragment previews.
+In **Coord**, type an element symbol or atomic number and click **Apply** for
+explicit element changes; these support Undo and preserve coordinates.
 
 ### Draw and persistent measurement labels (0.10.0)
 
