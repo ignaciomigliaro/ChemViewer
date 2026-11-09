@@ -46,6 +46,7 @@ struct BuilderPanel: View {
                 heading("MOVE & ROTATE")
                 Picker("Axis", selection: $axis) { ForEach(["X", "Y", "Z", "Bond"], id: \.self) { Text($0).tag($0) } }
                 Picker("Pivot", selection: $workspace.rotationPivot) { ForEach(RotationPivot.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
+                if workspace.rotationPivot == .metal { CoordinatingMetalPicker() }
                 HStack { Text("Move Å"); TextField("Distance", value: $distance, format: .number).frame(width: 60); Button("−") { transform(-distance, 0) }; Button("+") { transform(distance, 0) } }
                 HStack { Text("Rotate °"); TextField("Degrees", value: $degrees, format: .number).frame(width: 60); Button("−") { transform(0, -degrees) }; Button("+") { transform(0, degrees) } }
                 Button("Set bond axis from selected pair") { workspace.setBuildingBondAxis(); axis = "Bond" }

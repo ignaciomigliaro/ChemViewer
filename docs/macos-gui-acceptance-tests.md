@@ -577,3 +577,30 @@ and a metal-free CH component. Its independent expected ligand is atoms 1–5
 Fixture: Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject.
 Core ligand traversal and metal-policy tests accompany native click/drag, Undo,
 unchanged-source and retained-coordination-bond assertions.
+
+
+## Metal substitution and motif rotation — 0.13.5
+
+Choosing a metal and clicking another metal replaces it in place, preserving
+atom count, coordinates and current connectivity; H replacement and other
+heavy-atom bonded addition remain available. Undo restores the original metal.
+A ligand click retains whole-ligand selection with metal boundaries. A metal
+click selects its complete attached motif while stopping at other metals, and
+automatically chooses the clicked metal as the rotation pivot. A confirmed
+large-graph bug counted distant spatial-cell candidates against the close-contact
+budget, truncating bonds. The new axis rejection preserves the same pairwise
+covalent-radius criterion while excluding distant candidates from that budget.
+A synthetic 4,800-carbon lattice with a remote Cs reproduces the old failure
+(11,654 rather than 13,520 bonds); the independent axial-neighbor oracle now
+checks all 13,520 bonds, full ligand membership and rigid rotation. This is a
+graph stress fixture, not an optimized chemical structure.
+
+Use Rotate motif X/Y/Z ± and the degree field. Pivot supports group center,
+attachment/first atom, world origin or Coordinating metal. The Metal picker
+identifies the chosen coordinating atom when a ligand bridges multiple metals.
+Motif transforms retain connectivity, keep other atoms fixed, clear stale energy
+and support Undo. Native acceptance activates real rotation buttons and checks
+90° coordinates around a non-origin Ru center and the ligand centroid, alongside
+metal substitution and topology preservation. The provided private two-Li XYZ has two 21-atom motifs. Read-only native tests
+select each by its metal and verify X/Y/Z 90° rotations with the other unit fixed,
+exact Undo and unchanged source bytes. The private input is not redistributed.

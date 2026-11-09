@@ -66,7 +66,7 @@ final class WorkspaceStore: ObservableObject {
     }
     func refreshAtomPlacementHint() {
         guard let symbol = pendingElement else { return }
-        let action = "add a bonded atom (only a clicked hydrogen is replaced)"
+        let action = "add a bonded atom; H and metal-to-metal clicks replace in place"
         buildingHint = "\(symbol): click an atom to \(action), or empty space to place. Right-click finishes."
     }
     func presentFragmentLibrary() {
@@ -100,9 +100,9 @@ final class WorkspaceStore: ObservableObject {
             let project = try buildingProject()
             guard project.atoms.indices.contains(index) else { throw ParseError.malformed("Select a valid atom.") }
             if let element = pendingElement {
-                if project.atoms[index].element == "H" {
+                if project.atoms[index].element == "H" || (ElementTable.isMetal(project.atoms[index].element) && ElementTable.isMetal(element)) {
                     let next = try project.replacingElement(at: index, with: element)
-                    if next.atoms != project.atoms { applyBuildingProject(next) }
+                    if next.atoms != project.atoms { replaceCurrentAtoms(next.atoms, preservingConnectivity: true) }
                 } else {
                     applyBuildingProject(try project.attachingAtom(element, hostAtom: index), remapMeasurements: true)
                 }
@@ -148,6 +148,7 @@ final class WorkspaceStore: ObservableObject {
     @Published var dragScope: DragScope = .atom
     @Published var dragAxis: DragAxis = .screen
     @Published var rotationPivot: RotationPivot = .center
+    @Published var rotationMetalIndex: Int?
     @Published var rotationStep: Float = 10
     @Published var translationStep: Float = 0.1
     private var fragmentBoundary: (Int, Int)?
@@ -431,7 +432,7 @@ final class WorkspaceStore: ObservableObject {
         trajectoryTask = nil
     }
 
-    func replaceCurrentAtoms(_ atoms: [Atom]) {
+    func replaceCurrentAtoms(_ atoms: [Atom], preservingConnectivity: Bool = false) {
         finishAtomDrag()
         guard var document,
               document.frames.indices.contains(frameIndex),
@@ -446,7 +447,8 @@ final class WorkspaceStore: ObservableObject {
         stopTrajectoryPlayback()
         checkpoint(document.frames[frameIndex])
         editedFrames.insert(frameIndex)
-        selectedModeIndex = nil
+        selectedModeIndex = nil; isVibrating = false
+        if preservingConnectivity { document.frames[frameIndex].explicitBonds = document.frames[frameIndex].bonds }
         document.frames[frameIndex].atoms = atoms
         document.frames[frameIndex].energyHartree = nil
         document.frames[frameIndex].comment = "Edited geometry; energy not recalculated"
@@ -482,7 +484,7 @@ final class WorkspaceStore: ObservableObject {
 
 enum DragScope: String, CaseIterable { case atom = "Atom", fragment = "Fragment", molecule = "Molecule" }
 enum DragAxis: String, CaseIterable { case screen = "Screen plane", x = "X", y = "Y", z = "Z" }
-enum RotationPivot: String, CaseIterable { case center = "Group center", anchor = "Attachment / first atom", origin = "World origin" }
+enum RotationPivot: String, CaseIterable { case center = "Group center", anchor = "Attachment / first atom", metal = "Coordinating metal", origin = "World origin" }
 
 extension WorkspaceStore {
     func clearSelection() { finishAtomDrag(); selectedAtomIndices = []; fragmentBoundary = nil; pendingAttachment = nil; pendingElement = nil; buildingHint = "" }
@@ -500,14 +502,23 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 if let seed = previous.last {
-                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
-                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
+                    selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
+                    updateFragmentRotationCenter(seed: seed, frame: frame)
+                    buildingHint = "Fragment: ligand click selects its ligand; metal click selects its attached motif."
                 } else {
                     selectedAtomIndices = []
-                    buildingHint = "Fragment: click or drag a ligand atom; selection stops at metals."
+                    buildingHint = "Fragment: click a ligand or metal center to select its motif."
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
+    }
+
+    private func updateFragmentRotationCenter(seed: Int, frame: MoleculeFrame) {
+        if ElementTable.isMetal(frame.atoms[seed].element) {
+            rotationMetalIndex = seed; rotationPivot = .metal
+        } else if rotationPivot == .metal, selectedCoordinatingMetals.isEmpty {
+            rotationMetalIndex = nil; rotationPivot = .center
+        }
     }
 
     func chooseBondSide() {
@@ -530,8 +541,9 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 guard let boundary = fragmentBoundary else {
-                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
-                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
+                    selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
+                    updateFragmentRotationCenter(seed: seed, frame: frame)
+                    buildingHint = "Fragment: ligand click selects its ligand; metal click selects its attached motif."
                     return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }
@@ -580,6 +592,14 @@ extension WorkspaceStore {
         gestureIndices = []
     }
 
+    func coordinatingMetals(for indices: [Int], in frame: MoleculeFrame) -> [Int] {
+        (try? GeometryEditor.rotationMetalCenters(in: frame, atomIndices: indices)) ?? []
+    }
+    var selectedCoordinatingMetals: [Int] {
+        guard let frame = currentFrame else { return [] }
+        return coordinatingMetals(for: selectedAtomIndices, in: frame)
+    }
+
     func rotateManipulation(axis: Vector3, sign: Float) {
         finishAtomDrag()
         guard isDraggingEnabled, let frame = currentFrame, !manipulationIndices.isEmpty else { return }
@@ -589,13 +609,19 @@ extension WorkspaceStore {
         switch rotationPivot {
         case .origin: pivot = .zero
         case .center: pivot = indices.reduce(Vector3.zero) { $0 + frame.atoms[$1].position } * (1 / Float(indices.count))
+        case .metal:
+            let metals = coordinatingMetals(for: indices, in: frame)
+            guard let metal = rotationMetalIndex.flatMap({ metals.contains($0) ? $0 : nil }) ?? metals.first else {
+                errorMessage = "The selected motif has no coordinating metal. Choose group center, attachment or world origin."; return
+            }
+            pivot = frame.atoms[metal].position
         case .anchor:
             if let boundary = fragmentBoundary {
                 let anchor = indices.contains(boundary.0) ? boundary.1 : boundary.0
                 pivot = frame.atoms[anchor].position
             } else { pivot = frame.atoms[selectedAtomIndices.first ?? indices[0]].position }
         }
-        do { replaceCurrentAtoms(try GeometryEditor.rotating(in: frame, atomIndices: indices, around: pivot, axis: axis, degrees: rotationStep * sign).atoms) }
+        do { replaceCurrentAtoms(try GeometryEditor.rotating(in: frame, atomIndices: indices, around: pivot, axis: axis, degrees: rotationStep * sign).atoms, preservingConnectivity: dragScope == .fragment) }
         catch { errorMessage = error.localizedDescription }
     }
 
@@ -603,7 +629,7 @@ extension WorkspaceStore {
         finishAtomDrag()
         guard isDraggingEnabled, let frame = currentFrame, !manipulationIndices.isEmpty else { return }
         guard translationStep.isFinite && translationStep > 0 else { errorMessage = "Use a positive finite translation step."; return }
-        do { replaceCurrentAtoms(try GeometryEditor.translating(in: frame, atomIndices: manipulationIndices, by: axis * (translationStep * sign)).atoms) }
+        do { replaceCurrentAtoms(try GeometryEditor.translating(in: frame, atomIndices: manipulationIndices, by: axis * (translationStep * sign)).atoms, preservingConnectivity: dragScope == .fragment) }
         catch { errorMessage = error.localizedDescription }
     }
 }
@@ -717,6 +743,11 @@ extension WorkspaceStore {
             var pivot = selectedAtomIndices.reduce(Vector3.zero) { $0 + frame.atoms[$1].position } * (1 / Float(selectedAtomIndices.count))
             if rotationPivot == .origin { pivot = .zero }
             if rotationPivot == .anchor { pivot = frame.atoms[selectedAtomIndices[0]].position }
+            if rotationPivot == .metal {
+                let metals = selectedCoordinatingMetals
+                guard let metal = rotationMetalIndex.flatMap({ metals.contains($0) ? $0 : nil }) ?? metals.first else { errorMessage = "Select a motif bonded to a metal, or choose another pivot."; return }
+                pivot = frame.atoms[metal].position
+            }
             if axis == "Bond" {
                 guard let pair = storedBondAxis, frame.atoms.indices.contains(pair.0), frame.atoms.indices.contains(pair.1) else { errorMessage = "Set the bond axis first, then select atoms to move or rotate."; return }
                 pivot = frame.atoms[pair.0].position
@@ -725,7 +756,7 @@ extension WorkspaceStore {
             guard direction.length > 1e-6 else { return }
             let result = try buildingProject().transformed(selection: selectedAtomIndices, translation: direction * (distance / direction.length), axis: direction, degrees: degrees, pivot: pivot)
             // Coordinate transforms retain a stored bond axis for repeated steps.
-            let savedAxis = storedBondAxis; applyBuildingProject(result); storedBondAxis = savedAxis
+            let savedAxis = storedBondAxis; replaceCurrentAtoms(result.atoms, preservingConnectivity: true); storedBondAxis = savedAxis
         } catch { errorMessage = error.localizedDescription }
     }
     func saveBuildingProject() {
