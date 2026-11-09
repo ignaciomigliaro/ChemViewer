@@ -2,6 +2,31 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testEditedConnectivityAndProjectPersistence() throws {
+        let atoms = [Atom(id: 0, element: "C", position: .zero), Atom(id: 1, element: "C", position: Vector3(1.4, 0, 0)), Atom(id: 2, element: "H", position: Vector3(2.4, 0, 0))]
+        var frame = MoleculeFrame(id: 0, atoms: atoms)
+        XCTAssertEqual(try GeometryEditor.fragment(in: frame, fixed: 0, moving: 1), [1, 2])
+        frame = try GeometryEditor.togglingBond(in: frame, first: 1, second: 0)
+        XCTAssertEqual(frame.bonds.count, 1)
+        XCTAssertTrue((try? GeometryEditor.togglingBond(in: frame, first: 0, second: 0)) == nil)
+        XCTAssertTrue((try? GeometryEditor.togglingBond(in: frame, first: 0, second: 3)) == nil)
+        let restored = try GeometryEditor.togglingBond(in: frame, first: 0, second: 1)
+        XCTAssertEqual(restored.bonds.count, 2)
+        XCTAssertEqual(try GeometryEditor.connectedAtoms(in: frame, seed: 0), [0])
+        frame = try GeometryEditor.translating(in: frame, atomIndices: [1, 2], by: Vector3(10, 0, 0))
+        XCTAssertEqual(frame.bonds.count, 1)
+        var project = try BuildingProject(atoms: frame.atoms)
+        project.explicitBonds = frame.bonds
+        let decoded = try JSONDecoder().decode(BuildingProject.self, from: JSONEncoder().encode(project))
+        XCTAssertEqual(decoded.explicitBonds, frame.bonds)
+        project.explicitBonds = []
+        XCTAssertEqual(try JSONDecoder().decode(BuildingProject.self, from: JSONEncoder().encode(project)).explicitBonds, [])
+        let invalid = "{\"atoms\":[],\"explicitBonds\":[[0,1]]}".data(using: .utf8)!
+        XCTAssertTrue((try? JSONDecoder().decode(BuildingProject.self, from: invalid)) == nil)
+        let legacy = try BuildingProject(atoms: atoms)
+        XCTAssertEqual(try JSONDecoder().decode(BuildingProject.self, from: JSONEncoder().encode(legacy)).explicitBonds, nil)
+    }
+
     func testVibrationPlaybackFreezeResumeAndSpeedContinuity() {
         var clock = VibrationPlayback(time: 10, speed: 0.5)
         XCTAssertEqual(clock.factor(at: 10.5), 1, accuracy: 1e-6)

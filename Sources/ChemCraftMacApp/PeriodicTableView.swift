@@ -30,9 +30,7 @@ struct PeriodicTableView: View {
                 Button(selection == nil ? "Cancel" : "Done") { dismiss() }.keyboardShortcut(.cancelAction)
             }
             if onSelect == nil && selection == nil {
-            Picker("Clicking an existing atom", selection: $workspace.atomPlacementMode) {
-                ForEach(AtomPlacementMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-            }.pickerStyle(.segmented).frame(width: 400)
+            Text("Add bonded atoms; clicking hydrogen replaces it.")
             Text("Choose an element, then left-click in the molecule view. Empty space places a new atom; right-click finishes.")
                 .font(.callout).foregroundStyle(.secondary)
             }
@@ -61,9 +59,7 @@ struct PeriodicTableView: View {
             HStack {
                 Button("X · dummy attachment site") { workspace.armAtom("X"); dismiss() }
                 Spacer()
-                Text(workspace.atomPlacementMode == .replace
-                     ? "Replace changes only the element; coordinates stay fixed."
-                     : "Bond mode uses an available H/X site, otherwise adds a new bond.")
+                Text("Heavy atoms are preserved. Edit elements explicitly in Coordinates.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             }

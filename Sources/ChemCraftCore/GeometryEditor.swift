@@ -28,6 +28,19 @@ public enum GeometryEditError: LocalizedError, Equatable {
 }
 
 public enum GeometryEditor {
+    public static func togglingBond(in frame: MoleculeFrame, first: Int, second: Int) throws -> MoleculeFrame {
+        guard first != second else { throw GeometryEditError.repeatedAtoms }
+        _ = try position(in: frame, atomIndex: first)
+        _ = try position(in: frame, atomIndex: second)
+        var result = frame
+        var bonds = frame.bonds
+        if let index = bonds.firstIndex(where: { Set([$0.first, $0.second]) == Set([first, second]) }) { bonds.remove(at: index) }
+        else { bonds.append(Bond(id: bonds.count, first: first, second: second)) }
+        result.explicitBonds = bonds.enumerated().map { Bond(id: $0.offset, first: $0.element.first, second: $0.element.second, order: $0.element.order) }
+        result.energyHartree = nil; result.comment = "Edited connectivity; energy not recalculated"
+        return result
+    }
+
     public static func replacingPosition(
         in frame: MoleculeFrame,
         atomIndex: Int,
@@ -133,7 +146,7 @@ public enum GeometryEditor {
     public static func connectedAtoms(in frame: MoleculeFrame, seed: Int, excluding bond: Bond? = nil) throws -> [Int] {
         _ = try position(in: frame, atomIndex: seed)
         var neighbors = Array(repeating: [Int](), count: frame.atoms.count)
-        for edge in BondBuilder.inferBonds(atoms: frame.atoms) {
+        for edge in frame.bonds {
             if let bond, (edge.first == bond.first && edge.second == bond.second) || (edge.first == bond.second && edge.second == bond.first) { continue }
             neighbors[edge.first].append(edge.second); neighbors[edge.second].append(edge.first)
         }
@@ -149,7 +162,7 @@ public enum GeometryEditor {
         _ = try position(in: frame, atomIndex: fixed)
         _ = try position(in: frame, atomIndex: moving)
         guard fixed != moving else { throw GeometryEditError.repeatedAtoms }
-        guard let boundary = BondBuilder.inferBonds(atoms: frame.atoms).first(where: { ($0.first == fixed && $0.second == moving) || ($0.first == moving && $0.second == fixed) }) else { throw GeometryEditError.missingBoundaryBond }
+        guard let boundary = frame.bonds.first(where: { ($0.first == fixed && $0.second == moving) || ($0.first == moving && $0.second == fixed) }) else { throw GeometryEditError.missingBoundaryBond }
         let group = try connectedAtoms(in: frame, seed: moving, excluding: boundary)
         guard !group.contains(fixed) else { throw GeometryEditError.ringBondCannotSplit }
         return group

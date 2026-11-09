@@ -30,14 +30,19 @@ and unsupported properties are never filled with guesses.
 Rotate by dragging (including Windows-style right dragging), Option-drag to pan,
 and scroll to zoom. Choose a representation/appearance from Display or the toolbar.
 The default Paton appearance uses the attributed xyzrender palette. Bonds are
-inferred by distance; inferred connectivity is not a quantum bond-order analysis.
+initially inferred by distance. Select two atoms and press Control-B to create
+or remove their bond, or double-click the middle of a visible bond to remove it.
+Explicit edits override inference and support Undo/Redo. This is connectivity
+editing, not a quantum bond-order analysis.
 
 Click atoms in order. Two atoms expose a distance; three expose an angle; four
 expose a signed dihedral. Right-click clears selection. Enable the measurement
 label to annotate it. Persistent labels can coexist, move by dragging, and appear
 in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
-Distances are in Å, angles in degrees. Fragment selection depends on inferred
-connectivity; ring bonds cannot be treated as a freely separable fragment boundary.
+Distances are in Å, angles in degrees. To drag a fragment, select the fixed atom
+then its bonded moving atom and choose Fragment. You can also enable Fragment
+first, then select that ordered pair. Only the moving side is selected; a ring
+bond cannot define a separable fragment. Fragment drags preserve connectivity.
 
 [Interaction and measurement evidence](measurements-and-smooth-drag-2026-10-19.md),
 [persistent labels](drawing-and-labels-2026-10-20.md).
@@ -51,11 +56,14 @@ and rotation about a chosen pivot. Edits invalidate source energies for modified
 geometries; Undo restores the prior geometry and associated provenance.
 
 Use New Molecule, Build → Add Atom (Cmd-Shift-A), or the fragment gallery (Cmd-B).
+Choose an element and click a heavy atom to add a bonded atom; clicking H
+replaces only H in place. Use Coord to change a heavy element explicitly.
 Choose a fragment and click blank space to place it or a host atom to attach it;
 right-click finishes. Cmd-Shift-B opens editing/UFF controls. Save reusable
 fragments from a selection. Dummy X sites describe attachment points and must be
 removed or resolved before a calculation. Save a project to retain editable
-structure state; export XYZ or ORCA Cartesian geometry for other programs.
+structure state and connectivity edits; export XYZ or ORCA Cartesian geometry
+for other programs. XYZ does not store bonds: reopening XYZ re-infers connectivity.
 
 The local optional chemistry runtime supplies RDKit/UFF cleanup, with fixed-atom
 support. UFF is a molecular mechanics cleanup, not a quantum optimization.

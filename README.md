@@ -210,12 +210,12 @@ Corrected fragment placement depth so zooming no longer clips newly placed struc
 
 ### Atom placement and editable elements (0.9.3)
 
-Use **Build → Add Atom…** (Cmd-Shift-A) to open the periodic table. Select
-**Replace element** or **Add bonded atom**, then an element and click in the
-molecule view. Empty space places a new atom; right-click finishes. Switch modes
-in the placement bar. **Build → Fragment Library…** (Cmd-B) retains the fragment
-previews. In **Coord**, type an element symbol or atomic number and click
-**Apply**; element edits support Undo and preserve coordinates.
+Use **Build → Add Atom…** (Cmd-Shift-A), choose an element, and click in the
+molecule view. A heavy-atom click adds a bonded atom while preserving the host;
+a hydrogen click replaces H in place. Empty space places a new atom; right-click
+finishes. **Build → Fragment Library…** (Cmd-B) retains the fragment previews.
+In **Coord**, type an element symbol or atomic number and click **Apply** for
+explicit element changes; these support Undo and preserve coordinates.
 
 ### Draw and persistent measurement labels (0.10.0)
 
@@ -526,3 +526,23 @@ Restores the white panels and compact native menus of the 0.12 local build by
 correcting linked-SDK compatibility metadata. The violet vectors and new
 vibration controls remain available. Packaging now verifies SDK identity in
 addition to resource containment and signing.
+
+## Molecule editing corrections — 0.13.2 (2026-11-09)
+
+Atom placement preserves clicked heavy atoms and attaches the chosen element;
+clicking H replaces only that H at its existing coordinates. Explicit element
+changes remain available in Coordinates. Fragment mode requires an ordered
+fixed/moving bonded pair: select two atoms before choosing Fragment, or select
+the fixed atom then the moving atom after enabling it. It never defaults to the
+whole connected molecule. Ring bonds cannot define a detached fragment.
+
+Select two atoms and press Control-B to toggle their bond. Double-click the
+visible middle of a bond to remove it; use Control-B to recreate it. Connectivity
+edits override inferred bonds, survive coordinate transforms, undo/redo, and
+.cvproject save/reopen. XYZ stores coordinates only and re-infers connectivity
+when reopened. These controls do not assign bond orders or optimize geometries.
+
+Validation: regression checks cover ordered fragment boundaries, native mouse
+and Control-B events, heavy-atom preservation, H replacement, connectivity
+persistence and legacy projects. Physical GUI and release results recorded in
+the handoff/release PR; automated builds alone are not interactive acceptance.

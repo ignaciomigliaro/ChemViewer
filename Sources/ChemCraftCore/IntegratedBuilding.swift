@@ -380,11 +380,12 @@ struct EditableProject: Codable {
     var selection: [Int]
     var charge: Int
     var multiplicity: Int
+    var explicitBonds: [[Int]]? = nil
     init(atoms: [Atom], groups: [[Int]] = [], selection: [Int] = [], charge: Int = 0, multiplicity: Int = 1) {
         self.atoms = atoms; self.groups = groups; self.selection = selection
         self.charge = charge; self.multiplicity = multiplicity
     }
-    enum CodingKeys: String, CodingKey { case atoms, groups, selection, charge, multiplicity }
+    enum CodingKeys: String, CodingKey { case atoms, groups, selection, charge, multiplicity, explicitBonds }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         atoms = try c.decode([Atom].self, forKey: .atoms)
@@ -392,9 +393,13 @@ struct EditableProject: Codable {
         selection = try c.decodeIfPresent([Int].self, forKey: .selection) ?? []
         charge = try c.decodeIfPresent(Int.self, forKey: .charge) ?? 0
         multiplicity = try c.decodeIfPresent(Int.self, forKey: .multiplicity) ?? 1
+        explicitBonds = try c.decodeIfPresent([[Int]].self, forKey: .explicitBonds)
         try validate()
     }
     func validate() throws {
+        if let explicitBonds {
+            guard explicitBonds.count <= 100_000, explicitBonds.allSatisfy({ $0.count == 2 && $0[0] != $0[1] && $0.allSatisfy(atoms.indices.contains) }) else { throw EditingError(message: "Invalid explicit bond indices.") }
+        }
         guard atoms.count <= 10_000, atoms.allSatisfy({ elements.contains($0.symbol) && [$0.x,$0.y,$0.z].allSatisfy { $0.isFinite && abs($0) < 1e6 } }) else {
             throw EditingError(message: "Project contains invalid atoms or exceeds 10,000 atoms.")
         }

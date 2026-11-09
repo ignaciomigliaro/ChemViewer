@@ -44,7 +44,7 @@ final class WorkspaceStore: ObservableObject {
     @Published var isBuilderVisible = false
     @Published var isFragmentLibraryPresented = false
     @Published var isPeriodicTablePresented = false
-    @Published var atomPlacementMode: AtomPlacementMode = .replace {
+    @Published var atomPlacementMode: AtomPlacementMode = .bond {
         didSet { refreshAtomPlacementHint() }
     }
     func presentPeriodicTable() { isPeriodicTablePresented = true }
@@ -66,7 +66,7 @@ final class WorkspaceStore: ObservableObject {
     }
     func refreshAtomPlacementHint() {
         guard let symbol = pendingElement else { return }
-        let action = atomPlacementMode == .replace ? "replace its element" : "add a bonded atom (uses an available H/X site)"
+        let action = "add a bonded atom (only a clicked hydrogen is replaced)"
         buildingHint = "\(symbol): click an atom to \(action), or empty space to place. Right-click finishes."
     }
     func presentFragmentLibrary() {
@@ -98,8 +98,9 @@ final class WorkspaceStore: ObservableObject {
         guard pendingAttachment != nil || pendingElement != nil else { return false }
         do {
             let project = try buildingProject()
+            guard project.atoms.indices.contains(index) else { throw ParseError.malformed("Select a valid atom.") }
             if let element = pendingElement {
-                if atomPlacementMode == .replace {
+                if project.atoms[index].element == "H" {
                     let next = try project.replacingElement(at: index, with: element)
                     if next.atoms != project.atoms { applyBuildingProject(next) }
                 } else {
@@ -259,7 +260,7 @@ final class WorkspaceStore: ObservableObject {
                 charge = parsed.0.charge ?? Int(parsed.4.last(where: { $0.label == "Charge" })?.value ?? "0") ?? 0
                 multiplicity = parsed.0.multiplicity ?? Int(parsed.4.last(where: { $0.label == "Multiplicity" })?.value ?? "1") ?? 1
                 groupsByFrame = [:]; storedBondAxis = nil; geometryRedoStacks = [:]
-                if let project = parsed.2 { charge = project.charge; multiplicity = project.multiplicity; groupsByFrame[0] = project.groups }
+                if let project = parsed.2 { charge = project.charge; multiplicity = project.multiplicity; groupsByFrame[0] = project.groups; document?.frames[0].explicitBonds = project.explicitBonds }
                 geometryRevision += 1
                 sourceText = parsed.1
                 editedFrames.removeAll()
@@ -501,8 +502,9 @@ extension WorkspaceStore {
                 if previous.count == 2 {
                     selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: previous[0], moving: previous[1])
                     fragmentBoundary = (previous[0], previous[1])
-                } else if let seed = previous.last {
-                    selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
+                } else {
+                    selectedAtomIndices = []
+                    buildingHint = "Fragment: select the fixed atom, then its bonded moving atom."
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
@@ -515,8 +517,16 @@ extension WorkspaceStore {
             case .atom: selectedAtomIndices = [seed]
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
-                let boundary = fragmentBoundary.map { Bond(id: 0, first: $0.0, second: $0.1) }
-                selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed, excluding: boundary)
+                guard let boundary = fragmentBoundary else {
+                    if let fixed = selectedAtomIndices.first, fixed != seed {
+                        selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: seed)
+                        fragmentBoundary = (fixed, seed)
+                        buildingHint = "Drag the selected fragment; the other side stays fixed."
+                    } else { selectedAtomIndices = [seed]; buildingHint = "Now select a bonded atom on the moving side." }
+                    return false
+                }
+                guard selectedAtomIndices.contains(seed) else { return false }
+                selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: boundary.0, moving: boundary.1)
             }
             return true
         } catch { errorMessage = error.localizedDescription; return false }
@@ -544,6 +554,7 @@ extension WorkspaceStore {
               let moved = try? GeometryEditor.translating(in: base, atomIndices: gestureIndices, by: displacement),
               moved.atoms.allSatisfy({ [$0.position.x, $0.position.y, $0.position.z].allSatisfy(\.isFinite) }) else { return }
         var result = moved
+        if dragScope == .fragment { result.explicitBonds = base.bonds }
         if result.atoms != base.atoms { result.energyHartree = nil; result.comment = "Edited geometry; energy not recalculated" }
         document.frames[frameIndex] = result
         self.document = document; geometryRevision += 1
@@ -600,7 +611,9 @@ extension WorkspaceStore {
         activeTab = "Image"; isBuilderVisible = false; geometryRevision += 1
     }
     func buildingProject() throws -> BuildingProject {
-        try BuildingProject(atoms: currentFrame?.atoms ?? [], groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity)
+        var project = try BuildingProject(atoms: currentFrame?.atoms ?? [], groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity)
+        project.explicitBonds = currentFrame?.explicitBonds
+        return project
     }
     func applyBuildingProject(_ project: BuildingProject, remapMeasurements: Bool = false) {
         finishAtomDrag(); stopTrajectoryPlayback()
@@ -620,6 +633,19 @@ extension WorkspaceStore {
                 }
                 return Set(mapped).count == indices.count ? mapped : nil
             }
+        }
+        if let oldBonds = document.frames[frameIndex].explicitBonds {
+            let mapping = previousAtoms.indices.reduce(into: [Int: Int]()) { map, index in
+                let matches = project.atoms.indices.filter { project.atoms[$0].element == previousAtoms[index].element && project.atoms[$0].position == previousAtoms[index].position }
+                if matches.count == 1 { map[index] = matches[0] }
+            }
+            var bonds = oldBonds.compactMap { edge -> Bond? in
+                guard let a = mapping[edge.first], let b = mapping[edge.second] else { return nil }
+                return Bond(id: 0, first: a, second: b)
+            }
+            let retained = Set(mapping.values)
+            bonds += BondBuilder.inferBonds(atoms: project.atoms).filter { !retained.contains($0.first) || !retained.contains($0.second) }
+            document.frames[frameIndex].explicitBonds = bonds.enumerated().map { Bond(id: $0.offset, first: $0.element.first, second: $0.element.second) }
         }
         document.frames[frameIndex].atoms = project.atoms
         document.frames[frameIndex].comment = "Edited initial geometry; energy not recalculated"
@@ -672,7 +698,7 @@ extension WorkspaceStore {
     func setBuildingBondAxis() {
         guard let frame = currentFrame, selectedAtomIndices.count == 2 else { errorMessage = "Select two bonded atoms first."; return }
         let a = selectedAtomIndices[0], b = selectedAtomIndices[1]
-        guard BondBuilder.inferBonds(atoms: frame.atoms).contains(where: { Set([$0.first, $0.second]) == Set([a, b]) }) else { errorMessage = "Choose a bonded pair for the rotation axis."; return }
+        guard frame.bonds.contains(where: { Set([$0.first, $0.second]) == Set([a, b]) }) else { errorMessage = "Choose a bonded pair for the rotation axis."; return }
         storedBondAxis = (a, b)
     }
     func transformBuildingSelection(axis: String, distance: Float, degrees: Float) {
@@ -715,5 +741,23 @@ extension WorkspaceStore {
             guard panel.runModal() == .OK, let url = panel.url else { return }
             try text.write(to: url, atomically: true, encoding: .utf8)
         } catch { errorMessage = error.localizedDescription }
+    }
+}
+
+@MainActor
+extension WorkspaceStore {
+    func toggleSelectedBond() {
+        guard selectedAtomIndices.count == 2 else { errorMessage = "Select two atoms to create or remove their bond (Control-B)."; return }
+        toggleBond(selectedAtomIndices[0], selectedAtomIndices[1])
+    }
+    func toggleBond(_ first: Int, _ second: Int) {
+        finishAtomDrag()
+        guard var document, var frame = currentFrame, first != second,
+              frame.atoms.indices.contains(first), frame.atoms.indices.contains(second) else { return }
+        checkpoint()
+        guard let edited = try? GeometryEditor.togglingBond(in: frame, first: first, second: second) else { return }
+        frame = edited
+        document.frames[frameIndex] = frame; self.document = document
+        fragmentBoundary = nil; editedFrames.insert(frameIndex); geometryRevision += 1
     }
 }

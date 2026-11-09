@@ -63,6 +63,7 @@ struct ChemViewerApp: App {
                 Button("Fragment Library…") { workspace.presentFragmentLibrary() }.keyboardShortcut("b")
                 Button("Add Atom…") { workspace.presentAtomPicker() }.keyboardShortcut("a", modifiers: [.command, .shift])
                 Toggle("Build & Edit Panel", isOn: binding(\.isBuilderVisible)).keyboardShortcut("b", modifiers: [.command, .shift])
+                Button("Create / Remove Bond (Control-B)") { workspace.toggleSelectedBond() }
                 Button("Finish Placement") { workspace.clearSelection() }
             }
             CommandMenu("Display") {

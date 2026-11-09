@@ -1297,3 +1297,33 @@ relocated SDK-13 negative control protect distribution. Native CI moves to
 macos-26/Xcode26.5 so download SDK matches the accepted local baseline; portable
 matrix remains unchanged. Version0.13.1/build41. AGENTS.md/.vscode changes remain
 excluded. Final package/CI/download/install/publication evidence goes in release PR.
+
+## Molecule editing corrections — 0.13.2 (2026-11-09)
+
+Atom placement preserves clicked heavy atoms and attaches the chosen element;
+clicking H replaces only that H at its existing coordinates. Explicit element
+changes remain available in Coordinates. Fragment mode requires an ordered
+fixed/moving bonded pair: select two atoms before choosing Fragment, or select
+the fixed atom then the moving atom after enabling it. It never defaults to the
+whole connected molecule. Ring bonds cannot define a detached fragment.
+
+Select two atoms and press Control-B to toggle their bond. Double-click the
+visible middle of a bond to remove it; use Control-B to recreate it. Connectivity
+edits override inferred bonds, survive coordinate transforms, undo/redo, and
+.cvproject save/reopen. XYZ stores coordinates only and re-infers connectivity
+when reopened. These controls do not assign bond orders or optimize geometries.
+
+Validation: regression checks cover ordered fragment boundaries, native mouse
+and Control-B events, heavy-atom preservation, H replacement, connectivity
+persistence and legacy projects. Physical GUI and release results recorded in
+the handoff/release PR; automated builds alone are not interactive acceptance.
+
+Initial swift test attempt was blocked by local SDK/compiler module loading;
+validated build uses SDK26.5 with the established module cache and standalone
+core runner because full Xcode/XCTest is absent. Core standalone 48 and all
+three migrated building suites pass. Physical native manipulation/atom editing,
+vibration, general Metal/export and 50-switch document checks pass. All 107
+Python checks pass in the installed chemistry runtime (3 optional fixture skips);
+system Python/.venv lack the scientific dependencies and are not passing test
+environments. Relocated archive, missing-resource and wrong-SDK controls pass.
+Final hosted CI/download/install/publication evidence belongs in the release PR.
