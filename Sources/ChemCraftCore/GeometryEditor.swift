@@ -158,6 +158,18 @@ public enum GeometryEditor {
         return seen.sorted()
     }
 
+    /// Metal neighbors outside the selected motif, in stable atom-index order.
+    public static func coordinatingMetals(in frame: MoleculeFrame, atomIndices: [Int]) throws -> [Int] {
+        for index in atomIndices { _ = try position(in: frame, atomIndex: index) }
+        let selected = Set(atomIndices)
+        var metals: Set<Int> = []
+        for bond in frame.bonds {
+            if selected.contains(bond.first), !selected.contains(bond.second), ElementTable.isMetal(frame.atoms[bond.second].element) { metals.insert(bond.second) }
+            if selected.contains(bond.second), !selected.contains(bond.first), ElementTable.isMetal(frame.atoms[bond.first].element) { metals.insert(bond.first) }
+        }
+        return metals.sorted()
+    }
+
     /// Connected ligand after ignoring every edge incident to a metal for traversal only.
     /// Multiple donor bonds and bridging ligands are handled together; source bonds remain intact.
     /// A metal seed selects that metal alone.
@@ -169,6 +181,25 @@ public enum GeometryEditor {
             !ElementTable.isMetal(frame.atoms[$0.first].element) && !ElementTable.isMetal(frame.atoms[$0.second].element)
         }
         return try connectedAtoms(in: ligandGraph, seed: seed)
+    }
+
+    /// Ligand seed: stop at every metal. Metal seed: include its attached motif,
+    /// stopping at all other metals, including across metal-metal bonds.
+    public static func fragmentAtoms(in frame: MoleculeFrame, seed: Int) throws -> [Int] {
+        _ = try position(in: frame, atomIndex: seed)
+        guard ElementTable.isMetal(frame.atoms[seed].element) else { return try ligandAtoms(in: frame, seed: seed) }
+        var graph = frame
+        graph.explicitBonds = frame.bonds.filter {
+            ($0.first == seed || !ElementTable.isMetal(frame.atoms[$0.first].element)) &&
+            ($0.second == seed || !ElementTable.isMetal(frame.atoms[$0.second].element))
+        }
+        return try connectedAtoms(in: graph, seed: seed)
+    }
+
+    public static func rotationMetalCenters(in frame: MoleculeFrame, atomIndices: [Int]) throws -> [Int] {
+        for index in atomIndices { _ = try position(in: frame, atomIndex: index) }
+        let selected = Set(atomIndices.filter { ElementTable.isMetal(frame.atoms[$0].element) }).sorted()
+        return selected.isEmpty ? try coordinatingMetals(in: frame, atomIndices: atomIndices) : selected
     }
 
     public static func fragment(in frame: MoleculeFrame, fixed: Int, moving: Int) throws -> [Int] {

@@ -42,7 +42,8 @@ in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
 Distances are in Å, angles in degrees. Choose Fragment, then click or drag an
 ligand atom: its whole connected ligand, including H, moves together. Selection
 stops at every metal, so chelating/bridging ligands stay together while metals
-and other ligands stay fixed. A metal click selects only that metal. To isolate one side of a bond instead, select the fixed atom
+and other ligands stay fixed. A metal click selects its whole attached motif, stopping at other metals,
+and chooses that metal as the rotation pivot. To isolate one side of a bond instead, select the fixed atom
 then its bonded moving atom and use Build → Select Bond Side; ring bonds cannot define
 such a boundary. Fragment drags preserve connectivity, including manual bond edits.
 
@@ -58,8 +59,10 @@ and rotation about a chosen pivot. Edits invalidate source energies for modified
 geometries; Undo restores the prior geometry and associated provenance.
 
 Use New Molecule, Build → Add Atom (Cmd-Shift-A), or the fragment gallery (Cmd-B).
-Choose an element and click a heavy atom to add a bonded atom; clicking H
-replaces only H in place. Use Coord to change a heavy element explicitly.
+Choose an element and click a heavy atom to add a bonded atom. Clicking H
+replaces H in place. Choosing a metal and clicking an existing metal replaces
+that metal at its coordinates while retaining bonds. Use Coord for other
+explicit element changes.
 Choose a fragment and click blank space to place it or a host atom to attach it;
 right-click finishes. Cmd-Shift-B opens editing/UFF controls. Save reusable
 fragments from a selection. Dummy X sites describe attachment points and must be
@@ -249,3 +252,10 @@ or forward Delete. Only selected atoms are removed; Undo restores them. Text
 editors and open sheets retain normal typing behavior. No selection is a no-op.
 Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
 empty selection and focused text editing. Release evidence is recorded in the PR.
+
+
+To rotate a ligand, choose Fragment and click its atom, then use **Rotate motif**
+X/Y/Z ± with the degree field. Choose **Coordinating metal** under Pivot to
+rotate around the metal; the Metal picker chooses the center for bridging ligands.
+Group center, attachment and world origin remain available. Rotation moves only
+the selected motif, retains bonds and supports Undo.

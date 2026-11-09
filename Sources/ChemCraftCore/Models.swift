@@ -222,10 +222,15 @@ public enum BondBuilder {
             let cell = Cell(x: Int(floor(coords[0])), y: Int(floor(coords[1])), z: Int(floor(coords[2])))
             for dx in -1...1 { for dy in -1...1 { for dz in -1...1 {
                 for j in grid[Cell(x: cell.x + dx, y: cell.y + dy, z: cell.z + dz)] ?? [] {
+                    let cutoff = tolerance * (radii[i] + radii[j])
+                    let delta = p - atoms[j].position
+                    // Large-radius metals enlarge cells. Far-away box candidates must
+                    // not exhaust the close-contact safety budget and truncate a ligand.
+                    guard abs(delta.x) <= cutoff, abs(delta.y) <= cutoff, abs(delta.z) <= cutoff else { continue }
                     comparisons += 1
                     if comparisons > 2_000_000 || pairs.count >= 30_000 { break outer }
-                    let distance = (p - atoms[j].position).length
-                    if distance > 0.1 && distance <= tolerance * (radii[i] + radii[j]) { pairs.append((j, i)) }
+                    let distance = delta.length
+                    if distance > 0.1 && distance <= cutoff { pairs.append((j, i)) }
                 }
             } } }
             grid[cell, default: []].append(i)

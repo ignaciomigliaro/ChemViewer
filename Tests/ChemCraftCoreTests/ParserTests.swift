@@ -2,6 +2,51 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testMetalCenteredMotifStopsAtOtherCenter() throws {
+        // Independent synthetic two-center graph: two Li atoms, five CH3 groups each.
+        var atoms = [Atom(id: 0, element: "Li", position: Vector3(-4,1,2)), Atom(id: 1, element: "Li", position: Vector3(6,1,2))]
+        var bonds = [Bond(id: 0, first: 0, second: 1)]
+        for center in 0...1 { for ligand in 0..<5 {
+            let carbon = atoms.count
+            atoms.append(Atom(id: carbon, element: "C", position: Vector3(Float(center)*20+Float(ligand)*3,5,0)))
+            bonds.append(Bond(id: bonds.count, first: center, second: carbon))
+            for offset in [Vector3(1,0,0),Vector3(0,1,0),Vector3(0,0,1)] {
+                let h = atoms.count; atoms.append(Atom(id: h, element: "H", position: atoms[carbon].position + offset))
+                bonds.append(Bond(id: bonds.count, first: carbon, second: h))
+            }
+        } }
+        var frame = MoleculeFrame(id: 0, atoms: atoms); frame.explicitBonds = bonds
+        XCTAssertEqual(try GeometryEditor.fragmentAtoms(in: frame, seed: 0), [0] + Array(2...21))
+        XCTAssertEqual(try GeometryEditor.fragmentAtoms(in: frame, seed: 1), [1] + Array(22...41))
+        XCTAssertEqual(try GeometryEditor.fragmentAtoms(in: frame, seed: 2), [2,3,4,5])
+        XCTAssertEqual(try GeometryEditor.rotationMetalCenters(in: frame, atomIndices: [0] + Array(2...21)), [0])
+        XCTAssertEqual(try GeometryEditor.rotationMetalCenters(in: frame, atomIndices: [2,3,4,5]), [0])
+        XCTAssertTrue((try? GeometryEditor.fragmentAtoms(in: frame, seed: 42)) == nil)
+        XCTAssertTrue((try? GeometryEditor.rotationMetalCenters(in: frame, atomIndices: [42])) == nil)
+    }
+
+    func testLargeLigandInferenceDoesNotStopAtDistantCandidateBudget() throws {
+        // Synthetic 20×20×12 carbon lattice, not an equilibrium molecular geometry.
+        // At 1.54 Å only the six axial neighbors meet the C–C cutoff; a far Cs
+        // changes spatial cell size but must not change carbon connectivity.
+        var atoms = [Atom(id: 0, element: "Cs", position: Vector3(-100, -100, -100))]
+        for x in 0..<20 { for y in 0..<20 { for z in 0..<12 {
+            atoms.append(Atom(id: atoms.count, element: "C", position: Vector3(Float(x)*1.54, Float(y)*1.54, Float(z)*1.54)))
+        } } }
+        var frame = MoleculeFrame(id: 0, atoms: atoms)
+        frame.explicitBonds = BondBuilder.inferBonds(atoms: atoms)
+        XCTAssertEqual(frame.bonds.count, 2*19*20*12 + 20*20*11)
+        let ligand = try GeometryEditor.ligandAtoms(in: frame, seed: 1)
+        XCTAssertEqual(ligand, Array(1...4800))
+        let rotated = try GeometryEditor.rotating(in: frame, atomIndices: ligand, around: .zero, axis: Vector3(0,0,1), degrees: 90)
+        XCTAssertEqual(rotated.atoms[0], atoms[0])
+        for i in [1, 432, 2400, 4800] {
+            XCTAssertEqual(rotated.atoms[i].position.x, -atoms[i].position.y, accuracy: 1e-4)
+            XCTAssertEqual(rotated.atoms[i].position.y, atoms[i].position.x, accuracy: 1e-4)
+            XCTAssertEqual(rotated.atoms[i].position.z, atoms[i].position.z)
+        }
+    }
+
     func testLigandSelectionStopsAtEveryMetalWithoutCuttingChelates() throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject"))
@@ -9,7 +54,14 @@ final class ParserTests: XCTestCase {
         var frame = MoleculeFrame(id: 0, atoms: project.atoms)
         frame.explicitBonds = project.explicitBonds
         let original = frame
+        XCTAssertEqual(try GeometryEditor.coordinatingMetals(in: frame, atomIndices: [1,2,3,4,5]), [0,8])
+        XCTAssertEqual(try GeometryEditor.coordinatingMetals(in: frame, atomIndices: [6,7]), [0])
+        XCTAssertEqual(try GeometryEditor.coordinatingMetals(in: frame, atomIndices: [9]), [8])
+        XCTAssertEqual(try GeometryEditor.coordinatingMetals(in: frame, atomIndices: [10,11]), [])
+        XCTAssertTrue((try? GeometryEditor.coordinatingMetals(in: frame, atomIndices: [12])) == nil)
         XCTAssertEqual(try GeometryEditor.connectedAtoms(in: frame, seed: 1), Array(0...9))
+        XCTAssertEqual(try GeometryEditor.fragmentAtoms(in: frame, seed: 0), Array(0...7))
+        XCTAssertEqual(try GeometryEditor.fragmentAtoms(in: frame, seed: 8), [1,2,3,4,5,8,9])
         for seed in 1...5 { XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: seed), [1, 2, 3, 4, 5]) }
         XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 6), [6, 7])
         XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 9), [9])

@@ -37,7 +37,7 @@ struct ContentView: View {
                 HStack {
                     if let element = workspace.pendingElement {
                         Button(element + "…") { workspace.presentPeriodicTable() }.help("Choose another element")
-                        Text("Add bonded atom · replace H")
+                        Text("Add bonded atom · replace H / metal")
                     }
                     Text(workspace.buildingHint).font(.caption); Spacer(); Button("Fit all") { viewportAction("reset") }; Button("Finish placement") { workspace.clearSelection() } }.padding(6)
             }

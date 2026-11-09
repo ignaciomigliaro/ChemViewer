@@ -30,7 +30,7 @@ struct PeriodicTableView: View {
                 Button(selection == nil ? "Cancel" : "Done") { dismiss() }.keyboardShortcut(.cancelAction)
             }
             if onSelect == nil && selection == nil {
-            Text("Add bonded atoms; clicking hydrogen replaces it.")
+            Text("Add bonded atoms; H and metal-to-metal clicks replace in place.")
             Text("Choose an element, then left-click in the molecule view. Empty space places a new atom; right-click finishes.")
                 .font(.callout).foregroundStyle(.secondary)
             }
@@ -59,7 +59,7 @@ struct PeriodicTableView: View {
             HStack {
                 Button("X · dummy attachment site") { workspace.armAtom("X"); dismiss() }
                 Spacer()
-                Text("Heavy atoms are preserved. Edit elements explicitly in Coordinates.")
+                Text("Other heavy atoms stay in place. Use Coordinates for explicit element changes.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             }

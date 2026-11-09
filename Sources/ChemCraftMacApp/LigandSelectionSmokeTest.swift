@@ -42,6 +42,11 @@ enum LigandSelectionSmokeTest {
                 view.mouseDown(with: event(.leftMouseDown, point)); view.mouseUp(with: event(.leftMouseUp, point))
                 try await Task.sleep(nanoseconds: 150_000_000)
             }
+            workspace.armAtom("Ru"); try await click(0)
+            try require(workspace.currentFrame!.atoms.count == atoms.count && workspace.currentFrame!.atoms[0].element == "Ru", "Metal substitution inserted an extra atom")
+            try require(workspace.currentFrame!.atoms[0].position == original.atoms[0].position && workspace.currentFrame!.bonds == original.bonds, "Metal substitution changed coordinates or connectivity")
+            workspace.clearSelection(); workspace.undoGeometry()
+            try require(workspace.currentFrame == original, "Metal substitution undo failed")
             workspace.selectedAtomIndices = [0, 1]; workspace.chooseDragScope(.fragment)
             try require(workspace.selectedAtomIndices == [1,2,3,4,5], "Fragment did not stop at both Fe and Ru")
             workspace.clearSelection()
@@ -61,12 +66,99 @@ enum LigandSelectionSmokeTest {
             }
             try require(moved.bonds == original.bonds, "Ligand selection destroyed coordination bonds")
             workspace.undoGeometry(); try require(workspace.currentFrame == original, "Ligand drag undo failed")
+            // Activate the real native rotation button and compare an independent 90° oracle.
+            func rotationButton(_ id: String, in root: NSView) -> NSButton? {
+                if let button = root as? NSButton, button.identifier?.rawValue == id { return button }
+                return root.subviews.lazy.compactMap { rotationButton(id, in: $0) }.first
+            }
+            workspace.rotationPivot = .metal; workspace.rotationMetalIndex = 8; workspace.rotationStep = 90
+            try await Task.sleep(nanoseconds: 200_000_000)
+            guard let content = window.contentView, let rotate = rotationButton("motif-rotate-Z-plus", in: content) else { throw ParseError.malformed("Native motif rotation button missing") }
+            try require(workspace.selectedCoordinatingMetals == [0,8], "Metal pivot choices do not include both coordinating metals")
+            rotate.performClick(nil)
+            let rotated = workspace.currentFrame!
+            let pivot = original.atoms[8].position
+            for index in atoms.indices {
+                if (1...5).contains(index) {
+                    let r = original.atoms[index].position - pivot
+                    let expected = pivot + Vector3(-r.y, r.x, r.z)
+                    try require((rotated.atoms[index].position - expected).length < 1e-5, "Motif rotation did not use the selected Ru pivot")
+                } else { try require(rotated.atoms[index] == original.atoms[index], "Motif rotation moved a metal or another ligand") }
+            }
+            try require(rotated.bonds == original.bonds, "Rotation changed connectivity")
+            workspace.undoGeometry(); try require(workspace.currentFrame == original, "Motif rotation undo failed")
+            workspace.rotationPivot = .center
+            rotate.performClick(nil)
+            let centered = workspace.currentFrame!
+            let center = (1...5).reduce(Vector3.zero) { $0 + original.atoms[$1].position } * (1 / Float(5))
+            for index in 1...5 {
+                let r = original.atoms[index].position - center
+                try require((centered.atoms[index].position - (center + Vector3(-r.y,r.x,r.z))).length < 1e-5, "Group-center motif rotation failed")
+            }
+            workspace.undoGeometry(); try require(workspace.currentFrame == original, "Group rotation undo failed")
             try await click(6); try require(workspace.selectedAtomIndices == [6,7], "Separate ligand click crossed the metal")
             try await click(9); try require(workspace.selectedAtomIndices == [9], "Terminal chloride selection crossed Ru")
-            try await click(0); try require(workspace.selectedAtomIndices == [0], "Metal click selected its coordination sphere")
+            try await click(0); try require(workspace.selectedAtomIndices == Array(0...7), "Metal click did not select its attached motif while stopping at Ru")
             try await click(10); try require(workspace.selectedAtomIndices == [10,11], "Metal-free connected motif failed")
             try require(try Data(contentsOf: source) == data, "Ligand editing modified the source fixture")
-            print("LIGAND_SELECTION_PASS: actual native ligand click/drag; Fe chelate, Ru bridge, attached H, metal boundaries, isolated other ligands, metal-only seed, metal-free motif, intact coordination bonds, rigid displacement, one-step undo and unchanged source.")
+            if let path = ProcessInfo.processInfo.environment["CHEMVIEWER_MOTIF_REPRO_PATH"] {
+                let url = URL(fileURLWithPath: path), before = try Data(contentsOf: URL(fileURLWithPath: path))
+                workspace.open(url)
+                for _ in 0..<100 { if !workspace.isLoading { break }; try await Task.sleep(nanoseconds: 30_000_000) }
+                try await Task.sleep(nanoseconds: 250_000_000)
+                guard let repro = workspace.currentFrame, repro.atoms.count == 42,
+                      repro.atoms[0].element == "Li", repro.atoms[1].element == "Li",
+                      let live = NSApp.windows.compactMap({ $0.contentView.flatMap(find) }).first,
+                      let liveWindow = live.window else { throw ParseError.malformed("Private two-Li reproduction layout changed") }
+                var camera = live.captureViewportState(); camera.yaw = .pi/4; camera.pitch = 0.61548; camera.roll = 0
+                live.restoreViewportState(camera)
+                workspace.armAtom("Fe")
+                try await Task.sleep(nanoseconds: 150_000_000)
+                guard let metalPoint = live.projectedAtomPoint(0) else { throw ParseError.noGeometry }
+                for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                    let e = NSEvent.mouseEvent(with: type, location: live.convert(metalPoint, to: nil), modifierFlags: [], timestamp: 0,
+                        windowNumber: liveWindow.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+                    if type == .leftMouseDown { live.mouseDown(with: e) } else { live.mouseUp(with: e) }
+                }
+                try await Task.sleep(nanoseconds: 150_000_000)
+                let substituted = workspace.currentFrame!
+                try require(substituted.atoms.count == 42 && substituted.atoms[0].element == "Fe" && substituted.bonds == repro.bonds,
+                            "Private Li-to-Fe substitution changed atom count or connectivity")
+                try require(zip(substituted.atoms,repro.atoms).allSatisfy { $0.0.position == $0.1.position }, "Private metal substitution moved coordinates")
+                workspace.clearSelection(); workspace.undoGeometry()
+                try require(workspace.currentFrame == repro, "Private metal substitution undo failed")
+                workspace.clearSelection(); workspace.chooseDragScope(.fragment)
+                for center in [0,1] {
+                    try await Task.sleep(nanoseconds: 150_000_000)
+                    guard let point = live.projectedAtomPoint(center) else { throw ParseError.noGeometry }
+                    func mouse(_ type: NSEvent.EventType) -> NSEvent {
+                        NSEvent.mouseEvent(with: type, location: live.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+                            windowNumber: liveWindow.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+                    }
+                    live.mouseDown(with: mouse(.leftMouseDown)); live.mouseUp(with: mouse(.leftMouseUp))
+                    try await Task.sleep(nanoseconds: 150_000_000)
+                    let indices = center == 0 ? [0] + Array(22...41) : [1] + Array(2...21)
+                    try require(workspace.selectedAtomIndices == indices, "Private metal click selected \(workspace.selectedAtomIndices), expected one 21-atom motif")
+                    try require(workspace.rotationPivot == .metal && workspace.rotationMetalIndex == center && workspace.selectedCoordinatingMetals == [center], "Metal click did not choose its own rotation center")
+                    workspace.rotationStep = 90
+                    for axis in ["X","Y","Z"] {
+                        guard let content = liveWindow.contentView, let button = rotationButton("motif-rotate-" + axis + "-plus", in: content) else { throw ParseError.malformed("Private-case rotation button missing") }
+                        button.performClick(nil)
+                        let result = workspace.currentFrame!, pivot = repro.atoms[center].position
+                        for i in repro.atoms.indices {
+                            if indices.contains(i) {
+                                let r = repro.atoms[i].position - pivot
+                                let q = axis == "X" ? Vector3(r.x,-r.z,r.y) : axis == "Y" ? Vector3(r.z,r.y,-r.x) : Vector3(-r.y,r.x,r.z)
+                                try require((result.atoms[i].position - (pivot+q)).length < 1e-5, "Private motif rotation disagrees with exact 90-degree oracle")
+                            } else { try require(result.atoms[i] == repro.atoms[i], "Private motif rotation moved the other 21-atom unit") }
+                        }
+                        workspace.undoGeometry(); try require(workspace.currentFrame == repro, "Private motif rotation undo failed")
+                    }
+                }
+                try require(try Data(contentsOf: url) == before, "Private source XYZ was modified")
+                print("PRIVATE_METAL_MOTIF_PASS: Li-to-Fe replacement with fixed coordinates and connectivity; both 21-atom Li units selected by actual metal clicks; native X/Y/Z rotations about the clicked centers; other unit fixed; exact undo; source bytes unchanged.")
+            }
+            print("LIGAND_SELECTION_PASS: metal replacement without topology changes, native rotation buttons with Ru/center pivots and exact 90-degree coordinates, actual native ligand click/drag; Fe chelate, Ru bridge, attached H, metal boundaries, isolated other ligands, metal-centered motif, metal-free motif, intact coordination bonds, rigid displacement, one-step undo and unchanged source.")
             fflush(stdout); exit(0)
         } catch { fputs("LIGAND_SELECTION_FAIL: \(error.localizedDescription)\n", stderr); exit(1) }
     }

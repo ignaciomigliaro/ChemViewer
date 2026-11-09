@@ -1,3 +1,4 @@
+import AppKit
 import ChemCraftCore
 import SwiftUI
 
@@ -21,18 +22,19 @@ struct ManipulationToolbar: View {
                 if workspace.isDraggingEnabled {
                     Picker("Drag axis", selection: $workspace.dragAxis) { ForEach(DragAxis.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 165)
                     Picker("Pivot", selection: $workspace.rotationPivot) { ForEach(RotationPivot.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 230)
+                    if workspace.rotationPivot == .metal { CoordinatingMetalPicker() }
                     Spacer()
                     Text("\(workspace.manipulationIndices.count) atoms").font(.caption).foregroundStyle(.secondary)
                 } else { Spacer(); Text("Right-click clears selection").font(.caption).foregroundStyle(.secondary) }
             }
             if workspace.isDraggingEnabled {
                 HStack(spacing: 7) {
-                    Text("Rotate").font(.caption)
+                    Text(workspace.dragScope == .fragment ? "Rotate motif" : "Rotate").font(.caption)
                     TextField("Degrees", value: $workspace.rotationStep, format: .number).frame(width: 43).textFieldStyle(.roundedBorder)
                     Text("°").font(.caption)
                     ForEach(axes, id: \.0) { name, axis in
-                        Button("\(name)−") { workspace.rotateManipulation(axis: axis, sign: -1) }
-                        Button("\(name)+") { workspace.rotateManipulation(axis: axis, sign: 1) }
+                        MotifRotationButton(title: "\(name)−", id: "motif-rotate-" + name + "-minus") { workspace.rotateManipulation(axis: axis, sign: -1) }.frame(width: 35, height: 24)
+                        MotifRotationButton(title: "\(name)+", id: "motif-rotate-" + name + "-plus") { workspace.rotateManipulation(axis: axis, sign: 1) }.frame(width: 35, height: 24)
                     }
                     Spacer(minLength: 8)
                     Text("Move").font(.caption)
@@ -43,7 +45,7 @@ struct ManipulationToolbar: View {
                         Button("\(name)+") { workspace.translateManipulation(axis: axis, sign: 1) }
                     }
                 }.controlSize(.small)
-                Text(workspace.dragScope == .fragment ? "Fragment: select a whole ligand, stopping at metal atoms. Build → Select Bond Side isolates one side of a selected bond." : "Drag an atom in the screen plane; Option-drag moves in depth. Rotation axes are molecular X/Y/Z.")
+                Text(workspace.dragScope == .fragment ? "Fragment: ligand click selects a ligand; metal click selects its attached motif, stopping at other metals. Build → Select Bond Side isolates one side of a selected bond." : "Drag an atom in the screen plane; Option-drag moves in depth. Rotation axes are molecular X/Y/Z.")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.padding(.horizontal, 8).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))
@@ -85,5 +87,43 @@ struct ManipulationToolbar: View {
         }
         let centerBounds = CGRect(x: center.x - 5, y: center.y - 5, width: 10, height: 10)
         context.fill(Path(ellipseIn: centerBounds), with: .color(.blue))
+    }
+}
+
+struct CoordinatingMetalPicker: View {
+    @EnvironmentObject var workspace: WorkspaceStore
+    var body: some View {
+        let metals = workspace.selectedCoordinatingMetals
+        Picker("Metal", selection: Binding(get: {
+            workspace.rotationMetalIndex.flatMap { metals.contains($0) ? $0 : nil } ?? metals.first ?? -1
+        }, set: { workspace.rotationMetalIndex = $0 })) {
+            if metals.isEmpty { Text("No metal").tag(-1) }
+            ForEach(metals, id: \.self) { index in
+                Text("\(workspace.currentFrame?.atoms[index].element ?? "Metal") \(index + 1)").tag(index)
+            }
+        }.frame(width: 120).disabled(metals.isEmpty)
+    }
+}
+
+private struct MotifRotationButton: NSViewRepresentable {
+    let title: String
+    let id: String
+    let action: () -> Void
+    @Environment(\.isEnabled) private var enabled
+    func makeCoordinator() -> Coordinator { Coordinator(action) }
+    func makeNSView(context: Context) -> NSButton {
+        let button = NSButton(title: title, target: context.coordinator, action: #selector(Coordinator.click))
+        button.bezelStyle = .rounded; button.controlSize = .small
+        button.identifier = NSUserInterfaceItemIdentifier(id)
+        return button
+    }
+    func updateNSView(_ button: NSButton, context: Context) {
+        context.coordinator.action = action; button.title = title; button.isEnabled = enabled
+        button.setAccessibilityLabel("Rotate motif " + title)
+    }
+    final class Coordinator: NSObject {
+        var action: () -> Void
+        init(_ action: @escaping () -> Void) { self.action = action }
+        @objc func click() { action() }
     }
 }
