@@ -941,9 +941,11 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     func bondAt(_ point: CGPoint) -> Bond? {
+        let projected = displacedPositions().map { projectPosition($0) }
         var best: (Bond, CGFloat)?
         for bond in scene.bonds {
-            guard let a = projectedAtomPoint(bond.first), let b = projectedAtomPoint(bond.second),
+            guard projected.indices.contains(bond.first), projected.indices.contains(bond.second),
+                  let a = projected[bond.first], let b = projected[bond.second],
                   scene.showHydrogens || (scene.atoms[bond.first].element != "H" && scene.atoms[bond.second].element != "H") else { continue }
             let dx = b.x-a.x, dy = b.y-a.y, length = dx*dx+dy*dy
             guard length > 1 else { continue }
