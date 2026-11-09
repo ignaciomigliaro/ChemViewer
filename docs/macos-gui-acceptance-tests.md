@@ -529,9 +529,11 @@ not establish the distributed app's appearance.
 
 ## Builder corrections — 0.13.2
 
-CV-BUILD-014: Enter Fragment with zero/one atom selected. Select fixed C then
-bonded moving C; drag the selected side. All fixed-side atoms must stay unchanged;
-ring boundaries must refuse. Repeat with an ordered pair selected beforehand.
+CV-BUILD-014: Enter Fragment with zero/one/two atoms selected, then click or drag
+an atom of a metal-bound ligand. Select its entire non-metal connected motif,
+including H and both chelating donor ends. Metals and other ligands stay fixed.
+For optional boundary isolation select fixed/moving atoms and use Build → Select
+Bond Side; ring boundaries must refuse. Repeat direct dragging without a pair.
 CV-BUILD-015: Select two atoms; Control-B removes their bond, Control-B restores
 it. Double-click the middle of a visible bond to remove it. Undo/redo each action;
 move atoms and save/reopen .cvproject: deleted bonds stay absent. Legacy projects
@@ -553,15 +555,25 @@ empty selection and focused text editing. Release evidence is recorded in the PR
 
 ## Connected motif selection — 0.13.4
 
-Fragment mode selects the entire connected component of a clicked/dragged atom,
-including attached hydrogens. It works immediately without a boundary pair and
-leaves disconnected motifs fixed. Manual bond edits determine connectivity.
+Fragment mode selects the whole ligand connected to a clicked/dragged atom,
+including H, while stopping at every metal. Chelating and bridging ligands remain
+together; metals and other ligands stay fixed. A metal seed selects that metal
+alone. Metal-free motifs use ordinary connectivity. Manual bond edits determine
+membership. Source coordination bonds are retained; the cut is for traversal only.
 For the optional one-side boundary workflow, select an ordered fixed/moving
 bonded pair and use Build → Select Bond Side; ring boundaries remain invalid.
-Fragment itself always selects the whole component, even when two atoms were
+Fragment itself always selects the ligand at the last atom, even when two atoms were
 selected beforehand.
 Native --manipulation-smoke-test exercises rigid whole-motif dragging, switching
 components, direct dragging from no selection, deleted-bond membership and Undo,
 alongside the retained boundary, Delete-key and bond-editing checks. This
 supersedes the mandatory-boundary behavior introduced in 0.13.2. Release evidence
 is recorded in the release PR.
+
+User clarification: stop at metals. --ligand-selection-smoke-test uses an
+original explicit-bond Fe chelate/Ru-bridge graph, with separate OH/Cl ligands
+and a metal-free CH component. Its independent expected ligand is atoms 1–5
+(zero-based), including H; all other coordinates stay fixed under rigid drag.
+Fixture: Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject.
+Core ligand traversal and metal-policy tests accompany native click/drag, Undo,
+unchanged-source and retained-coordination-bond assertions.

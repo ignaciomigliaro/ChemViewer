@@ -43,7 +43,7 @@ struct ManipulationToolbar: View {
                         Button("\(name)+") { workspace.translateManipulation(axis: axis, sign: 1) }
                     }
                 }.controlSize(.small)
-                Text(workspace.dragScope == .fragment ? "Fragment: click or drag an atom for its entire connected motif. Build → Select Bond Side isolates one side of a selected bond." : "Drag an atom in the screen plane; Option-drag moves in depth. Rotation axes are molecular X/Y/Z.")
+                Text(workspace.dragScope == .fragment ? "Fragment: select a whole ligand, stopping at metal atoms. Build → Select Bond Side isolates one side of a selected bond." : "Drag an atom in the screen plane; Option-drag moves in depth. Rotation axes are molecular X/Y/Z.")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.padding(.horizontal, 8).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))

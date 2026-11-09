@@ -2,6 +2,30 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testLigandSelectionStopsAtEveryMetalWithoutCuttingChelates() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject"))
+        let project = try JSONDecoder().decode(BuildingProject.self, from: data)
+        var frame = MoleculeFrame(id: 0, atoms: project.atoms)
+        frame.explicitBonds = project.explicitBonds
+        let original = frame
+        XCTAssertEqual(try GeometryEditor.connectedAtoms(in: frame, seed: 1), Array(0...9))
+        for seed in 1...5 { XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: seed), [1, 2, 3, 4, 5]) }
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 6), [6, 7])
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 9), [9])
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 10), [10, 11])
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 0), [0])
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 8), [8])
+        XCTAssertTrue((try? GeometryEditor.ligandAtoms(in: frame, seed: 12)) == nil)
+        XCTAssertEqual(frame, original)
+        // Removing an internal ligand bond changes membership; metal bonds are never removed.
+        frame = try GeometryEditor.togglingBond(in: frame, first: 2, second: 3)
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 1), [1, 2])
+        XCTAssertEqual(try GeometryEditor.ligandAtoms(in: frame, seed: 4), [3, 4, 5])
+        for symbol in ["Li", "Be", "Na", "Mg", "Al", "K", "Ca", "Sc", "Fe", "Cu", "Zn", "Ga", "Rb", "Y", "Ru", "Cd", "In", "Sn", "Cs", "La", "Lu", "Pt", "Hg", "Bi", "Po", "Fr", "Ac", "U", "Lr", "Rf", "Cn", "Nh", "Lv", " fe ", "26"] { XCTAssertTrue(ElementTable.isMetal(symbol)) }
+        for symbol in ["X", "H", "He", "B", "C", "N", "O", "F", "Ne", "Si", "P", "S", "Cl", "Ar", "Ge", "As", "Se", "Br", "Kr", "Sb", "Te", "I", "Xe", "At", "Rn", "Ts", "Og", "unknown"] { XCTAssertTrue(!ElementTable.isMetal(symbol)) }
+    }
+
     func testEditedConnectivityAndProjectPersistence() throws {
         let atoms = [Atom(id: 0, element: "C", position: .zero), Atom(id: 1, element: "C", position: Vector3(1.4, 0, 0)), Atom(id: 2, element: "H", position: Vector3(2.4, 0, 0))]
         var frame = MoleculeFrame(id: 0, atoms: atoms)

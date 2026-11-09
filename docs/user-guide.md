@@ -40,8 +40,9 @@ expose a signed dihedral. Right-click clears selection. Enable the measurement
 label to annotate it. Persistent labels can coexist, move by dragging, and appear
 in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
 Distances are in Å, angles in degrees. Choose Fragment, then click or drag an
-atom: its entire connected motif is selected and moves together. Disconnected
-motifs stay fixed. To isolate one side of a bond instead, select the fixed atom
+ligand atom: its whole connected ligand, including H, moves together. Selection
+stops at every metal, so chelating/bridging ligands stay together while metals
+and other ligands stay fixed. A metal click selects only that metal. To isolate one side of a bond instead, select the fixed atom
 then its bonded moving atom and use Build → Select Bond Side; ring bonds cannot define
 such a boundary. Fragment drags preserve connectivity, including manual bond edits.
 

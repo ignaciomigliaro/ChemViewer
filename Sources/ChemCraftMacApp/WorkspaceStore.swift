@@ -500,11 +500,11 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 if let seed = previous.last {
-                    selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
-                    buildingHint = "Fragment: drag any atom to move its entire connected motif."
+                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
                 } else {
                     selectedAtomIndices = []
-                    buildingHint = "Fragment: click or drag an atom to select its entire connected motif."
+                    buildingHint = "Fragment: click or drag a ligand atom; selection stops at metals."
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
@@ -530,8 +530,8 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 guard let boundary = fragmentBoundary else {
-                    selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
-                    buildingHint = "Fragment: drag any atom to move its entire connected motif."
+                    selectedAtomIndices = try GeometryEditor.ligandAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag the whole ligand; selection stops at metal atoms."
                     return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }

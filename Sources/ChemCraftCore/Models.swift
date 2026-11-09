@@ -178,6 +178,14 @@ public enum ElementTable {
         return String(first).uppercased() + trimmed.dropFirst().lowercased()
     }
 
+    // Operational element-based boundaries for ligand selection; no oxidation-state inference.
+    private static let metalSymbols: Set<String> = Set(
+        ([3...4, 11...13, 19...31, 37...50, 55...84, 87...116].flatMap { Array($0) })
+            .map { IntegratedBuilding.elements[$0] })
+    public static func isMetal(_ element: String) -> Bool {
+        metalSymbols.contains(canonicalSymbol(element))
+    }
+
     public static func covalentRadius(for element: String) -> Float {
         radii[canonicalSymbol(element)] ?? Float(IntegratedBuilding.editingRadii[canonicalSymbol(element)] ?? 0.9)
     }
