@@ -54,7 +54,7 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.light)
-        .background(GeometryNavigationKeys(toggleBond: workspace.toggleSelectedBond, enabled: !["Source", "Coord", "ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
+        .background(GeometryNavigationKeys(toggleBond: workspace.toggleSelectedBond, deleteSelection: workspace.deleteSelectedAtoms, enabled: !["Source", "Coord", "ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
             clear: workspace.clearSelection,
             selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
             .frame(width: 0, height: 0).allowsHitTesting(false))

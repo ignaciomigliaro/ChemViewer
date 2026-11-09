@@ -766,3 +766,12 @@ Validation: regression checks cover ordered fragment boundaries, native mouse
 and Control-B events, heavy-atom preservation, H replacement, connectivity
 persistence and legacy projects. Physical GUI and release results recorded in
 the handoff/release PR; automated builds alone are not interactive acceptance.
+
+
+## Delete selected atoms — 0.13.3
+
+In the molecule view, select atoms and press Delete (Backspace on a Mac keyboard)
+or forward Delete. Only selected atoms are removed; Undo restores them. Text
+editors and open sheets retain normal typing behavior. No selection is a no-op.
+Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
+empty selection and focused text editing. Release evidence is recorded in the PR.

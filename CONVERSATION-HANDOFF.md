@@ -1327,3 +1327,12 @@ Python checks pass in the installed chemistry runtime (3 optional fixture skips)
 system Python/.venv lack the scientific dependencies and are not passing test
 environments. Relocated archive, missing-resource and wrong-SDK controls pass.
 Final hosted CI/download/install/publication evidence belongs in the release PR.
+
+
+## Delete selected atoms — 0.13.3
+
+In the molecule view, select atoms and press Delete (Backspace on a Mac keyboard)
+or forward Delete. Only selected atoms are removed; Undo restores them. Text
+editors and open sheets retain normal typing behavior. No selection is a no-op.
+Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
+empty selection and focused text editing. Release evidence is recorded in the PR.

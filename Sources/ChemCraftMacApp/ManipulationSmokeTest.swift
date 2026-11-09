@@ -56,6 +56,20 @@ enum ManipulationSmokeTest {
             // Actual native Control-B event and bond double-click paths.
             workspace.selectedAtomIndices = [0, 1]
             guard let keys = find(GeometryNavigationKeys.KeyView.self, in: root) else { throw CocoaError(.coderReadCorrupt) }
+            for code: UInt16 in [51, 117] {
+                workspace.selectedAtomIndices = [1, 2]
+                window.makeFirstResponder(view)
+                let deletion = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "\u{7f}", charactersIgnoringModifiers: "\u{7f}", isARepeat: false, keyCode: code)!
+                try require(keys.handle(deletion) == nil && workspace.currentFrame!.atoms == [original.atoms[0], original.atoms[3]].enumerated().map { Atom(id: $0.offset, element: $0.element.element, position: $0.element.position) }, "Delete key did not remove only selected atoms")
+                workspace.undoGeometry(); try require(workspace.currentFrame == original, "Delete key undo failed")
+                let editor = NSTextView(frame: .zero); root.addSubview(editor); window.makeFirstResponder(editor)
+                try require(keys.handle(deletion) != nil && workspace.currentFrame == original, "Typing Delete in a text editor deleted atoms")
+                editor.removeFromSuperview(); window.makeFirstResponder(view)
+                workspace.selectedAtomIndices = []; _ = keys.handle(deletion)
+                try require(workspace.currentFrame == original, "Delete without selection changed geometry")
+            }
+            workspace.selectedAtomIndices = [0, 1]
             let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .control, timestamp: 0,
                 windowNumber: window.windowNumber, context: nil, characters: "b", charactersIgnoringModifiers: "b", isARepeat: false, keyCode: 11)!
             window.makeFirstResponder(view)
@@ -149,7 +163,7 @@ enum ManipulationSmokeTest {
             try require(ClipboardSupport.copy(number, pasteboard: pasteboard) && pasteboard.string(forType: .string) == "-9.950000000000", "Numeric-only energy copy")
             try await screenshot("clean-abstract.png")
             workspace.activeTab = "Coord"; try await wait(); try await screenshot("copy-coordinates.png")
-            print("Manipulation workflow PASS: Control-B bond creation/deletion, double-click deletion, bond undo/redo, heavy-atom preservation and H-only substitution, fragment boundary selection without whole-molecule fallback, right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
+            print("Manipulation workflow PASS: Delete/forward-Delete selection removal, undo and text-editor protection, Control-B bond creation/deletion, double-click deletion, bond undo/redo, heavy-atom preservation and H-only substitution, fragment boundary selection without whole-molecule fallback, right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
             fflush(stdout)
         } catch {
             fputs("Manipulation workflow FAIL: \(error.localizedDescription)\n", stderr); exitCode = 1
