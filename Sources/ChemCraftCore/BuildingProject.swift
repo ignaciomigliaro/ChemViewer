@@ -10,6 +10,7 @@ public struct CalculationFact: Equatable, Sendable {
 
 public struct BuildingProject: Codable {
     private var state: IntegratedBuilding.EditableProject
+    public var explicitBonds: [Bond]? { get { state.explicitBonds?.enumerated().map { Bond(id: $0.offset, first: $0.element[0], second: $0.element[1]) } } set { state.explicitBonds = newValue?.map { [$0.first, $0.second] } } }
     public var atoms: [Atom] { Self.convert(state.atoms) }
     public var groups: [[Int]] { state.groups }
     public var selection: [Int] { state.selection }

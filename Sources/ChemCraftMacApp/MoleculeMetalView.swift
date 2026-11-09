@@ -40,6 +40,7 @@ struct MoleculeMetalView: NSViewRepresentable {
     var draggingEnabled = false
     var dragAxis: DragAxis = .screen
     var onEmptyBuilderClick: (Vector3) -> Bool = { _ in false }
+    var onBondDoubleClick: (Int, Int) -> Void = { _, _ in }
     var onBuilderClick: (Int) -> Bool = { _ in false }
     var onClearSelection: () -> Void = {}
     var onManipulationSelection: (Int) -> Void = { _ in }
@@ -66,6 +67,7 @@ struct MoleculeMetalView: NSViewRepresentable {
             if context.coordinator.parent.draggingEnabled { context.coordinator.parent.onManipulationSelection(index) }
             else { context.coordinator.selectAtom(index, extendSelection: extendSelection) }
         }
+        view.onBondDoubleClick = { context.coordinator.parent.onBondDoubleClick($0, $1) }
         view.onEmptyClick = { [weak view] location in
             view?.preservePlacementCamera = true
             if !context.coordinator.parent.onEmptyBuilderClick(location) { view?.preservePlacementCamera = false }
@@ -90,7 +92,7 @@ struct MoleculeMetalView: NSViewRepresentable {
         view.dragAxis = dragAxis
         view.scene = RenderScene(
             atoms: frame.atoms,
-            bonds: context.coordinator.bonds(for: frame.atoms),
+            bonds: frame.explicitBonds ?? context.coordinator.bonds(for: frame.atoms),
             displacements: mode?.displacements ?? [],
             amplitude: amplitude,
             animate: isAnimating && mode != nil,
@@ -257,6 +259,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var previousMouse = CGPoint.zero
     private var mouseDownPoint = CGPoint.zero
     private var didDrag = false
+    var onBondDoubleClick: ((Int, Int) -> Void)?
     var onAtomClick: ((Int, Bool) -> Void)?
     var onEmptyClick: ((Vector3) -> Void)?
 
@@ -601,7 +604,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         // Assign fields directly to retain the fixed camera fitted across the entire animation.
         // scene didSet may refit for a changed atom count, so restore framing afterward.
         let fixedCenter = center, fixedScale = fitScale
-        scene.atoms = frame.atoms; scene.bonds = BondBuilder.inferBonds(atoms: frame.atoms)
+        scene.atoms = frame.atoms; scene.bonds = frame.bonds
         center = fixedCenter; fitScale = fixedScale
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: colorPixelFormat, width: size, height: size, mipmapped: false)
         descriptor.usage = [.renderTarget, .shaderRead]; descriptor.storageMode = .private
@@ -853,7 +856,13 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         if atomDragActive { commitAtomDrag(); return }
         guard !didDrag else { return }
         let point = convert(event.locationInWindow, from: nil)
-        guard let index = atomIndex(at: point) else { onEmptyClick?(placementPosition(at: point)); return }
+        if event.clickCount == 2, atomIndex(at: point) == nil, let bond = bondAt(point) {
+            onBondDoubleClick?(bond.first, bond.second); return
+        }
+        guard let index = atomIndex(at: point) else {
+            if bondAt(point) == nil { onEmptyClick?(placementPosition(at: point)) }
+            return
+        }
         let extend = !event.modifierFlags.intersection([.shift, .command]).isEmpty
         onAtomClick?(index, extend)
     }
@@ -929,6 +938,20 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         pan.x += Float(anchor.x / max(bounds.width, 1)) * 2 - 1 - clip.x / clip.w
         pan.y += Float(anchor.y / max(bounds.height, 1)) * 2 - 1 - clip.y / clip.w
         setNeedsDisplay(bounds)
+    }
+
+    func bondAt(_ point: CGPoint) -> Bond? {
+        var best: (Bond, CGFloat)?
+        for bond in scene.bonds {
+            guard let a = projectedAtomPoint(bond.first), let b = projectedAtomPoint(bond.second),
+                  scene.showHydrogens || (scene.atoms[bond.first].element != "H" && scene.atoms[bond.second].element != "H") else { continue }
+            let dx = b.x-a.x, dy = b.y-a.y, length = dx*dx+dy*dy
+            guard length > 1 else { continue }
+            let t = max(0, min(1, ((point.x-a.x)*dx+(point.y-a.y)*dy)/length))
+            let distance = hypot(point.x-a.x-t*dx, point.y-a.y-t*dy)
+            if distance <= 7 && (best == nil || distance < best!.1) { best = (bond, distance) }
+        }
+        return best?.0
     }
 
     private func atomIndex(at point: CGPoint) -> Int? {

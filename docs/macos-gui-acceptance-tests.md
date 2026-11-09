@@ -526,3 +526,17 @@ and missing-helper negative controls must reject their disposable copies.
 Download the exact-source CI archive separately, verify its digest and repeat
 the appearance/vibration checks on the physical Mac; source-only evidence does
 not establish the distributed app's appearance.
+
+## Builder corrections — 0.13.2
+
+CV-BUILD-014: Enter Fragment with zero/one atom selected. Select fixed C then
+bonded moving C; drag the selected side. All fixed-side atoms must stay unchanged;
+ring boundaries must refuse. Repeat with an ordered pair selected beforehand.
+CV-BUILD-015: Select two atoms; Control-B removes their bond, Control-B restores
+it. Double-click the middle of a visible bond to remove it. Undo/redo each action;
+move atoms and save/reopen .cvproject: deleted bonds stay absent. Legacy projects
+still load; XYZ reopening re-infers bonds because XYZ has no connectivity.
+CV-BUILD-016: Choose N and click C: C stays, bonded N is added. Click H with F:
+only H is replaced at its coordinates. Check undo and repeat atom placement.
+Run --manipulation-smoke-test and --atom-editing-smoke-test on the physical Mac,
+plus --vibration-smoke-test and general/document checks for regressions.

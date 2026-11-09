@@ -37,6 +37,7 @@ struct ClassicMenuBar: View {
                 Button("Fragment Library…") { workspace.presentFragmentLibrary() }
                 Button("Add Atom…") { workspace.presentAtomPicker() }
                 Toggle("Build & Edit Panel", isOn: $workspace.isBuilderVisible)
+                Button("Create / Remove Bond (Control-B)") { workspace.toggleSelectedBond() }
                 Button("Finish Placement") { workspace.clearSelection() }
             }
             Menu("View") {

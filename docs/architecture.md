@@ -747,3 +747,23 @@ Native artifact CI uses macos-26 with Xcode26.5, aligning the distributed app's 
 with the accepted local appearance baseline. The portable/test matrix remains
 on its existing systems. GitHub's [runner inventory](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md#xcode)
 lists that Xcode and SDK on this image. The deployment minimum remains macOS13.
+
+## Molecule editing corrections — 0.13.2 (2026-11-09)
+
+Atom placement preserves clicked heavy atoms and attaches the chosen element;
+clicking H replaces only that H at its existing coordinates. Explicit element
+changes remain available in Coordinates. Fragment mode requires an ordered
+fixed/moving bonded pair: select two atoms before choosing Fragment, or select
+the fixed atom then the moving atom after enabling it. It never defaults to the
+whole connected molecule. Ring bonds cannot define a detached fragment.
+
+Select two atoms and press Control-B to toggle their bond. Double-click the
+visible middle of a bond to remove it; use Control-B to recreate it. Connectivity
+edits override inferred bonds, survive coordinate transforms, undo/redo, and
+.cvproject save/reopen. XYZ stores coordinates only and re-infers connectivity
+when reopened. These controls do not assign bond orders or optimize geometries.
+
+Validation: regression checks cover ordered fragment boundaries, native mouse
+and Control-B events, heavy-atom preservation, H replacement, connectivity
+persistence and legacy projects. Physical GUI and release results recorded in
+the handoff/release PR; automated builds alone are not interactive acceptance.

@@ -50,11 +50,12 @@ enum AtomEditingSmokeTest {
             let pixel = view.projectedAtomPoint(0)!
             click(view, pixel)
             try await Task.sleep(nanoseconds: 200_000_000)
-            try require(workspace.currentFrame!.atoms.count == 1 && workspace.currentFrame!.atoms[0].element == "Ru", "Replace mode added an atom instead of substituting")
-            try require(workspace.currentFrame!.atoms[0].position == original[0].position && view.viewingRotation == camera, "Replacement moved geometry or camera")
+            try require(workspace.currentFrame!.atoms.count == 2 && workspace.currentFrame!.atoms[0].element == "Fe" && workspace.currentFrame!.atoms[1].element == "Ru", "Adding Ru replaced the selected Fe")
+            try require(workspace.currentFrame!.atoms[0].position == original[0].position && view.viewingRotation == camera, "Addition moved host geometry or camera")
             workspace.undoGeometry()
-            try require(workspace.currentFrame!.atoms == original, "Element replacement undo failed")
-            workspace.redoGeometry()
+            try require(workspace.currentFrame!.atoms == original, "Bonded insertion undo failed")
+            // Explicit element editing remains available outside the atom placement tool.
+            workspace.selectedAtomIndices = [0]; workspace.editElement("Ru", insert: false)
             workspace.atomPlacementMode = .bond
             try await choose("Cl")
             click(view, view.projectedAtomPoint(0)!)

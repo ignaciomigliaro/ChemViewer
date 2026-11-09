@@ -37,9 +37,7 @@ struct ContentView: View {
                 HStack {
                     if let element = workspace.pendingElement {
                         Button(element + "…") { workspace.presentPeriodicTable() }.help("Choose another element")
-                        Picker("Atom action", selection: $workspace.atomPlacementMode) {
-                            ForEach(AtomPlacementMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }.frame(width: 205)
+                        Text("Add bonded atom · replace H")
                     }
                     Text(workspace.buildingHint).font(.caption); Spacer(); Button("Fit all") { viewportAction("reset") }; Button("Finish placement") { workspace.clearSelection() } }.padding(6)
             }
@@ -56,7 +54,7 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(.light)
-        .background(GeometryNavigationKeys(enabled: !["Source", "Coord", "ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
+        .background(GeometryNavigationKeys(toggleBond: workspace.toggleSelectedBond, enabled: !["Source", "Coord", "ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab), step: workspace.stepFrame,
             clear: workspace.clearSelection,
             selectAll: { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) })
             .frame(width: 0, height: 0).allowsHitTesting(false))
@@ -334,6 +332,7 @@ struct ContentView: View {
                     showMeasurementOverlay: workspace.showMeasurementOverlay, measurementSelections: workspace.pinnedMeasurementSelections,
                     draggingEnabled: workspace.isDraggingEnabled, dragAxis: workspace.dragAxis,
                     onEmptyBuilderClick: workspace.placeBuilderItem(inEmptySpace:),
+                    onBondDoubleClick: workspace.toggleBond,
                     onBuilderClick: workspace.placeBuilderItem,
                     onClearSelection: workspace.clearSelection,
                     onManipulationSelection: { _ = workspace.selectManipulationSeed($0) },

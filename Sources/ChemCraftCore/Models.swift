@@ -59,6 +59,9 @@ public struct MoleculeFrame: Identifiable, Equatable, Sendable {
     public var atoms: [Atom]
     public var comment: String
     public var energyHartree: Double?
+    /// User-edited connectivity; nil uses distance inference. XYZ does not encode bonds.
+    public var explicitBonds: [Bond]? = nil
+    public var bonds: [Bond] { explicitBonds ?? BondBuilder.inferBonds(atoms: atoms) }
 
     public init(id: Int, atoms: [Atom], comment: String = "", energyHartree: Double? = nil) {
         self.id = id

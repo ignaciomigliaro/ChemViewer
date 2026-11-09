@@ -53,6 +53,33 @@ enum ManipulationSmokeTest {
                 p.arguments = ["-x", "-l", String(window.windowNumber), evidence.appendingPathComponent(name).path]
                 try p.run(); p.waitUntilExit(); try require(p.terminationStatus == 0, "Capture failed")
             }
+            // Actual native Control-B event and bond double-click paths.
+            workspace.selectedAtomIndices = [0, 1]
+            guard let keys = find(GeometryNavigationKeys.KeyView.self, in: root) else { throw CocoaError(.coderReadCorrupt) }
+            let key = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .control, timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, characters: "b", charactersIgnoringModifiers: "b", isARepeat: false, keyCode: 11)!
+            window.makeFirstResponder(view)
+            try require(keys.handle(key) == nil, "Control-B did not reach the bond action")
+            try require(workspace.currentFrame!.bonds.count == original.bonds.count - 1, "Control-B did not delete the inferred bond")
+            workspace.undoGeometry(); try require(workspace.currentFrame == original, "Bond deletion undo failed")
+            workspace.redoGeometry(); try require(workspace.currentFrame!.bonds.count == original.bonds.count - 1, "Bond deletion redo failed")
+            try require(keys.handle(key) == nil && workspace.currentFrame!.bonds.count == original.bonds.count, "Control-B did not create a bond")
+            workspace.undoGeometry(); workspace.undoGeometry()
+            try await wait()
+            let a = view.projectedAtomPoint(0)!, b = view.projectedAtomPoint(1)!
+            let middle = CGPoint(x: (a.x+b.x)/2, y: (a.y+b.y)/2)
+            let double = NSEvent.mouseEvent(with: .leftMouseUp, location: view.convert(middle, to: nil), modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 2, pressure: 1)!
+            view.mouseDown(with: event(.leftMouseDown, middle)); view.mouseUp(with: double)
+            try require(workspace.currentFrame!.bonds.count == original.bonds.count - 1, "Double-click did not delete the bond")
+            workspace.undoGeometry(); try require(workspace.currentFrame == original, "Double-click undo failed")
+            workspace.armAtom("N"); _ = workspace.placeBuilderItem(at: 0)
+            try require(workspace.currentFrame!.atoms[0].element == "C" && workspace.currentFrame!.atoms.count == 5, "Adding N replaced a heavy atom")
+            workspace.undoGeometry(); workspace.clearSelection()
+            workspace.selectedAtomIndices = [0]; workspace.armAtom("H"); _ = workspace.placeBuilderItem(at: 0)
+            workspace.clearSelection(); workspace.armAtom("F"); _ = workspace.placeBuilderItem(at: 4)
+            try require(workspace.currentFrame!.atoms.count == 5 && workspace.currentFrame!.atoms[4].element == "F", "Clicking H must replace it without adding another atom")
+            workspace.undoGeometry(); workspace.undoGeometry(); workspace.clearSelection()
             workspace.selectedAtomIndices = [0, 1, 2]
             try await wait()
             view.rightMouseDown(with: event(.rightMouseDown, .zero))
@@ -65,12 +92,21 @@ enum ManipulationSmokeTest {
             workspace.undoGeometry()
             try require(workspace.currentFrame == original && !workspace.canUndoGeometry, "One drag did not create exactly one undo step")
             workspace.isDraggingEnabled = false
+            workspace.selectedAtomIndices = [0]
+            workspace.chooseDragScope(.fragment)
+            try require(workspace.selectedAtomIndices.isEmpty && !workspace.beginAtomDrag(0), "Fragment drag without boundary must not move the whole molecule")
+            try require(workspace.selectedAtomIndices == [0], "First fragment click must select only the fixed atom")
+            _ = workspace.selectManipulationSeed(1)
+            try require(workspace.selectedAtomIndices == [1, 2], "Second fragment click must select only the moving side")
+            workspace.isDraggingEnabled = false
             workspace.selectedAtomIndices = [0, 1]
             workspace.chooseDragScope(.fragment)
             try require(workspace.selectedAtomIndices == [1, 2], "Fragment boundary did not identify second side")
             try await wait()
             try await drag(2, 20, 15)
             let moved = workspace.currentFrame!
+            try require(moved.bonds == original.bonds && workspace.beginAtomDrag(2), "A moved fragment lost connectivity or could not be dragged again")
+            workspace.finishAtomDrag()
             try require(moved.atoms[0] == original.atoms[0] && moved.atoms[3] == original.atoms[3], "Fragment drag moved outside atoms")
             let delta1 = moved.atoms[1].position - original.atoms[1].position
             let delta2 = moved.atoms[2].position - original.atoms[2].position
@@ -113,7 +149,7 @@ enum ManipulationSmokeTest {
             try require(ClipboardSupport.copy(number, pasteboard: pasteboard) && pasteboard.string(forType: .string) == "-9.950000000000", "Numeric-only energy copy")
             try await screenshot("clean-abstract.png")
             workspace.activeTab = "Coord"; try await wait(); try await screenshot("copy-coordinates.png")
-            print("Manipulation workflow PASS: right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
+            print("Manipulation workflow PASS: Control-B bond creation/deletion, double-click deletion, bond undo/redo, heavy-atom preservation and H-only substitution, fragment boundary selection without whole-molecule fallback, right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
             fflush(stdout)
         } catch {
             fputs("Manipulation workflow FAIL: \(error.localizedDescription)\n", stderr); exitCode = 1
