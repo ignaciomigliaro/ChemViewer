@@ -39,10 +39,11 @@ Click atoms in order. Two atoms expose a distance; three expose an angle; four
 expose a signed dihedral. Right-click clears selection. Enable the measurement
 label to annotate it. Persistent labels can coexist, move by dragging, and appear
 in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
-Distances are in Å, angles in degrees. To drag a fragment, select the fixed atom
-then its bonded moving atom and choose Fragment. You can also enable Fragment
-first, then select that ordered pair. Only the moving side is selected; a ring
-bond cannot define a separable fragment. Fragment drags preserve connectivity.
+Distances are in Å, angles in degrees. Choose Fragment, then click or drag an
+atom: its entire connected motif is selected and moves together. Disconnected
+motifs stay fixed. To isolate one side of a bond instead, select the fixed atom
+then its bonded moving atom before choosing Fragment; ring bonds cannot define
+such a boundary. Fragment drags preserve connectivity, including manual bond edits.
 
 [Interaction and measurement evidence](measurements-and-smooth-drag-2026-10-19.md),
 [persistent labels](drawing-and-labels-2026-10-20.md).

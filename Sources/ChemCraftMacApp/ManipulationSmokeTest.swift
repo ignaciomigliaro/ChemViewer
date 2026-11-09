@@ -108,10 +108,26 @@ enum ManipulationSmokeTest {
             workspace.isDraggingEnabled = false
             workspace.selectedAtomIndices = [0]
             workspace.chooseDragScope(.fragment)
-            try require(workspace.selectedAtomIndices.isEmpty && !workspace.beginAtomDrag(0), "Fragment drag without boundary must not move the whole molecule")
-            try require(workspace.selectedAtomIndices == [0], "First fragment click must select only the fixed atom")
+            try require(workspace.selectedAtomIndices == [0, 1, 2], "Fragment must select the full connected motif")
+            try await wait()
+            try await drag(2, 20, 15)
+            let motif = workspace.currentFrame!
+            let motifDelta = motif.atoms[0].position - original.atoms[0].position
+            try require(motifDelta.length > 0.01 && motif.atoms[3] == original.atoms[3], "Connected motif drag moved an unrelated component")
+            for i in 0..<3 { try require(((motif.atoms[i].position - original.atoms[i].position) - motifDelta).length < 1e-5, "Connected motif drag was not rigid") }
+            workspace.undoGeometry(); try require(workspace.currentFrame == original, "Connected motif undo failed")
+            _ = workspace.selectManipulationSeed(3)
+            try require(workspace.selectedAtomIndices == [3], "Clicking another motif did not switch connected groups")
+            workspace.clearSelection(); workspace.chooseDragScope(.fragment)
+            try require(workspace.beginAtomDrag(1) && workspace.selectedAtomIndices == [0, 1, 2], "A direct drag must select the connected motif without a boundary pair")
+            workspace.finishAtomDrag()
+            // Connectivity overrides must also define fragment membership.
+            workspace.toggleBond(0, 1); workspace.clearSelection()
             _ = workspace.selectManipulationSeed(1)
-            try require(workspace.selectedAtomIndices == [1, 2], "Second fragment click must select only the moving side")
+            try require(workspace.selectedAtomIndices == [1, 2], "Fragment selection ignored an explicitly deleted bond")
+            workspace.chooseDragScope(.fragment)
+            try require(workspace.selectedAtomIndices == [1, 2], "Reselecting Fragment split a two-atom motif")
+            workspace.undoGeometry(); workspace.clearSelection()
             workspace.isDraggingEnabled = false
             workspace.selectedAtomIndices = [0, 1]
             workspace.chooseDragScope(.fragment)
@@ -163,7 +179,7 @@ enum ManipulationSmokeTest {
             try require(ClipboardSupport.copy(number, pasteboard: pasteboard) && pasteboard.string(forType: .string) == "-9.950000000000", "Numeric-only energy copy")
             try await screenshot("clean-abstract.png")
             workspace.activeTab = "Coord"; try await wait(); try await screenshot("copy-coordinates.png")
-            print("Manipulation workflow PASS: Delete/forward-Delete selection removal, undo and text-editor protection, Control-B bond creation/deletion, double-click deletion, bond undo/redo, heavy-atom preservation and H-only substitution, fragment boundary selection without whole-molecule fallback, right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
+            print("Manipulation workflow PASS: Delete/forward-Delete selection removal, undo and text-editor protection, Control-B bond creation/deletion, double-click deletion, bond undo/redo, heavy-atom preservation and H-only substitution, whole connected motif selection and rigid dragging, disconnected-component isolation, explicit connectivity and optional boundary selection, right-click clear, actual mouse-handler atom/fragment/molecule drags, rigid group transforms, attachment-axis rotation, one-step gesture undo, both-end angle edit, isolated clipboard roundtrips, thermochemistry sums and clean Abstract/Coord views.")
             fflush(stdout)
         } catch {
             fputs("Manipulation workflow FAIL: \(error.localizedDescription)\n", stderr); exitCode = 1

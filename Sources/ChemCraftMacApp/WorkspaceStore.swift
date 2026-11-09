@@ -490,6 +490,7 @@ extension WorkspaceStore {
     func chooseDragScope(_ scope: DragScope) {
         finishAtomDrag()
         let previous = selectedAtomIndices
+        let wasDragging = isDraggingEnabled
         isDraggingEnabled = true
         dragScope = scope
         fragmentBoundary = nil
@@ -499,12 +500,15 @@ extension WorkspaceStore {
             case .atom: if let last = previous.last { selectedAtomIndices = [last] }
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
-                if previous.count == 2 {
+                if !wasDragging && previous.count == 2 && frame.bonds.contains(where: { Set([$0.first, $0.second]) == Set(previous) }) {
                     selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: previous[0], moving: previous[1])
                     fragmentBoundary = (previous[0], previous[1])
+                } else if let seed = previous.last {
+                    selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag any atom to move its entire connected motif."
                 } else {
                     selectedAtomIndices = []
-                    buildingHint = "Fragment: select the fixed atom, then its bonded moving atom."
+                    buildingHint = "Fragment: click or drag an atom to select its entire connected motif."
                 }
             }
         } catch { selectedAtomIndices = []; errorMessage = error.localizedDescription }
@@ -518,12 +522,9 @@ extension WorkspaceStore {
             case .molecule: selectedAtomIndices = Array(frame.atoms.indices)
             case .fragment:
                 guard let boundary = fragmentBoundary else {
-                    if let fixed = selectedAtomIndices.first, fixed != seed {
-                        selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: seed)
-                        fragmentBoundary = (fixed, seed)
-                        buildingHint = "Drag the selected fragment; the other side stays fixed."
-                    } else { selectedAtomIndices = [seed]; buildingHint = "Now select a bonded atom on the moving side." }
-                    return false
+                    selectedAtomIndices = try GeometryEditor.connectedAtoms(in: frame, seed: seed)
+                    buildingHint = "Fragment: drag any atom to move its entire connected motif."
+                    return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }
                 selectedAtomIndices = try GeometryEditor.fragment(in: frame, fixed: boundary.0, moving: boundary.1)

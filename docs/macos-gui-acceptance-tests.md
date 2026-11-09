@@ -549,3 +549,17 @@ or forward Delete. Only selected atoms are removed; Undo restores them. Text
 editors and open sheets retain normal typing behavior. No selection is a no-op.
 Native --manipulation-smoke-test checks both key codes, multi-atom removal, Undo,
 empty selection and focused text editing. Release evidence is recorded in the PR.
+
+
+## Connected motif selection — 0.13.4
+
+Fragment mode selects the entire connected component of a clicked/dragged atom,
+including attached hydrogens. It works immediately without a boundary pair and
+leaves disconnected motifs fixed. Manual bond edits determine connectivity.
+Selecting an ordered fixed/moving bonded pair before choosing Fragment retains
+the optional one-side boundary workflow; ring boundaries remain invalid.
+Native --manipulation-smoke-test exercises rigid whole-motif dragging, switching
+components, direct dragging from no selection, deleted-bond membership and Undo,
+alongside the retained boundary, Delete-key and bond-editing checks. This
+supersedes the mandatory-boundary behavior introduced in 0.13.2. Release evidence
+is recorded in the release PR.
