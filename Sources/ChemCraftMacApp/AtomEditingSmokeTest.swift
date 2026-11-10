@@ -16,7 +16,7 @@ enum AtomEditingSmokeTest {
         func click(_ view: MolecularMTKView, _ point: CGPoint, right: Bool = false) {
             let location = view.convert(point, to: nil)
             func event(_ type: NSEvent.EventType) -> NSEvent { NSEvent.mouseEvent(with: type, location: location, modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)! }
-            if right { view.rightMouseDown(with: event(.rightMouseDown)) }
+            if right { view.rightMouseDown(with: event(.rightMouseDown)); view.rightMouseUp(with: event(.rightMouseUp)) }
             else { view.mouseDown(with: event(.leftMouseDown)); view.mouseUp(with: event(.leftMouseUp)) }
         }
         func choose(_ symbol: String) async throws {

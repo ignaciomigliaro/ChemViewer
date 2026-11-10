@@ -24,6 +24,31 @@ import ImageIO
             let down = NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 500, y: 300), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             let drag = NSEvent.mouseEvent(with: .leftMouseDragged, location: NSPoint(x: 620, y: 340), modifierFlags: [], timestamp: 0.1, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 1)!
             view.mouseDown(with: down); view.mouseDragged(with: drag); view.mouseUp(with: drag)
+            // Full revolutions in both directions, pole crossing and independent roll.
+            let beforeRotation = view.captureViewportState()
+            let beforeAtoms = workspace.currentFrame!.atoms
+            workspace.selectedAtomIndices = [0, 1]
+            func rightDrag(_ dx: CGFloat, _ dy: CGFloat, flags: NSEvent.ModifierFlags = []) {
+                func event(_ type: NSEvent.EventType, _ point: CGPoint) -> NSEvent {
+                    NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: flags,
+                        timestamp: 0, windowNumber: view.window!.windowNumber, context: nil,
+                        eventNumber: 1, clickCount: 1, pressure: 1)!
+                }
+                let start = CGPoint(x: 100, y: 100), end = CGPoint(x: 100 + dx, y: 100 + dy)
+                view.rightMouseDown(with: event(.rightMouseDown, start))
+                view.rightMouseDragged(with: event(.rightMouseDragged, end))
+                view.rightMouseUp(with: event(.rightMouseUp, end))
+            }
+            rightDrag(700, 700)
+            let turned = view.captureViewportState()
+            try require(abs(turned.yaw - beforeRotation.yaw + 7) < 1e-5 && abs(turned.pitch - beforeRotation.pitch - 7) < 1e-5, "Right rotation restricted before a full revolution")
+            rightDrag(-700, -700)
+            try require(abs(view.captureViewportState().pitch - beforeRotation.pitch) < 1e-5, "Reverse rotation failed")
+            rightDrag(100, 0, flags: .shift)
+            try require(abs(view.captureViewportState().roll - beforeRotation.roll - 1) < 1e-5, "Shift-right roll failed")
+            try require(workspace.selectedAtomIndices == [0, 1] && workspace.currentFrame!.atoms == beforeAtoms, "Camera rotation edited geometry or cleared selection")
+            view.restoreViewportState(beforeRotation)
+            workspace.selectedAtomIndices = []
             let exportedCamera = view.animationRenderer(frames: frames)
             try require(view.viewingRotation == exportedCamera.viewingRotation, "GIF changed the user camera angle")
             let secondCamera = exportedCamera.animationRenderer(frames: frames)

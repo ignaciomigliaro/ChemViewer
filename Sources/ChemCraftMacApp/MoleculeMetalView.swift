@@ -877,11 +877,32 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
 
     override func rightMouseDown(with event: NSEvent) {
         if atomDragActive { commitAtomDrag() }
-        onClearSelection?()
+        previousMouse = convert(event.locationInWindow, from: nil)
+        mouseDownPoint = previousMouse
+        didDrag = false
+    }
+
+    override func rightMouseDragged(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
+        guard didDrag else { return }
+        let dx = Float(point.x - previousMouse.x) * 0.01
+        let dy = Float(point.y - previousMouse.y) * 0.01
+        if event.modifierFlags.contains(.shift) {
+            roll += dx + dy
+        } else {
+            yaw -= dx
+            pitch += dy
+        }
+        previousMouse = point
         setNeedsDisplay(bounds)
     }
 
-    override func rightMouseDragged(with event: NSEvent) {}
+    override func rightMouseUp(with event: NSEvent) {
+        // A click still finishes placement/clears selection; rotation preserves it.
+        if !didDrag { onClearSelection?() }
+        setNeedsDisplay(bounds)
+    }
 
     func placementPosition(at point: CGPoint) -> Vector3 {
         let width = max(Float(bounds.width), 1), height = max(Float(bounds.height), 1)
