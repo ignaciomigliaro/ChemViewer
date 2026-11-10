@@ -1,7 +1,9 @@
+import AppKit
 import SwiftUI
 
 @main
 struct ChemViewerApp: App {
+    @NSApplicationDelegateAdaptor(FileOpenApplicationDelegate.self) private var fileOpenDelegate
     @StateObject private var documents = DocumentTabs()
     private var workspace: WorkspaceStore { documents.activeWorkspace }
 
@@ -25,8 +27,8 @@ struct ChemViewerApp: App {
         return Binding(get: { tabs.activeWorkspace[keyPath: keyPath] }, set: { tabs.activeWorkspace[keyPath: keyPath] = $0 })
     }
     var body: some Scene {
-        WindowGroup("ChemViewer " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")) {
-            ContentView()
+        Window("ChemViewer " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""), id: "chemviewer-main") {
+            MainDocumentWindow(documents: documents, fileOpenDelegate: fileOpenDelegate)
                 .environmentObject(workspace)
                 .frame(minWidth: 960, minHeight: 640)
         }
@@ -103,5 +105,40 @@ struct ChemViewerApp: App {
                 }.disabled(workspace.currentFrame == nil)
             }
         }
+    }
+}
+
+/// One scene owns all document tabs; Finder events never instantiate another tab workspace.
+private struct MainDocumentWindow: View {
+    let documents: DocumentTabs
+    let fileOpenDelegate: FileOpenApplicationDelegate
+    @Environment(\.openWindow) private var openWindow
+    var body: some View {
+        ContentView()
+            .task { fileOpenDelegate.configure(documents: documents) { openWindow(id: "chemviewer-main") } }
+    }
+}
+
+@MainActor
+final class FileOpenApplicationDelegate: NSObject, NSApplicationDelegate {
+    private weak var documents: DocumentTabs?
+    private var pendingURLs: [URL] = []
+    private var showWindow: (() -> Void)?
+    func configure(documents: DocumentTabs, showWindow: @escaping () -> Void) {
+        self.documents = documents; self.showWindow = showWindow
+        let urls = pendingURLs; pendingURLs = []
+        for url in urls { documents.open(url) }
+    }
+    func application(_ application: NSApplication, open urls: [URL]) {
+        if let documents {
+            for url in urls { documents.open(url) }
+            showWindow?()
+        } else { pendingURLs.append(contentsOf: urls) }
+        application.activate(ignoringOtherApps: true)
+    }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { showWindow?() }
+        return true
     }
 }

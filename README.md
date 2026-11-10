@@ -609,3 +609,17 @@ and support Undo. Native acceptance activates real rotation buttons and checks
 metal substitution and topology preservation. The provided private two-Li XYZ has two 21-atom motifs. Read-only native tests
 select each by its metal and verify X/Y/Z 90° rotations with the other unit fixed,
 exact Undo and unchanged source bytes. The private input is not redistributed.
+
+
+## One main window for file opens — 0.13.6
+
+Finder/Open With file events add tabs to the single main window. Reopening the
+same file activates its existing tab without discarding edits. Batched opens
+create one tab per unique path. With no visible main window, file opening shows
+one window and retains existing in-process tabs. Startup file events queue until
+the document collection is configured. The former WindowGroup could instantiate
+multiple windows sharing the same DocumentTabs, duplicating the visible tabs.
+The main scene is now a singleton Window; AppKit file events own URL routing.
+Native --file-open-smoke-test sends actual Launch Services file opens, verifies
+window/tab counts and retained edits, closes/reopens only its own test window,
+and tests the startup queue. Hosted CI alone does not establish GUI acceptance.
