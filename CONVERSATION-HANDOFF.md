@@ -1413,3 +1413,33 @@ vibration, but opening a later frequency file did not restart its initial mode.
 Opening a document now explicitly sets playback from its initial valid mode;
 general smoke checks editing followed by frequency opening, in addition to the
 dedicated vibration acceptance. Final revision must pass downloaded checks.
+
+
+## One main window for file opens — 0.13.6
+
+Finder/Open With file events add tabs to the single main window. Reopening the
+same file activates its existing tab without discarding edits. Batched opens
+create one tab per unique path. With no visible main window, file opening shows
+one window and retains existing in-process tabs. Startup file events queue until
+the document collection is configured. The former WindowGroup could instantiate
+multiple windows sharing the same DocumentTabs, duplicating the visible tabs.
+The main scene is now a singleton Window; AppKit file events own URL routing.
+Native --file-open-smoke-test sends actual Launch Services file opens, verifies
+window/tab counts and retained edits, closes/reopens only its own test window,
+and tests the startup queue. Hosted CI alone does not establish GUI acceptance.
+
+Physical --file-open-smoke-test passes in a signed uniquely identified temporary
+app: actual Launch Services single/batch/repeated events, one window, retained
+unsaved edits, closed-window reopening and queued startup deduplication. The
+initial unisolated GUI request was rejected by automatic review due to possible
+user-window closure. The test now refuses canonical IDs and requires its own PID
+to be the sole running app for a fresh FileOpenTest UUID before file events or
+closing its own NSApp main/key window. Isolated evidence log:
+/private/tmp/chemviewer-file-open-isolated.log. No user window was closed.
+
+Repository harness scripts/check-macos-file-open.py passes independently, as do
+--document-workspace-smoke-test, --smoke-test and --vibration-smoke-test in a
+uniquely identified copy. A canonical-ID test activation can be routed to another
+running copy by Launch Services; use isolated copies for physical acceptance.
+No core source changed; build runner retains all 51 core regressions and three
+migrated building checks. Publication evidence belongs in release PR.

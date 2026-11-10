@@ -60,6 +60,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--file-open-smoke-test") { await Task { @MainActor in await FileOpenSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--ligand-selection-smoke-test") { await LigandSelectionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--vibration-smoke-test") { await VibrationSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--bostmc-local-smoke-test") { await Task { @MainActor in await BosTMCLocalSmokeTest.run(workspace:workspace) }.value }
@@ -108,9 +109,7 @@ struct ContentView: View {
                 workspace.errorMessage = error.localizedDescription
             }
         }
-        .onOpenURL { url in
-            if let documents = workspace.documents { documents.open(url) } else { workspace.open(url) }
-        }
+
         .alert("ChemViewer error", isPresented: Binding(
             get: { workspace.errorMessage != nil },
             set: { if !$0 { workspace.errorMessage = nil } }
