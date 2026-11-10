@@ -628,3 +628,14 @@ window or route test documents to the canonical installed bundle.
 
 Run `python3 scripts/check-macos-file-open.py --app dist/ChemViewer.app` for
 reproducible isolated acceptance. Repeat with the independently downloaded app.
+
+## Right-drag camera rotation — 0.13.7
+
+Right-drag updates unrestricted yaw/pitch; Shift-right-drag updates roll.
+Selection clearing occurs on stationary right-button release, preserving selection
+during camera rotation. No molecular coordinates are changed. The native
+--animation-smoke-test checks >360-degree turns, reverse rotation, roll, retained
+selection/geometry and GIF camera preservation. Physical-Mac isolated native animation and editing acceptance passed; 51 core
+standalone regressions and three migrated building suites passed. SDK/resource
+archive checks and both negative controls passed. Hosted XCTest and downloaded
+artifact acceptance are tracked separately in the release PR.

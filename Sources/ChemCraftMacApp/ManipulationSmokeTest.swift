@@ -97,6 +97,7 @@ enum ManipulationSmokeTest {
             workspace.selectedAtomIndices = [0, 1, 2]
             try await wait()
             view.rightMouseDown(with: event(.rightMouseDown, .zero))
+            view.rightMouseUp(with: event(.rightMouseUp, .zero))
             try require(workspace.selectedAtomIndices.isEmpty, "Right-click did not clear all atoms")
             workspace.chooseDragScope(.atom); try await wait()
             try await drag(0, 20, 10)

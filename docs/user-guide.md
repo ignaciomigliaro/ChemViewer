@@ -273,3 +273,8 @@ The main scene is now a singleton Window; AppKit file events own URL routing.
 Native --file-open-smoke-test sends actual Launch Services file opens, verifies
 window/tab counts and retained edits, closes/reopens only its own test window,
 and tests the startup queue. Hosted CI alone does not establish GUI acceptance.
+
+Right-drag freely rotates the molecular view through full revolutions. Hold Shift
+while right-dragging to roll around the viewing axis. Rotation preserves atom
+selection and coordinates; a stationary right-click still finishes placement
+and clears selection.

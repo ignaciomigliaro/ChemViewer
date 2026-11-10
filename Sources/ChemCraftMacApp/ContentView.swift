@@ -419,9 +419,9 @@ struct ContentView: View {
                 .frame(width: 140)
             }
             Spacer()
-            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • right-click clears" : "Drag to rotate • Option-drag to pan • right-click clears • scroll to zoom")
+            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • right-drag rotates • Shift-right-drag rolls • right-click clears" : "Drag to rotate • Option-drag to pan • right-drag rotates • Shift-right-drag rolls • right-click clears • scroll to zoom")
                 .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
-                .help("Drag to rotate • Option-drag to pan • right-click clears • scroll to zoom")
+                .help("Drag to rotate • Option-drag to pan • right-drag rotates • Shift-right-drag rolls • right-click clears • scroll to zoom")
                 .foregroundStyle(.secondary)
         }
         .font(.caption)
