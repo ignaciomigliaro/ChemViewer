@@ -8,5 +8,5 @@ fi
 if ! "$runtime/bin/python" -m pip --version >/dev/null 2>&1; then
     "$runtime/bin/python" -m ensurepip --upgrade
 fi
-"$runtime/bin/python" -m pip install 'rdkit==2026.9.1' 'ase==3.29.0' 'ChemRefine[gui] @ git+https://github.com/sterling-group/ChemRefine.git@a7add556cdcf056d42fbca1bb5be17d7da063755'
-"$runtime/bin/python" -c 'from rdkit.Chem import AllChem; import chemrefine; import flask; print("ChemViewer chemistry runtime ready")'
+"$runtime/bin/python" -m pip install 'rdkit==2026.9.1' 'ase==3.29.0' 'tblite==0.8.0' 'ChemRefine[gui] @ git+https://github.com/sterling-group/ChemRefine.git@a7add556cdcf056d42fbca1bb5be17d7da063755'
+"$runtime/bin/python" -c 'from rdkit.Chem import AllChem; from tblite.ase import TBLite; import chemrefine; import flask; print("ChemViewer chemistry runtime ready")'

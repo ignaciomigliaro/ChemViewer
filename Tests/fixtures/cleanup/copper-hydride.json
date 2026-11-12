@@ -1,0 +1,10 @@
+{
+  "atoms": [
+    {"element": "Cu", "x": 0.0, "y": 0.0, "z": 0.0},
+    {"element": "H", "x": 2.1, "y": 0.0, "z": 0.0}
+  ],
+  "charge": 0,
+  "multiplicity": 1,
+  "fixed": [0],
+  "steps": 1000
+}

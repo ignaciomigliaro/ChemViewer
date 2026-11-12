@@ -22,7 +22,7 @@
   },
   "python": {
     "bostmc_catalog.py": 91,
-    "chemistry_bridge.py": 81,
+    "chemistry_bridge.py": 90,
     "drawing_bridge.py": 83,
     "energy_landscape.py": 86,
     "remote_agent.py": 67,

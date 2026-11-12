@@ -9,6 +9,12 @@ final class ChemistryRuntime: ObservableObject {
     static let shared = ChemistryRuntime()
     @Published var busy = false
     @Published var status = ""
+    enum CleanupMethod: String, CaseIterable, Identifiable {
+        case auto = "Automatic", uff = "UFF", gfn2 = "GFN2-xTB"
+        var id: String { rawValue }
+        var requestValue: String { self == .auto ? "auto" : (self == .uff ? "uff" : "gfn2") }
+    }
+    @Published var cleanupMethod = CleanupMethod.auto
     @Published var guiURL: URL?
     @Published var workflowDirectory: URL?
     @Published var showingWorkflow = false
@@ -53,16 +59,17 @@ final class ChemistryRuntime: ObservableObject {
         let charge = workspace.charge
         let multiplicity = workspace.multiplicity
         let fixed = freezeSelection ? workspace.selectedAtomIndices : []
-        busy = true; cancelled = false; status = "UFF cleanup running…"
+        let method = cleanupMethod.requestValue
+        busy = true; cancelled = false; status = "Geometry cleanup running…"
         Task {
             defer { busy = false; process = nil }
             do {
-                let temp = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-UFF-" + UUID().uuidString)
+                let temp = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-cleanup-" + UUID().uuidString)
                 try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
                 defer { try? FileManager.default.removeItem(at: temp) }
                 let input = temp.appendingPathComponent("request.json"), output = temp.appendingPathComponent("result.json"), log = temp.appendingPathComponent("run.log")
                 let atoms = initial.atoms.map { ["element": $0.element, "x": $0.position.x, "y": $0.position.y, "z": $0.position.z] as [String: Any] }
-                let request: [String: Any] = ["atoms": atoms, "charge": charge, "fixed": fixed, "steps": 1000]
+                let request: [String: Any] = ["atoms": atoms, "charge": charge, "multiplicity": multiplicity, "method": method, "fixed": fixed, "steps": 1000]
                 try JSONSerialization.data(withJSONObject: request).write(to: input)
                 guard let script = ChemistryResources.bundle.url(forResource: "chemistry_bridge", withExtension: "py") else { throw ParseError.malformed("Missing chemistry bridge") }
                 FileManager.default.createFile(atPath: log.path, contents: nil, attributes: [.posixPermissions: 0o600])
@@ -70,21 +77,30 @@ final class ChemistryRuntime: ObservableObject {
                 defer { try? handle.close() }
                 let job = Process(); job.executableURL = Self.python; job.arguments = [script.path, input.path, output.path]
                 job.standardOutput = handle; job.standardError = handle
+                var environment = ProcessInfo.processInfo.environment
+                environment["OMP_NUM_THREADS"] = "1"; environment["OPENBLAS_NUM_THREADS"] = "1"
+                job.environment = environment
                 if cancelled { return }
                 process = job; try job.run()
                 let code = await Task.detached { job.waitUntilExit(); return job.terminationStatus }.value
                 if cancelled { return }
-                guard code == 0 else { throw ParseError.malformed((try? String(contentsOf: log, encoding: .utf8)) ?? "UFF failed") }
+                guard code == 0 else { throw NSError(domain: "GeometryCleanup", code: 1, userInfo: [NSLocalizedDescriptionKey: (try? String(contentsOf: log, encoding: .utf8)) ?? "Cleanup failed; geometry unchanged."]) }
                 let result = try JSONDecoder().decode(CleanupResult.self, from: Data(contentsOf: output))
                 guard workspace.document?.title == document?.title, workspace.frameIndex == frameIndex, workspace.geometryRevision == revision, workspace.currentFrame == initial, workspace.charge == charge, workspace.multiplicity == multiplicity else {
                     status = "Geometry changed while cleanup ran; result was not applied."; return
                 }
                 let optimized = result.atoms.enumerated().map { Atom(id: $0.offset, element: $0.element.element, position: Vector3($0.element.x, $0.element.y, $0.element.z)) }
                 guard optimized.map(\.element) == initial.atoms.map(\.element), optimized.allSatisfy({ $0.position.x.isFinite && $0.position.y.isFinite && $0.position.z.isFinite }) else { throw ParseError.malformed("Optimizer returned invalid atom order or coordinates") }
-                workspace.applyBuildingProject(try BuildingProject(atoms: optimized, groups: workspace.currentGroups, selection: workspace.selectedAtomIndices, charge: workspace.charge, multiplicity: workspace.multiplicity))
-                let verdict = result.converged ? "converged" : "iteration limit reached"
-                status = String(format: "UFF %@: %.3f → %.3f kcal/mol. Undo available.", verdict, result.initialEnergy, result.finalEnergy)
-            } catch { status = "UFF failed; geometry unchanged."; workspace.errorMessage = error.localizedDescription }
+                guard result.converged, result.initialEnergy.isFinite, result.finalEnergy.isFinite,
+                      result.finalEnergy <= result.initialEnergy + 1e-6,
+                      ["kcal/mol", "eV"].contains(result.unit),
+                      fixed.allSatisfy({ optimized[$0].position == initial.atoms[$0].position }) else {
+                    throw ParseError.malformed("Cleanup did not converge safely; geometry unchanged.")
+                }
+                workspace.replaceCurrentAtoms(optimized, preservingConnectivity: true)
+                status = String(format: "%@ converged: %.3f → %.3f %@. Undo available.", result.method, result.initialEnergy, result.finalEnergy, result.unit)
+                if !result.warning.isEmpty { status += " " + result.warning }
+            } catch { status = "Cleanup failed; geometry unchanged."; workspace.errorMessage = error.localizedDescription }
         }
     }
     private struct CleanupResult: Decodable {
@@ -92,6 +108,9 @@ final class ChemistryRuntime: ObservableObject {
         let initialEnergy: Double
         let finalEnergy: Double
         let converged: Bool
+        let method: String
+        let unit: String
+        let warning: String
     }
 
     func openWorkflow(_ workspace: WorkspaceStore, destination: URL? = nil) {

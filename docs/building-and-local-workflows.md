@@ -36,20 +36,26 @@ atom, **Replace** changes selected atoms, and **Click to add this atom** attache
 the chosen element at a clicked host. **Remove unused X sites** removes construction
 dummies in one undoable edit before cleanup/calculation.
 
-## Genuine UFF cleanup
+## Automatic UFF / GFN2-xTB cleanup (0.13.8)
 
-**Clean geometry · UFF** runs RDKit UFF in a separate local process. **Keep selected
-atoms fixed** constrains their Cartesian coordinates. Cleanup reports initial and
-final UFF energies in kcal/mol and distinguishes convergence from the iteration
-limit. It supports Cancel and one-step geometry Undo. Moving to another geometry,
-editing the structure or changing charge/multiplicity while it runs prevents a
-stale result being applied.
+**Clean geometry** runs a local subprocess. The method selector offers Automatic,
+UFF and GFN2-xTB. Automatic sends metal-containing structures to GFN2-xTB without
+RDKit bond-order assignment; other structures use UFF with a GFN2 fallback for
+unsupported atom typing. **Keep selected atoms fixed**, Cancel, stale-result
+protection and one-step Undo work with both backends. Converged results preserve
+connectivity and selection and clear prior electronic energies.
 
-UFF uses inferred connectivity/bond orders from the explicit XYZ atoms and charge.
-It does not add missing hydrogens. Remove X sites first. Invalid bonding or missing
-UFF atom-type parameters produces an error and preserves the original geometry.
-Many metal complexes need a more suitable potential or QM method. UFF energy is
-not substituted for an electronic SCF energy; edits invalidate existing energies.
+Run `bash scripts/setup-chemistry.sh` to update an existing runtime. GFN2-xTB
+uses pinned tblite 0.8.0/ASE, supports H–Rn and reports energies in eV; UFF reports
+kcal/mol. These energies are not assigned as SCF energies. Charge and multiplicity
+must match the intended system. X sites, overlaps, inconsistent spin/electron
+counts, unsupported elements and unconverged/failed calculations leave the
+geometry unchanged. Cleanup does not add missing hydrogens.
+
+This is gas-phase nonperiodic cleanup. No method guarantees a correct geometry,
+spin state or global minimum for every system. Review metal coordination and use
+a suitable QM workflow for reliable final geometries. See the current
+[user guide](user-guide.md) and release PR for validation evidence.
 
 ## ChemRefine integration
 

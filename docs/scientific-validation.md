@@ -723,3 +723,41 @@ selection/geometry and GIF camera preservation. Physical-Mac isolated native ani
 standalone regressions and three migrated building suites passed. SDK/resource
 archive checks and both negative controls passed. Hosted XCTest and downloaded
 artifact acceptance are tracked separately in the release PR.
+
+## Metal-aware geometry cleanup — 0.13.8
+
+The previous RDKit DetermineBonds path fails on Cu (Z=29) before optimization.
+Automatic now bypasses RDKit valence assignment for metals, using tblite 0.8.0
+GFN2-xTB/ASE BFGS (gas phase, nonperiodic, H–Rn). Nonmetal structures retain UFF
+with a GFN2 fallback on bond-order/parameter failure; an explicit method selector
+is available. Charge/multiplicity and fixed indices propagate. Energies retain
+backend units (UFF kcal/mol, xTB eV); they are not assigned as electronic Hartree
+energies to the edited frame. Connectivity, selection and Undo are retained.
+Invalid electron/spin counts, dummy sites, overlap, missing backend, elements
+above Rn, SCF failure, iteration limit, nonfinite/increased energy or moved fixed
+atoms cannot apply coordinates. Cleanup cannot guarantee a chemically correct
+minimum or applicability to every system. Update existing runtimes with
+bash scripts/setup-chemistry.sh; pinned tblite is also in scientific CI.
+
+Fixture Tests/fixtures/cleanup/copper-hydride.json is an independently constructed
+CuH regression seed, not an experimental or high-level optimized structure.
+A separate scalar bounded minimization using the raw tblite API (Bohr/Hartree)
+is the numeric oracle for ASE BFGS (angstrom/eV); bond tolerance 0.015 Å, energy
+0.001 eV and free force ≤0.05 eV/Å. Tests also cover Li/Fe/Pt, charge/open-shell
+propagation, fixed atoms, nonconvergence, invalid input, fallback and backend
+absence/corruption. Full Python suite: 118 tests, 3 optional proprietary fixture
+skips; chemistry bridge line+branch coverage 91.25%, increased floor to 90%.
+Native --metal-cleanup-smoke-test covers Cu cleanup, fixed atom, topology,
+selection, exact Undo, invalid-spin refusal, cancellation and UFF water angle.
+Physical Mac UUID-isolated cleanup/editing/ligand/vibration/Metal/export and
+50-document-switch acceptance passed. The charged Cu(NH3)2+ synthetic fixture
+copper-diammine.json also converges; raw-API energy and free-atom gradient checks
+verify the reported eV and force threshold. Neither fixture establishes accuracy
+against high-level quantum chemistry. Local 51 standalone core regressions,
+three migrated building suites and relocated SDK/resource negative controls pass.
+Full local XCTest is unavailable under CLT; hosted and downloaded-build outcomes
+are tracked in the release PR.
+
+Primary API/units/element documentation:
+https://tblite.readthedocs.io/en/stable/users/ase.html
+https://tblite.readthedocs.io/en/latest/api/python.html
