@@ -98,12 +98,15 @@ struct BuilderPanel: View {
     private var chemistryControls: some View {
         VStack(alignment: .leading, spacing: 8) {
                 heading("GEOMETRY CLEANUP & WORKFLOW")
+                Picker("Cleanup method", selection: $chemistry.cleanupMethod) {
+                    ForEach(ChemistryRuntime.CleanupMethod.allCases) { Text($0.rawValue).tag($0) }
+                }.disabled(chemistry.busy)
                 Toggle("Keep selected atoms fixed", isOn: $freezeSelection)
                 HStack {
-                    Button("Clean geometry · UFF") { chemistry.optimize(workspace, freezeSelection: freezeSelection) }.disabled(chemistry.busy || workspace.currentFrame == nil)
+                    Button("Clean geometry") { chemistry.optimize(workspace, freezeSelection: freezeSelection) }.disabled(chemistry.busy || workspace.currentFrame == nil)
                     if chemistry.busy { ProgressView().controlSize(.small); Button("Cancel") { chemistry.cancel() } }
                 }
-                Text("UFF needs supported atom types and no X sites. Metal complexes may need a suitable MLIP or QM method.").font(.caption).foregroundStyle(.secondary)
+                Text("Automatic uses GFN2-xTB for metals and UFF where supported otherwise. Review charge and multiplicity; remove X sites. Cleanup is a starting geometry, not a validated QM minimum.").font(.caption).foregroundStyle(.secondary)
                 Button(chemistry.guiURL == nil ? "ChemRefine workflow…" : "Reopen ChemRefine workflow…") { workspace.activeTab = "ChemRefine" }
                 if chemistry.guiURL != nil { Button("New workflow from current geometry…") { workspace.activeTab = "ChemRefine"; chemistry.newWorkflow(workspace) } }
                 Text("The local editor can validate, run and resume workflows. Configure installed engine paths under Executables; ORCA and MLIP weights are separate installations.").font(.caption).foregroundStyle(.secondary)

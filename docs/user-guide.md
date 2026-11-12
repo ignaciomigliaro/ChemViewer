@@ -64,14 +64,33 @@ replaces H in place. Choosing a metal and clicking an existing metal replaces
 that metal at its coordinates while retaining bonds. Use Coord for other
 explicit element changes.
 Choose a fragment and click blank space to place it or a host atom to attach it;
-right-click finishes. Cmd-Shift-B opens editing/UFF controls. Save reusable
+right-click finishes. Cmd-Shift-B opens editing/cleanup controls. Save reusable
 fragments from a selection. Dummy X sites describe attachment points and must be
 removed or resolved before a calculation. Save a project to retain editable
 structure state and connectivity edits; export XYZ or ORCA Cartesian geometry
 for other programs. XYZ does not store bonds: reopening XYZ re-infers connectivity.
 
-The local optional chemistry runtime supplies RDKit/UFF cleanup, with fixed-atom
-support. UFF is a molecular mechanics cleanup, not a quantum optimization.
+The optional local chemistry runtime supplies **Clean geometry** with Automatic,
+UFF and GFN2-xTB methods. Automatic routes metal-containing structures directly
+to GFN2-xTB, tries UFF for other molecules and falls back to GFN2-xTB if UFF
+bond assignment or atom typing fails. Select GFN2-xTB explicitly to use it for an
+organic molecule too. Run `bash scripts/setup-chemistry.sh` once to install/update
+the local backend; cleanup itself works offline. Existing runtime installations
+need this update for GFN2-xTB.
+
+Check total charge and spin multiplicity before cleanup. Inconsistent electron
+counts, overlapping atoms, dummy sites, unsupported elements and nonconvergence
+leave coordinates unchanged with an actionable message. GFN2-xTB supports H–Rn;
+heavier elements require a suitable configured QM workflow. The optimization is
+nonperiodic and gas phase. UFF is molecular mechanics; GFN2-xTB is approximate
+tight binding. Neither guarantees the correct spin state, coordination isomer,
+global minimum or transition-metal electronic structure.
+
+Keep selected atoms fixed works with both methods. Converged results retain
+connectivity and selection and can be undone; original electronic energies are
+cleared. The status names the method and energy units (UFF kcal/mol, GFN2-xTB eV).
+GFN2-xTB convergence requires free-atom forces ≤0.05 eV/Å; unconverged results
+are not applied. Use ChemRefine for a more suitable QM/ML method when needed.
 
 [Builder setup and limits](building-and-local-workflows.md),
 [integrated project behavior](moleculeview-integration-2026-10-19.md).

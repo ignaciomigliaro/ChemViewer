@@ -77,6 +77,7 @@ struct ContentView: View {
             if CommandLine.arguments.contains("--drawing-labels-smoke-test") { await DrawingAndLabelsSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--atom-editing-smoke-test") { await AtomEditingSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--fragment-placement-smoke-test") { await FragmentPlacementSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--metal-cleanup-smoke-test") { await MetalCleanupSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--builder-chemistry-smoke-test") { await BuilderChemistrySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--neb-smoke-test") { await NEBSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--merge-smoke-test") { await MergeSmokeTest.run(workspace: workspace) }
