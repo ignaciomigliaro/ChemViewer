@@ -891,3 +891,25 @@ are tracked in the release PR.
 Primary API/units/element documentation:
 https://tblite.readthedocs.io/en/stable/users/ase.html
 https://tblite.readthedocs.io/en/latest/api/python.html
+
+## Rotate a fragment by dragging — 0.13.9
+
+Enable Fragment dragging, then hold Option and right-drag an atom of the motif
+to change its coordinates. Ordinary right-drag remains camera rotation.
+The free gesture rotates rigidly about the selected pivot using screen-relative
+axes. To turn a phenyl/substituent attached to a larger organic molecule, turn
+off dragging, select the fixed-side atom then the bonded atom on the moving
+side, and choose Build → Select Bond Side. Option-right-drag an atom on that side
+to rotate around the attachment bond (0.5 degree per horizontal/vertical point).
+The ring remains whole and the other side stays fixed. Ring-internal boundaries
+are rejected; this workflow requires a bond that separates the graph.
+
+The preview is renderer-local; release commits one undoable coordinate change,
+retains connectivity/selection and clears stale energy. Camera, source file and
+unselected atoms remain unchanged. Direct Fragment selection retains its existing
+whole-ligand/metal-motif policy; use Select Bond Side to isolate an organic
+substituent rather than its entire connected organic molecule.
+Native --fragment-rotation-smoke-test uses an original substituted hexagon with
+an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
+unchanged camera, topology preservation, Undo and free rigid-rotation checks.
+Physical/native and downloaded release evidence is tracked in the release PR.

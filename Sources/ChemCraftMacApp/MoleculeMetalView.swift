@@ -48,6 +48,9 @@ struct MoleculeMetalView: NSViewRepresentable {
     var onDragAtomIndices: () -> [Int] = { [] }
     var onPreviewAtomDrag: (Vector3) -> Void = { _ in }
     var onFinishAtomDrag: () -> Void = {}
+    var onRotationPivot: () -> Vector3 = { .zero }
+    var onRotationBondAxis: () -> Vector3? = { nil }
+    var onPreviewAtomRotation: (Vector3, Float) -> Void = { _, _ in }
     var onRenderingFailure: (String) -> Void = { _ in }
     var documentID: UUID? = nil
     var viewportEpoch = 0
@@ -77,6 +80,9 @@ struct MoleculeMetalView: NSViewRepresentable {
         view.onDragAtomIndices = { context.coordinator.parent.onDragAtomIndices() }
         view.onPreviewAtomDrag = { context.coordinator.parent.onPreviewAtomDrag($0) }
         view.onFinishAtomDrag = { context.coordinator.parent.onFinishAtomDrag() }
+        view.onRotationPivot = { context.coordinator.parent.onRotationPivot() }
+        view.onRotationBondAxis = { context.coordinator.parent.onRotationBondAxis() }
+        view.onPreviewAtomRotation = { context.coordinator.parent.onPreviewAtomRotation($0, $1) }
         view.onRenderingFailure = { error in context.coordinator.parent.onRenderingFailure(error) }
         if let failure = view.renderingFailure { DispatchQueue.main.async { context.coordinator.parent.onRenderingFailure(failure) } }
         return view
@@ -251,6 +257,14 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var pendingDragDelta = Vector3.zero
     var onPreviewAtomDrag: ((Vector3) -> Void)?
     var onFinishAtomDrag: (() -> Void)?
+    var onRotationPivot: (() -> Vector3)?
+    var onRotationBondAxis: (() -> Vector3?)?
+    var onPreviewAtomRotation: ((Vector3, Float) -> Void)?
+    private var rotatingAtoms = false
+    private var rotationRequested = false
+    private var rotationAxis = Vector3.zero
+    private var rotationDegrees: Float = 0
+    private var rotationCenter = Vector3.zero
     private var pressedAtom: Int?
     private var atomDragActive = false
     private var dragAttempted = false
@@ -880,12 +894,43 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         previousMouse = convert(event.locationInWindow, from: nil)
         mouseDownPoint = previousMouse
         didDrag = false
+        rotationRequested = draggingEnabled && event.modifierFlags.contains(.option)
+        rotatingAtoms = false
+        pressedAtom = atomIndex(at: previousMouse)
+        dragInverseRotation = cameraRotation().transpose
     }
 
     override func rightMouseDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
         guard didDrag else { return }
+        if rotationRequested {
+            if !rotatingAtoms {
+                guard let seed = pressedAtom, onBeginAtomDrag?(seed) == true else { return }
+                rotatingAtoms = true; atomDragActive = true
+                activeDragIndices = onDragAtomIndices?() ?? [seed]
+                dragBasePositions = displacedPositions()
+                rotationCenter = onRotationPivot?() ?? .zero
+            }
+            let dx = Float(point.x - mouseDownPoint.x)
+            let dy = Float(point.y - mouseDownPoint.y)
+            if let bondAxis = onRotationBondAxis?() {
+                rotationAxis = bondAxis; rotationDegrees = (dx + dy) * 0.5
+            } else {
+                let axis = dragInverseRotation * SIMD4<Float>(-dy, dx, 0, 0)
+                rotationAxis = Vector3(axis.x, axis.y, axis.z)
+                rotationDegrees = hypot(dx, dy) * 0.5
+            }
+            let frame = MoleculeFrame(id: 0, atoms: scene.atoms.enumerated().map {
+                Atom(id: $0.offset, element: $0.element.element, position: Vector3(dragBasePositions[$0.offset].x, dragBasePositions[$0.offset].y, dragBasePositions[$0.offset].z))
+            })
+            if let rotated = try? GeometryEditor.rotating(in: frame, atomIndices: activeDragIndices,
+                  around: rotationCenter, axis: rotationAxis, degrees: rotationDegrees) {
+                dragPreviewPositions = rotated.atoms.map { SIMD3($0.position.x, $0.position.y, $0.position.z) }
+            }
+            setNeedsDisplay(bounds)
+            return
+        }
         let dx = Float(point.x - previousMouse.x) * 0.01
         let dy = Float(point.y - previousMouse.y) * 0.01
         if event.modifierFlags.contains(.shift) {
@@ -899,8 +944,14 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     override func rightMouseUp(with event: NSEvent) {
+        if rotatingAtoms {
+            atomDragActive = false; rotatingAtoms = false
+            onPreviewAtomRotation?(rotationAxis, rotationDegrees)
+            onFinishAtomDrag?()
+        }
         // A click still finishes placement/clears selection; rotation preserves it.
-        if !didDrag { onClearSelection?() }
+        if !didDrag && !rotationRequested { onClearSelection?() }
+        rotationRequested = false
         setNeedsDisplay(bounds)
     }
 
