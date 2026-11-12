@@ -77,6 +77,7 @@ struct ContentView: View {
             if CommandLine.arguments.contains("--drawing-labels-smoke-test") { await DrawingAndLabelsSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--atom-editing-smoke-test") { await AtomEditingSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--fragment-placement-smoke-test") { await FragmentPlacementSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--fragment-rotation-smoke-test") { await FragmentRotationSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--metal-cleanup-smoke-test") { await MetalCleanupSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--builder-chemistry-smoke-test") { await BuilderChemistrySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--neb-smoke-test") { await NEBSmokeTest.run(workspace: workspace) }
@@ -341,6 +342,9 @@ struct ContentView: View {
                     onDragAtomIndices: { workspace.manipulationIndices },
                     onPreviewAtomDrag: workspace.previewAtomDrag,
                     onFinishAtomDrag: workspace.finishAtomDrag,
+                    onRotationPivot: { workspace.manipulationRotationPivot },
+                    onRotationBondAxis: { workspace.manipulationRotationBondAxis },
+                    onPreviewAtomRotation: workspace.previewAtomRotation,
                     onRenderingFailure: { workspace.errorMessage = $0 },
                     documentID: workspace.documentIdentity, viewportEpoch: workspace.viewportEpoch, viewportState: workspace.viewportState,
                     onSaveViewportState: { [workspace, epoch = workspace.viewportEpoch] state in if workspace.viewportEpoch == epoch { workspace.viewportState = state } }
@@ -420,9 +424,9 @@ struct ContentView: View {
                 .frame(width: 140)
             }
             Spacer()
-            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • right-drag rotates • Shift-right-drag rolls • right-click clears" : "Drag to rotate • Option-drag to pan • right-drag rotates • Shift-right-drag rolls • right-click clears • scroll to zoom")
+            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • Option-right-drag rotates fragment • right-drag rotates camera • Shift-right-drag rolls • right-click clears" : "Drag to rotate • Option-drag to pan • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
                 .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
-                .help("Drag to rotate • Option-drag to pan • right-drag rotates • Shift-right-drag rolls • right-click clears • scroll to zoom")
+                .help("Drag to rotate • Option-drag to pan • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
                 .foregroundStyle(.secondary)
         }
         .font(.caption)

@@ -505,7 +505,7 @@ extension WorkspaceStore {
                 if let seed = previous.last {
                     selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
                     updateFragmentRotationCenter(seed: seed, frame: frame)
-                    buildingHint = "Fragment: ligand click selects its ligand; metal click selects its attached motif."
+                    buildingHint = "Fragment: click a ligand or metal motif. Left-drag moves; Option-right-drag rotates coordinates."
                 } else {
                     selectedAtomIndices = []
                     buildingHint = "Fragment: click a ligand or metal center to select its motif."
@@ -530,7 +530,7 @@ extension WorkspaceStore {
             let group = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: moving)
             isDraggingEnabled = true; dragScope = .fragment
             fragmentBoundary = (fixed, moving); selectedAtomIndices = group
-            buildingHint = "Bond side: drag the selected side; the fixed side stays in place."
+            buildingHint = "Bond side: left-drag to move; Option-right-drag to rotate about the attachment bond. Fixed side stays in place."
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -544,7 +544,7 @@ extension WorkspaceStore {
                 guard let boundary = fragmentBoundary else {
                     selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
                     updateFragmentRotationCenter(seed: seed, frame: frame)
-                    buildingHint = "Fragment: ligand click selects its ligand; metal click selects its attached motif."
+                    buildingHint = "Fragment: click a ligand or metal motif. Left-drag moves; Option-right-drag rotates coordinates."
                     return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }
@@ -569,6 +569,32 @@ extension WorkspaceStore {
         selectedModeIndex = nil; isVibrating = false; stopTrajectoryPlayback()
         gestureBase = frame; gestureFrame = frameIndex; gestureIndices = manipulationIndices
         return !gestureIndices.isEmpty
+    }
+
+    var manipulationRotationPivot: Vector3 {
+        guard let frame = currentFrame, !manipulationIndices.isEmpty else { return .zero }
+        if let boundary = fragmentBoundary { return frame.atoms[boundary.0].position }
+        if rotationPivot == .origin { return .zero }
+        if rotationPivot == .metal,
+           let metal = rotationMetalIndex ?? selectedCoordinatingMetals.first,
+           frame.atoms.indices.contains(metal) { return frame.atoms[metal].position }
+        if rotationPivot == .anchor { return frame.atoms[manipulationIndices[0]].position }
+        return manipulationIndices.reduce(Vector3.zero) { $0 + frame.atoms[$1].position } * (1 / Float(manipulationIndices.count))
+    }
+
+    var manipulationRotationBondAxis: Vector3? {
+        guard let frame = currentFrame, let boundary = fragmentBoundary else { return nil }
+        return frame.atoms[boundary.1].position - frame.atoms[boundary.0].position
+    }
+
+    func previewAtomRotation(_ axis: Vector3, _ degrees: Float) {
+        guard let base = gestureBase, gestureFrame == frameIndex, var document,
+              var rotated = try? GeometryEditor.rotating(in: base, atomIndices: gestureIndices,
+                  around: manipulationRotationPivot, axis: axis, degrees: degrees) else { return }
+        rotated.explicitBonds = base.bonds
+        if rotated.atoms != base.atoms { rotated.energyHartree = nil; rotated.comment = "Rotated fragment; energy not recalculated" }
+        document.frames[frameIndex] = rotated
+        self.document = document; geometryRevision += 1
     }
 
     func previewAtomDrag(_ displacement: Vector3) {
