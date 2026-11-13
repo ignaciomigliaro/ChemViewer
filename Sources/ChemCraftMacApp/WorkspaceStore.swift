@@ -145,6 +145,7 @@ final class WorkspaceStore: ObservableObject {
             else { finishAtomDrag() }
         }
     }
+    @Published var addBondsAfterDragging = true
     @Published var dragScope: DragScope = .atom
     @Published var dragAxis: DragAxis = .screen
     @Published var rotationPivot: RotationPivot = .center
@@ -342,7 +343,7 @@ final class WorkspaceStore: ObservableObject {
         guard let frame = currentFrame, selectedAtomIndices.count == 2 else { return }
         do {
             let result = try GeometryEditor.settingDistance(in: frame, first: selectedAtomIndices[0], second: selectedAtomIndices[1], to: value, movement: movement)
-            replaceCurrentAtoms(result.atoms)
+            replaceCurrentAtoms(result.atoms, preservingConnectivity: true)
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -350,7 +351,7 @@ final class WorkspaceStore: ObservableObject {
         guard let frame = currentFrame, selectedAtomIndices.count == 3 else { return }
         do {
             let result = try GeometryEditor.settingAngle(in: frame, first: selectedAtomIndices[0], vertex: selectedAtomIndices[1], third: selectedAtomIndices[2], toDegrees: value, movement: movement)
-            replaceCurrentAtoms(result.atoms)
+            replaceCurrentAtoms(result.atoms, preservingConnectivity: true)
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -592,6 +593,7 @@ extension WorkspaceStore {
               var rotated = try? GeometryEditor.rotating(in: base, atomIndices: gestureIndices,
                   around: manipulationRotationPivot, axis: axis, degrees: degrees) else { return }
         rotated.explicitBonds = base.bonds
+        if addBondsAfterDragging, let connected = try? GeometryEditor.generatingBonds(in: rotated, newContactsSince: base, movingAtomIndices: gestureIndices) { rotated = connected }
         if rotated.atoms != base.atoms { rotated.energyHartree = nil; rotated.comment = "Rotated fragment; energy not recalculated" }
         document.frames[frameIndex] = rotated
         self.document = document; geometryRevision += 1
@@ -602,7 +604,8 @@ extension WorkspaceStore {
               let moved = try? GeometryEditor.translating(in: base, atomIndices: gestureIndices, by: displacement),
               moved.atoms.allSatisfy({ [$0.position.x, $0.position.y, $0.position.z].allSatisfy(\.isFinite) }) else { return }
         var result = moved
-        if dragScope == .fragment { result.explicitBonds = base.bonds }
+        result.explicitBonds = base.bonds
+        if addBondsAfterDragging, let connected = try? GeometryEditor.generatingBonds(in: result, newContactsSince: base, movingAtomIndices: gestureIndices) { result = connected }
         if result.atoms != base.atoms { result.energyHartree = nil; result.comment = "Edited geometry; energy not recalculated" }
         document.frames[frameIndex] = result
         self.document = document; geometryRevision += 1
@@ -813,6 +816,18 @@ extension WorkspaceStore {
 
 @MainActor
 extension WorkspaceStore {
+    func generateBonds() {
+        finishAtomDrag()
+        guard var document, let frame = currentFrame else { return }
+        do {
+            let result = try GeometryEditor.generatingBonds(in: frame)
+            guard result.explicitBonds != frame.explicitBonds else { return }
+            checkpoint(); stopTrajectoryPlayback(); selectedModeIndex = nil; isVibrating = false
+            document.frames[frameIndex] = result; self.document = document
+            fragmentBoundary = nil; editedFrames.insert(frameIndex); geometryRevision += 1
+        } catch { errorMessage = error.localizedDescription }
+    }
+
     func toggleSelectedBond() {
         guard selectedAtomIndices.count == 2 else { errorMessage = "Select two atoms to create or remove their bond (Control-B)."; return }
         toggleBond(selectedAtomIndices[0], selectedAtomIndices[1])

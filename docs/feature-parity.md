@@ -653,3 +653,37 @@ is also checked. Validation above predates this clarification unless stated belo
 Clarified mapping: local native camera/pan/gate, manipulation, ligand, fragment,
 smooth and tab checks PASS; downloaded implementation app camera/editing/general
 checks PASS. See scientific-validation.md and PR23 for final CI evidence.
+
+
+## Bond generation and whole-fragment numeric edits — 0.13.11
+
+Use **Generate bonds** in the selection inspector, Build menu or Build & Edit
+panel to add distance-detected bonds. It retains existing manual bonds and orders.
+With two atoms selected, **Create bond / Remove bond** or Control-B changes that
+specific connection, including a pair outside the automatic distance cutoff.
+These operations support Undo and are stored in `.cvproject`; XYZ stores only
+coordinates and redetects connectivity when reopened.
+
+**Add new bonds after dragging** defaults on and can be toggled in Build, the
+editing panel or the dragging toolbar. On release it adds contacts that became
+close between the moved group and the rest during the coordinate drag. Existing bonds stay intact, and manually
+deleted pairs already close before the drag remain absent. Explicit Generate
+bonds intentionally redetects all current close pairs. This uses covalent-radius
+connectivity heuristics, not calculated quantum bond orders or valence assignment.
+
+For numeric edits, turn Drag off to select an ordered pair or A–B–C triplet.
+The distance field moves the whole second-side fragment, keeping the first side
+fixed; the alternate setting moves both fragments equally. Angle editing keeps
+B fixed and rotates the complete C-side fragment, or A/C fragments equally.
+Internal fragment geometry, unrelated atoms and existing connectivity are retained.
+For a metal–ligand distance, select the fixed metal first: the whole ligand moves,
+including chelates/bridges, while traversal stops at every metal. A ring or
+interconnected branches that cannot separate rigidly are refused without edits.
+Numeric editing is an explicit action; the Drag toggle continues to gate only
+coordinate dragging. Camera/right-drag, middle-button pan and left selection
+retain their 0.13.10 mapping.
+
+Local native number-field/fragment/bond controls, drag auto-bond on/off, Undo,
+project save, ligand and retained camera/editing workflows PASS. Core runner58
+and independent Python Cartesian oracle PASS. Hosted/downloaded gate outcomes
+are tracked in the release PR; see scientific-validation.md for bounded evidence.

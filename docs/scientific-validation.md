@@ -866,3 +866,48 @@ Evidence: /private/tmp/chemviewer-middle-pan-ci/evidence and
 /private/tmp/chemviewer-middle-pan-0.13.10. The specialized ligand test's first
 run timed out; its final retry passed. Optional OS full-window capture remains
 unavailable; Metal captures pass. No full Chemcraft parity is claimed.
+
+
+## Whole-fragment numeric edits and bond generation — 0.13.11
+
+Original fixture: Tests/fixtures/integrated-building/synthetic-internal-coordinates.cvproject.
+This is a branched synthetic graph in angstrom, not an optimized structure.
+Tabulated Cartesian oracles use independent Python complex-plane rotations;
+python_tests/test_internal_coordinates.py verifies target 3 Å / 60°, unchanged
+fixed atoms and every within-fragment pair distance using scalar dot products.
+Swift tests compare every coordinate (2e-6 Å), symmetric movement, 0/180° pole
+recovery, isolated components, topology retention and ring/invalid-input refusal.
+The existing original Fe-chelate/Ru-bridge fixture independently checks whole-ligand
+translation and exact -90° Cartesian rotation with both metals fixed.
+
+Bond tests cover manual orders, explicit missing close pairs, newly entering
+contacts, explicit regeneration, idempotence, unchanged coordinates and invalid
+cross-geometry comparisons. Native --internal-coordinate-smoke-test edits actual
+number fields, activates native Apply/Create/Generate buttons, compares the
+fixture oracle, tests gated Control-right-drag/new-contact toggle, Undo/Redo and
+project persistence. Build runner currently passes 58 standalone core cases
+and three migrated suites; the independent Python fixture oracle passes.
+Full local XCTest remains unavailable under CLT. Native/hosted/download outcomes
+must be recorded before declaring the release validated.
+
+
+Local acceptance (2026-11-13, arm64 macOS27.2/Swift6.4.2, SDK26.5): final
+--internal-coordinate-smoke-test PASS using actual number fields and native
+Apply/Create/Generate buttons. Tests verify whole-branch coordinates against the
+independent fixture oracle, one-step coordinate+bond Undo, Redo, auto-generation
+on/off, source preservation and project connectivity persistence. Native ligand,
+manipulation, fragment rotation, camera/pan/gate, smooth interaction, 50 document
+switches and general opening/Metal checks also PASS. The fixed-topology ligand
+smoke deliberately turns auto-generation off; automatic new contacts have their
+own enabled/disabled acceptance. No source coordinate or unit conversion changed.
+
+Final build passes 58 standalone core regressions and three migrated suites;
+Python scalar oracle, guide/version checks, arm64/signature and relocated SDK /
+resource checks with both negative controls PASS. Baseline and final full
+swift test attempts remain unavailable under CLT (missing XCTest); genuine
+hosted XCTest/coverage and downloaded-bundle acceptance are required next.
+Both installed copies refreshed without closing the user process. Local binary
+SHA-256: 8d3505f9757528a6170828116fd90abeaa43f1d02eb1dd66b779e990f536e4e0.
+Evidence: /private/tmp/chemviewer-internal-coordinates-0.13.11 and
+/private/tmp/chemviewer-fragment-edit-build.log. Hosted/downloaded/release
+outcomes will be recorded in the release PR. No full Chemcraft parity is claimed.

@@ -7,6 +7,9 @@ enum LigandSelectionSmokeTest {
     static func run(workspace: WorkspaceStore) async {
         guard !started else { return }; started = true
         do {
+            // This synthetic graph tests fixed-topology ligand membership and pivots.
+            // New-contact generation is exercised separately by InternalCoordinateSmokeTest.
+            workspace.addBondsAfterDragging = false
             func require(_ value: Bool, _ text: String) throws {
                 if !value { throw ParseError.malformed(text) }
             }

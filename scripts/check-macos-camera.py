@@ -11,7 +11,7 @@ import uuid
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--app', type=Path, required=True)
-parser.add_argument('--test', choices=['camera', 'ligand-selection', 'smooth', 'animation', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
+parser.add_argument('--test', choices=['internal-coordinate', 'camera', 'ligand-selection', 'smooth', 'animation', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
 parser.add_argument('--capture-window', action='store_true')
 parser.add_argument('--evidence', type=Path, required=True)
 args = parser.parse_args()
@@ -33,7 +33,8 @@ with tempfile.TemporaryDirectory(prefix='chemviewer camera isolated ') as folder
         '--stdout', str(log.resolve()), '--stderr', str(error_log.resolve()), '--args', flag,
         '--camera-evidence', str((args.evidence / 'camera.png').resolve()),
         '--animation-evidence', str((args.evidence / 'animation').resolve()),
-        '--render-evidence', str(args.evidence.resolve()), *(['--capture-window'] if args.capture_window else []),
+        '--render-evidence', str(args.evidence.resolve()),
+        '--internal-coordinate-fixture', str(Path('Tests/fixtures/integrated-building/synthetic-internal-coordinates.cvproject').resolve()), *(['--capture-window'] if args.capture_window else []),
         '-ApplePersistenceIgnoreState', 'YES'])
     try:
         code = process.wait(timeout=240)

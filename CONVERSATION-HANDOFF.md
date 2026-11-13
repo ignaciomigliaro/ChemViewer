@@ -1597,3 +1597,62 @@ Evidence: /private/tmp/chemviewer-middle-pan-ci/evidence and
 /private/tmp/chemviewer-middle-pan-0.13.10. The specialized ligand test's first
 run timed out; its final retry passed. Optional OS full-window capture remains
 unavailable; Metal captures pass. No full Chemcraft parity is claimed.
+
+
+## Bond generation and whole-fragment numeric edits — 0.13.11
+
+Use **Generate bonds** in the selection inspector, Build menu or Build & Edit
+panel to add distance-detected bonds. It retains existing manual bonds and orders.
+With two atoms selected, **Create bond / Remove bond** or Control-B changes that
+specific connection, including a pair outside the automatic distance cutoff.
+These operations support Undo and are stored in `.cvproject`; XYZ stores only
+coordinates and redetects connectivity when reopened.
+
+**Add new bonds after dragging** defaults on and can be toggled in Build, the
+editing panel or the dragging toolbar. On release it adds contacts that became
+close between the moved group and the rest during the coordinate drag. Existing bonds stay intact, and manually
+deleted pairs already close before the drag remain absent. Explicit Generate
+bonds intentionally redetects all current close pairs. This uses covalent-radius
+connectivity heuristics, not calculated quantum bond orders or valence assignment.
+
+For numeric edits, turn Drag off to select an ordered pair or A–B–C triplet.
+The distance field moves the whole second-side fragment, keeping the first side
+fixed; the alternate setting moves both fragments equally. Angle editing keeps
+B fixed and rotates the complete C-side fragment, or A/C fragments equally.
+Internal fragment geometry, unrelated atoms and existing connectivity are retained.
+For a metal–ligand distance, select the fixed metal first: the whole ligand moves,
+including chelates/bridges, while traversal stops at every metal. A ring or
+interconnected branches that cannot separate rigidly are refused without edits.
+Numeric editing is an explicit action; the Drag toggle continues to gate only
+coordinate dragging. Camera/right-drag, middle-button pan and left selection
+retain their 0.13.10 mapping.
+
+Implementation evidence: 57 standalone core regressions and independent Python
+scalar oracle pass. Baseline/post-change swift test attempts confirm missing
+XCTest under CLT. Build uses installed SDK26.5 as before. Native acceptance is
+running under /private/tmp/chemviewer-internal-coordinates-0.13.11. The original
+ligand smoke explicitly disables auto-generation to retain its fixed synthetic
+graph; the new internal-coordinate smoke exercises generation enabled/disabled.
+Publishing, hosted coverage and downloaded acceptance remain pending.
+
+
+Local acceptance (2026-11-13, arm64 macOS27.2/Swift6.4.2, SDK26.5): final
+--internal-coordinate-smoke-test PASS using actual number fields and native
+Apply/Create/Generate buttons. Tests verify whole-branch coordinates against the
+independent fixture oracle, one-step coordinate+bond Undo, Redo, auto-generation
+on/off, source preservation and project connectivity persistence. Native ligand,
+manipulation, fragment rotation, camera/pan/gate, smooth interaction, 50 document
+switches and general opening/Metal checks also PASS. The fixed-topology ligand
+smoke deliberately turns auto-generation off; automatic new contacts have their
+own enabled/disabled acceptance. No source coordinate or unit conversion changed.
+
+Final build passes 58 standalone core regressions and three migrated suites;
+Python scalar oracle, guide/version checks, arm64/signature and relocated SDK /
+resource checks with both negative controls PASS. Baseline and final full
+swift test attempts remain unavailable under CLT (missing XCTest); genuine
+hosted XCTest/coverage and downloaded-bundle acceptance are required next.
+Both installed copies refreshed without closing the user process. Local binary
+SHA-256: 8d3505f9757528a6170828116fd90abeaa43f1d02eb1dd66b779e990f536e4e0.
+Evidence: /private/tmp/chemviewer-internal-coordinates-0.13.11 and
+/private/tmp/chemviewer-fragment-edit-build.log. Hosted/downloaded/release
+outcomes will be recorded in the release PR. No full Chemcraft parity is claimed.
