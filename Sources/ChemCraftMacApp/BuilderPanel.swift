@@ -38,6 +38,11 @@ struct BuilderPanel: View {
                 }
                 fragmentControls
                 chemistryControls
+                heading("CONNECTIVITY")
+                Button("Generate bonds") { workspace.generateBonds() }
+                Button("Create / remove selected bond") { workspace.toggleSelectedBond() }.disabled(workspace.selectedAtomIndices.count != 2)
+                Toggle("Add new bonds after dragging", isOn: $workspace.addBondsAfterDragging)
+                    .help("Add newly close contacts on release; keep existing bonds and previously deleted close contacts unchanged.")
                 heading("SELECT & EDIT")
                 HStack { TextField("1,3-6", text: $selection).onSubmit { workspace.selectBuilderIndices(selection) }; Button("Select") { workspace.selectBuilderIndices(selection) } }
                 HStack { Button("All") { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) }; Button("Fragment") { workspace.selectImportedGroup() }; Button("Connected") { workspace.selectConnectedGroup() } }

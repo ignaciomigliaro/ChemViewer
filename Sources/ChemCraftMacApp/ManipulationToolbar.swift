@@ -20,6 +20,8 @@ struct ManipulationToolbar: View {
                 }
                 Text(workspace.isDraggingEnabled ? "Control-right-drag \(workspace.dragScope.rawValue.lowercased())" : "Camera").font(.caption).frame(width: 125, alignment: .leading)
                 if workspace.isDraggingEnabled {
+                    Toggle("Add new bonds", isOn: $workspace.addBondsAfterDragging).toggleStyle(.checkbox)
+                        .help("Add newly close contacts after releasing a coordinate drag")
                     Picker("Drag axis", selection: $workspace.dragAxis) { ForEach(DragAxis.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 165)
                     Picker("Pivot", selection: $workspace.rotationPivot) { ForEach(RotationPivot.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 230)
                     if workspace.rotationPivot == .metal { CoordinatingMetalPicker() }

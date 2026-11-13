@@ -4,8 +4,8 @@ import SwiftUI
 struct SelectionInspector: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @State private var target: Float = 1
-    @State private var angleMovement: GeometryEditor.AngleMovement = .thirdAtom
-    @State private var movement: GeometryEditor.DistanceMovement = .secondAtom
+    @State private var angleMovement: GeometryEditor.AngleMovement = .thirdFragment
+    @State private var movement: GeometryEditor.DistanceMovement = .secondFragment
     private var indices: [Int] { workspace.selectedAtomIndices }
 
     var body: some View {
@@ -21,6 +21,7 @@ struct SelectionInspector: View {
                             .help("Drag the measurement label in the canvas to reposition it.")
                     }
                 }
+                GeometryEditButton(title: "Generate bonds", id: "geometry-generate-bonds") { workspace.generateBonds() }.frame(width: 105, height: 24)
                 Button("Select all") { workspace.selectedAtomIndices = Array(workspace.currentFrame?.atoms.indices ?? 0..<0) }
                 Button("Clear") { workspace.clearSelection() }.disabled(indices.isEmpty)
             }
@@ -53,22 +54,23 @@ struct SelectionInspector: View {
                         TextField("Distance", value: $target, format: .number.precision(.fractionLength(6)))
                             .frame(width: 105).textFieldStyle(.roundedBorder)
                         Picker("Move", selection: $movement) {
-                            ForEach(GeometryEditor.DistanceMovement.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }.labelsHidden().frame(width: 175)
-                        Button("Apply distance") { workspace.applyDistance(target, movement: movement) }
+                            ForEach([GeometryEditor.DistanceMovement.secondFragment, .bothFragments], id: \.self) { Text($0.rawValue).tag($0) }
+                        }.labelsHidden().frame(width: 230)
+                        GeometryEditButton(title: "Apply distance", id: "geometry-apply-distance") { workspace.applyDistance(target, movement: movement) }.frame(width: 110, height: 24)
+                        GeometryEditButton(title: frame.bonds.contains { Set([$0.first, $0.second]) == Set(indices) } ? "Remove bond" : "Create bond", id: "geometry-toggle-bond") { workspace.toggleSelectedBond() }.frame(width: 100, height: 24)
                     }
-                    Text("Second-only keeps atom 1 fixed. Both moves equally about the midpoint.").font(.caption).foregroundStyle(.secondary)
+                    Text("The entire second-side fragment moves rigidly. Both moves the two fragments equally. Rings cannot be split.").font(.caption).foregroundStyle(.secondary)
                 } else if indices.count == 3 {
                     HStack {
                         Text("Angle (°)")
                         TextField("Angle", value: $target, format: .number.precision(.fractionLength(4)))
                             .frame(width: 105).textFieldStyle(.roundedBorder)
                         Picker("Angle movement", selection: $angleMovement) {
-                            ForEach(GeometryEditor.AngleMovement.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                        }.labelsHidden().frame(width: 185)
-                        Button("Apply angle") { workspace.applyAngle(target, movement: angleMovement) }
+                            ForEach([GeometryEditor.AngleMovement.thirdFragment, .bothFragments], id: \.self) { Text($0.rawValue).tag($0) }
+                        }.labelsHidden().frame(width: 230)
+                        GeometryEditButton(title: "Apply angle", id: "geometry-apply-angle") { workspace.applyAngle(target, movement: angleMovement) }.frame(width: 110, height: 24)
                     }
-                    Text("B (selection 2) is the vertex. Move C alone or A/C equally; both distances stay fixed.").font(.caption).foregroundStyle(.secondary)
+                    Text("B (selection 2) stays fixed. The C-side fragment, or both A/C fragments, rotate rigidly; internal lengths stay fixed.").font(.caption).foregroundStyle(.secondary)
                 } else if indices.count == 4 {
                     if let value = try? GeometryEditor.dihedralDegrees(in: frame, firstAtomIndex: indices[0], secondAtomIndex: indices[1], thirdAtomIndex: indices[2], fourthAtomIndex: indices[3]) {
                         HStack {

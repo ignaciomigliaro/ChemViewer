@@ -2,6 +2,144 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    private func internalCoordinateFixture() throws -> (MoleculeFrame, [String: [[Double]]]) {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("Tests/fixtures/integrated-building/synthetic-internal-coordinates.cvproject"))
+        let project = try JSONDecoder().decode(BuildingProject.self, from: data)
+        var frame = MoleculeFrame(id: 0, atoms: project.atoms)
+        frame.explicitBonds = project.explicitBonds
+        let object = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        return (frame, object["oracles"] as! [String: [[Double]]])
+    }
+    private func checkCartesianOracle(_ frame: MoleculeFrame, _ expected: [[Double]]) {
+        XCTAssertEqual(frame.atoms.count, expected.count)
+        for (i, atom) in frame.atoms.enumerated() {
+            XCTAssertEqual(Double(atom.position.x), expected[i][0], accuracy: 2e-6)
+            XCTAssertEqual(Double(atom.position.y), expected[i][1], accuracy: 2e-6)
+            XCTAssertEqual(Double(atom.position.z), expected[i][2], accuracy: 2e-6)
+        }
+    }
+
+    func testNumericDistanceMovesWholeBranchedFragments() throws {
+        let (frame, oracle) = try internalCoordinateFixture()
+        let moved = try GeometryEditor.settingDistance(in: frame, first: 1, second: 2, to: 3, movement: .secondFragment)
+        checkCartesianOracle(moved, oracle["distance3"]!)
+        XCTAssertEqual(moved.bonds, frame.bonds)
+        let both = try GeometryEditor.settingDistance(in: frame, first: 1, second: 2, to: 3, movement: .bothFragments)
+        checkCartesianOracle(both, oracle["distanceBoth3"]!)
+        XCTAssertEqual(both.bonds, frame.bonds)
+        // Disconnected groups can also be positioned without inventing a bond.
+        let separated = try GeometryEditor.settingDistance(in: frame, first: 1, second: 7, to: 2, movement: .secondFragment)
+        XCTAssertEqual(separated.atoms[0], frame.atoms[0])
+        XCTAssertEqual(try GeometryEditor.distance(in: separated, firstAtomIndex: 1, secondAtomIndex: 7), 2, accuracy: 1e-5)
+        XCTAssertEqual(separated.bonds, frame.bonds)
+        XCTAssertTrue((try? GeometryEditor.settingDistance(in: frame, first: 1, second: 3, to: 2, movement: .secondFragment)) == nil)
+    }
+
+    func testNumericAnglesMoveRigidBranchesAgainstCartesianOracle() throws {
+        let (frame, oracle) = try internalCoordinateFixture()
+        let moved = try GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: 60, movement: .thirdFragment)
+        checkCartesianOracle(moved, oracle["angle60"]!)
+        let both = try GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: 60, movement: .bothFragments)
+        checkCartesianOracle(both, oracle["angleBoth60"]!)
+        XCTAssertEqual(moved.bonds, frame.bonds)
+        XCTAssertEqual(both.bonds, frame.bonds)
+        for angle: Float in [0, 180] {
+            let straight = try GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: angle, movement: .thirdFragment)
+            let bent = try GeometryEditor.settingAngle(in: straight, first: 0, vertex: 1, third: 2, toDegrees: 60, movement: .thirdFragment)
+            XCTAssertEqual(try GeometryEditor.angleDegrees(in: bent, firstAtomIndex: 0, vertexAtomIndex: 1, thirdAtomIndex: 2), 60, accuracy: 1e-4)
+            for i in [2,3,4] { for j in [2,3,4] {
+                XCTAssertEqual((bent.atoms[i].position - bent.atoms[j].position).length, (frame.atoms[i].position - frame.atoms[j].position).length, accuracy: 1e-5)
+            } }
+        }
+    }
+
+    func testNumericEditsCarryAnAttachedRingWithoutDeformingIt() throws {
+        var (frame, oracle) = try internalCoordinateFixture()
+        frame.atoms[4].element = "C"
+        frame.explicitBonds!.append(Bond(id: 6, first: 4, second: 2))
+        // The ring is wholly on the moving side; the edited boundary is a bridge.
+        let distance = try GeometryEditor.settingDistance(in: frame, first: 1, second: 2, to: 3, movement: .secondFragment)
+        let angle = try GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: 60, movement: .thirdFragment)
+        checkCartesianOracle(distance, oracle["distance3"]!)
+        checkCartesianOracle(angle, oracle["angle60"]!)
+        XCTAssertEqual(distance.bonds, frame.bonds); XCTAssertEqual(angle.bonds, frame.bonds)
+    }
+
+    func testWholeFragmentNumericEditsRefuseRingAndInvalidSelections() throws {
+        var (frame, _) = try internalCoordinateFixture()
+        frame.explicitBonds!.append(Bond(id: 6, first: 3, second: 0))
+        let original = frame
+        for movement in [GeometryEditor.DistanceMovement.secondFragment, .bothFragments] {
+            XCTAssertTrue((try? GeometryEditor.settingDistance(in: frame, first: 1, second: 2, to: 3, movement: movement)) == nil)
+        }
+        for movement in [GeometryEditor.AngleMovement.thirdFragment, .bothFragments] {
+            XCTAssertTrue((try? GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: 60, movement: movement)) == nil)
+        }
+        XCTAssertTrue((try? GeometryEditor.settingDistance(in: frame, first: 1, second: 1, to: 3, movement: .secondFragment)) == nil)
+        XCTAssertTrue((try? GeometryEditor.settingDistance(in: frame, first: 1, second: 50, to: 3, movement: .secondFragment)) == nil)
+        XCTAssertTrue((try? GeometryEditor.settingAngle(in: frame, first: 0, vertex: 1, third: 2, toDegrees: .nan, movement: .thirdFragment)) == nil)
+        XCTAssertEqual(frame, original)
+    }
+
+    func testNumericMetalLigandEditsMoveChelateAndStopAtEveryMetal() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("Tests/fixtures/integrated-building/synthetic-ligand-motif.cvproject"))
+        let project = try JSONDecoder().decode(BuildingProject.self, from: data)
+        var frame = MoleculeFrame(id: 0, atoms: project.atoms); frame.explicitBonds = project.explicitBonds
+        let moved = try GeometryEditor.settingDistance(in: frame, first: 0, second: 1, to: 3, movement: .secondFragment)
+        let angled = try GeometryEditor.settingAngle(in: frame, first: 6, vertex: 0, third: 1, toDegrees: 90, movement: .thirdFragment)
+        for i in frame.atoms.indices {
+            let p = frame.atoms[i].position
+            if (1...5).contains(i) {
+                XCTAssertEqual(moved.atoms[i].position, p + Vector3(1,0,0))
+                // Exact -90 degrees about Y, independent Cartesian oracle.
+                XCTAssertEqual(angled.atoms[i].position.x, -p.z, accuracy: 1e-5)
+                XCTAssertEqual(angled.atoms[i].position.y, p.y, accuracy: 1e-5)
+                XCTAssertEqual(angled.atoms[i].position.z, p.x, accuracy: 1e-5)
+            } else { XCTAssertEqual(moved.atoms[i], frame.atoms[i]); XCTAssertEqual(angled.atoms[i], frame.atoms[i]) }
+        }
+        XCTAssertEqual(moved.bonds, frame.bonds); XCTAssertEqual(angled.bonds, frame.bonds)
+        // The two donor ends of one chelate cannot be moved as independent branches.
+        XCTAssertTrue((try? GeometryEditor.settingAngle(in: frame, first: 4, vertex: 0, third: 1, toDegrees: 60, movement: .bothFragments)) == nil)
+    }
+
+    func testGenerateBondsKeepsManualBondsAndOrders() throws {
+        var frame = MoleculeFrame(id: 0, atoms: [Atom(id: 0, element: "C", position: .zero), Atom(id: 1, element: "C", position: Vector3(1.4,0,0)), Atom(id: 2, element: "O", position: Vector3(0,5,0))])
+        frame.explicitBonds = [Bond(id: 0, first: 0, second: 2, order: 2)]
+        frame.energyHartree = -10
+        let generated = try GeometryEditor.generatingBonds(in: frame)
+        XCTAssertEqual(generated.bonds.count, 2)
+        XCTAssertEqual(generated.bonds[0], frame.bonds[0])
+        XCTAssertTrue(generated.bonds.contains { Set([$0.first,$0.second]) == Set([0,1]) })
+        XCTAssertTrue(generated.energyHartree == nil)
+        XCTAssertEqual(generated.atoms, frame.atoms)
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: generated), generated)
+        XCTAssertEqual(frame.energyHartree, -10)
+    }
+
+    func testDragRebondOnlyAddsNewContactsAndDoesNotRestoreDeletedClosePairs() throws {
+        var original = MoleculeFrame(id: 0, atoms: [Atom(id: 0, element: "C", position: .zero), Atom(id: 1, element: "C", position: Vector3(4,0,0)), Atom(id: 2, element: "C", position: Vector3(0,1.4,0))])
+        original.explicitBonds = [] // The already-close 0–2 pair was manually removed.
+        var moved = original; moved.atoms[1].position = Vector3(1.4,0,0)
+        let result = try GeometryEditor.generatingBonds(in: moved, newContactsSince: original)
+        XCTAssertEqual(result.bonds.count, 1)
+        XCTAssertEqual(Set([result.bonds[0].first,result.bonds[0].second]), Set([0,1]))
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: moved, newContactsSince: original, movingAtomIndices: [1]), result)
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: moved, newContactsSince: original, movingAtomIndices: [0,1]).bonds, [])
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: moved, newContactsSince: original, movingAtomIndices: []).bonds, [])
+        XCTAssertTrue((try? GeometryEditor.generatingBonds(in: moved, newContactsSince: original, movingAtomIndices: [-1])) == nil)
+        let regenerated = try GeometryEditor.generatingBonds(in: result)
+        XCTAssertEqual(regenerated.bonds.count, 2) // Explicit Generate intentionally redetects all close pairs.
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: original, newContactsSince: original).bonds, [])
+        var invalid = moved; invalid.atoms.removeLast()
+        XCTAssertTrue((try? GeometryEditor.generatingBonds(in: invalid, newContactsSince: original)) == nil)
+        invalid = moved; invalid.atoms[1].element = "O"
+        XCTAssertTrue((try? GeometryEditor.generatingBonds(in: invalid, newContactsSince: original)) == nil)
+        let empty = MoleculeFrame(id: 0, atoms: [])
+        XCTAssertEqual(try GeometryEditor.generatingBonds(in: empty).bonds, [])
+    }
+
     func testMetalCenteredMotifStopsAtOtherCenter() throws {
         // Independent synthetic two-center graph: two Li atoms, five CH3 groups each.
         var atoms = [Atom(id: 0, element: "Li", position: Vector3(-4,1,2)), Atom(id: 1, element: "Li", position: Vector3(6,1,2))]

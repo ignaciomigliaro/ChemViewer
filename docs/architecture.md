@@ -937,3 +937,17 @@ fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state
 The native camera regression checks pan displacement in points and confirms that
 panning preserves orientation, scale, geometry and selection; disabled dragging
 is also checked. Validation above predates this clarification unless stated below.
+
+
+## Connected geometry editing — 0.13.11
+
+ChemCraftCore GeometryEditor owns additive bond generation, new-contact comparison
+and connected-side translation/rotation. Numeric fragment edits cut the edited
+boundary; ligand traversal excludes all metals. Rings/overlapping branches refuse
+transactionally. Atom-only primitives remain available to existing core clients;
+the numeric inspector exposes fragment movement modes by default. Result topology
+is pinned across numeric transforms. The AppKit/SwiftUI layer commits one Undo
+snapshot, invalidates stale energies and renders explicit connectivity. Drag
+preview remains local to Metal; optional new-contact inference runs once at
+release against the gesture's original coordinates, retaining pre-existing manual
+deletions. Explicit Generate merges all present geometric contacts instead.

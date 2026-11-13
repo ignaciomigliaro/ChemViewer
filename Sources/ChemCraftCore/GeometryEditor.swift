@@ -41,6 +41,53 @@ public enum GeometryEditor {
         return result
     }
 
+    private struct BondPair: Hashable {
+        let first: Int
+        let second: Int
+        init(_ bond: Bond) { first = min(bond.first, bond.second); second = max(bond.first, bond.second) }
+    }
+
+    /// Add distance-inferred connectivity without deleting explicit bonds or orders.
+    /// With a previous geometry, add only contacts that became close during this edit;
+    /// manually deleted pairs already close before the edit remain absent.
+    public static func generatingBonds(in frame: MoleculeFrame, newContactsSince previous: MoleculeFrame? = nil, movingAtomIndices: [Int]? = nil) throws -> MoleculeFrame {
+        if let previous {
+            guard previous.atoms.count == frame.atoms.count,
+                  previous.atoms.map(\.element) == frame.atoms.map(\.element) else { throw GeometryEditError.invalidTransform }
+        }
+        for index in movingAtomIndices ?? [] { _ = try position(in: frame, atomIndex: index) }
+        let moving = movingAtomIndices.map { Set($0) }
+        let oldContacts = Set(previous.map { BondBuilder.inferBonds(atoms: $0.atoms).map(BondPair.init) } ?? [])
+        var bonds = frame.bonds
+        var present = Set(bonds.map(BondPair.init))
+        for candidate in BondBuilder.inferBonds(atoms: frame.atoms) {
+            let pair = BondPair(candidate)
+            if let moving, moving.contains(candidate.first) == moving.contains(candidate.second) { continue }
+            if !oldContacts.contains(pair), present.insert(pair).inserted {
+                bonds.append(Bond(id: bonds.count, first: candidate.first, second: candidate.second, order: candidate.order))
+            }
+        }
+        var result = frame
+        result.explicitBonds = bonds
+        if bonds.count != frame.bonds.count { result.energyHartree = nil; result.comment = "Generated connectivity; energy not recalculated" }
+        return result
+    }
+
+    /// The moving side of a numeric edit. A ligand attached to a fixed metal
+    /// stays whole (including chelates), with all metals excluded from traversal.
+    private static func editingFragment(in frame: MoleculeFrame, fixed: Int, moving: Int) throws -> [Int] {
+        _ = try position(in: frame, atomIndex: fixed)
+        _ = try position(in: frame, atomIndex: moving)
+        guard fixed != moving else { throw GeometryEditError.repeatedAtoms }
+        if ElementTable.isMetal(frame.atoms[fixed].element), !ElementTable.isMetal(frame.atoms[moving].element) {
+            return try ligandAtoms(in: frame, seed: moving)
+        }
+        let boundary = frame.bonds.first { Set([$0.first, $0.second]) == Set([fixed, moving]) }
+        let group = try connectedAtoms(in: frame, seed: moving, excluding: boundary)
+        guard !group.contains(fixed) else { throw GeometryEditError.ringBondCannotSplit }
+        return group
+    }
+
     public static func replacingPosition(
         in frame: MoleculeFrame,
         atomIndex: Int,
@@ -97,6 +144,8 @@ public enum GeometryEditor {
     }
 
     public enum DistanceMovement: String, CaseIterable, Sendable {
+        case secondFragment = "Move second fragment"
+        case bothFragments = "Move both fragments equally"
         case secondAtom = "Move second atom"
         case bothAtoms = "Move both equally"
     }
@@ -104,6 +153,19 @@ public enum GeometryEditor {
     public static func settingDistance(in frame: MoleculeFrame, first: Int, second: Int, to target: Float, movement: DistanceMovement) throws -> MoleculeFrame {
         guard first != second else { throw GeometryEditError.repeatedAtoms }
         let moved = try settingBondLength(in: frame, fixedAtomIndex: first, movingAtomIndex: second, to: target)
+        if movement == .secondFragment || movement == .bothFragments {
+            let right = try editingFragment(in: frame, fixed: first, moving: second)
+            let delta = moved.atoms[second].position - frame.atoms[second].position
+            var result: MoleculeFrame
+            if movement == .bothFragments {
+                let left = try editingFragment(in: frame, fixed: second, moving: first)
+                guard Set(left).isDisjoint(with: right) else { throw GeometryEditError.ringBondCannotSplit }
+                result = try translating(in: frame, atomIndices: left, by: delta * -0.5)
+                result = try translating(in: result, atomIndices: right, by: delta * 0.5)
+            } else { result = try translating(in: frame, atomIndices: right, by: delta) }
+            result.explicitBonds = frame.bonds
+            return result
+        }
         guard movement == .bothAtoms else { return moved }
         let delta = (moved.atoms[second].position - frame.atoms[second].position) * 0.5
         var result = frame
@@ -113,6 +175,8 @@ public enum GeometryEditor {
     }
 
     public enum AngleMovement: String, CaseIterable, Sendable {
+        case thirdFragment = "Move C-side fragment"
+        case bothFragments = "Move A/C fragments equally"
         case thirdAtom = "Move C only"
         case bothEnds = "Move A and C equally"
     }
@@ -132,6 +196,21 @@ public enum GeometryEditor {
             perpendicular = reference - u * dot(reference, u)
         }
         let v = perpendicular * (1 / perpendicular.length)
+        if movement == .thirdFragment || movement == .bothFragments {
+            let moving = try editingFragment(in: frame, fixed: vertex, moving: third)
+            guard !moving.contains(first) else { throw GeometryEditError.ringBondCannotSplit }
+            let current = try angleDegrees(in: frame, firstAtomIndex: first, vertexAtomIndex: vertex, thirdAtomIndex: third)
+            let change = target - current, axis = cross(u, v)
+            var result: MoleculeFrame
+            if movement == .bothFragments {
+                let left = try editingFragment(in: frame, fixed: vertex, moving: first)
+                guard !left.contains(third), Set(left).isDisjoint(with: moving) else { throw GeometryEditError.ringBondCannotSplit }
+                result = try rotating(in: frame, atomIndices: left, around: b, axis: axis, degrees: -change / 2)
+                result = try rotating(in: result, atomIndices: moving, around: b, axis: axis, degrees: change / 2)
+            } else { result = try rotating(in: frame, atomIndices: moving, around: b, axis: axis, degrees: change) }
+            result.explicitBonds = frame.bonds
+            return result
+        }
         if movement == .bothEnds {
             let current = try angleDegrees(in: frame, firstAtomIndex: first, vertexAtomIndex: vertex, thirdAtomIndex: third)
             let axis = cross(u, v)
