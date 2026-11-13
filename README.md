@@ -658,7 +658,7 @@ Hold the **right mouse button** and drag up/down, left/right or diagonally to
 rotate in the pointer direction. The axes remain relative to the screen after
 turning the molecule. **Left-click selects atoms or fragments**; left-drag
 changes neither the camera nor coordinates. With an explicit editing tool,
-**middle-drag** translates atoms/fragments and Option-right-drag rotates them.
+**Control-right-drag** translates atoms/fragments and Option-right-drag rotates them.
 
 The right toolbar has **X+/X−, Y+/Y−, Z+/Z−** rotations (15° per click), **up/down
 arrows** to move closer/further, magnifier zoom, and **Reset camera** to restore
@@ -668,3 +668,13 @@ Camera operations retain selection and molecular coordinates.
 Native acceptance: `python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --evidence /private/tmp/chemviewer-camera-evidence`.
 The script runs an isolated signed test app. See
 [validation evidence](docs/scientific-validation.md) for results and limitations.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

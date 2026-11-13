@@ -708,7 +708,7 @@ horizontal, vertical and diagonal movement. Incremental normalized quaternions
 avoid Euler pole inversions. Shift-right-drag rolls; Option-right-drag retains
 the explicit Fragment coordinate-rotation tool. Left-click selects atoms or
 fragments; left-drag changes neither camera nor coordinates. Explicit builder
-coordinate translation now uses middle-button drag. Existing click placement
+coordinate translation now uses Control-right-drag. Existing click placement
 and bond double-click tools remain available.
 
 The right toolbar contains X+/X−, Y+/Y− and Z+/Z− camera rotations (15° per
@@ -738,6 +738,16 @@ CV-CAMERA-002: Activate X+/X−, Y+/Y−, Z+/Z− on the right; opposite buttons
 each other. Up/down arrows enlarge/shrink without editing coordinates. Rotate,
 zoom and displace the camera, then Reset: original orientation, centered fit.
 CV-CAMERA-003: Repeat tab switching and GIF export after compound rotations.
-Verify saved viewing orientation. Middle-drag under an explicit Atom/Fragment
+Verify saved viewing orientation. Control-right-drag under an explicit Atom/Fragment
 tool moves only the chosen atoms with one Undo; Option-right-drag retains the
 fragment rotation tool. Never run tests against a user's live document window.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

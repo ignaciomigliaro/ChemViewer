@@ -264,6 +264,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     var onPreviewAtomRotation: ((Vector3, Float) -> Void)?
     private var rotatingAtoms = false
     private var rotationRequested = false
+    private var translationRequested = false
     private var rotationAxis = Vector3.zero
     private var rotationDegrees: Float = 0
     private var rotationCenter = Vector3.zero
@@ -834,12 +835,24 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         // Selection only: neither geometry nor the camera moves with the left button.
     }
 
-    override func otherMouseDown(with event: NSEvent) { mouseDown(with: event) }
-    override func otherMouseUp(with event: NSEvent) {
-        if atomDragActive { commitAtomDrag() }
+    override func otherMouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        previousMouse = convert(event.locationInWindow, from: nil)
+        mouseDownPoint = previousMouse
+        didDrag = false
+    }
+    override func otherMouseUp(with event: NSEvent) {}
+    override func otherMouseDragged(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
+        guard didDrag else { return }
+        pan.x += Float(point.x - previousMouse.x) / max(Float(bounds.width), 1) * 2
+        pan.y += Float(point.y - previousMouse.y) / max(Float(bounds.height), 1) * 2
+        previousMouse = point
+        setNeedsDisplay(bounds)
     }
 
-    override func otherMouseDragged(with event: NSEvent) {
+    private func translateAtomsDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         let threshold: CGFloat = draggingEnabled && pressedAtom != nil ? 1 : 3
         didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > threshold
@@ -872,8 +885,6 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             }
             return
         }
-        // Middle-button dragging only manipulates atoms with an explicit builder tool.
-
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -904,13 +915,16 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         previousMouse = convert(event.locationInWindow, from: nil)
         mouseDownPoint = previousMouse
         didDrag = false
-        rotationRequested = draggingEnabled && event.modifierFlags.contains(.option)
+        translationRequested = draggingEnabled && event.modifierFlags.contains(.control)
+        if translationRequested { mouseDown(with: event) }
+        rotationRequested = draggingEnabled && !translationRequested && event.modifierFlags.contains(.option)
         rotatingAtoms = false
         pressedAtom = atomIndex(at: previousMouse)
         dragInverseRotation = cameraRotation().transpose
     }
 
     override func rightMouseDragged(with event: NSEvent) {
+        if translationRequested { translateAtomsDragged(with: event); return }
         let point = convert(event.locationInWindow, from: nil)
         didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
         guard didDrag else { return }
@@ -956,6 +970,11 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     override func rightMouseUp(with event: NSEvent) {
+        if translationRequested {
+            if atomDragActive { commitAtomDrag() }
+            translationRequested = false
+            return
+        }
         if rotatingAtoms {
             atomDragActive = false; rotatingAtoms = false
             onPreviewAtomRotation?(rotationAxis, rotationDegrees)

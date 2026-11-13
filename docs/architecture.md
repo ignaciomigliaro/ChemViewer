@@ -924,6 +924,16 @@ legacy initial Euler angles in MolecularViewportState and animationRenderer.
 Reset clears it and restores the initial centered fit. AppKit CameraButton
 controls expose X/Y/Z ±15°, closer/further scale and reset. The orthographic
 projection uses scale for apparent depth; molecular coordinates stay unchanged.
-Left gestures only select, while explicit builder translation uses middle drag
+Left gestures only select, while explicit builder translation uses Control-right-drag
 and Option-right-drag retains fragment rotation. See scientific-validation.md
 for acceptance evidence and scripts/check-macos-camera.py for test isolation.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

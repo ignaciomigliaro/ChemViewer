@@ -94,20 +94,20 @@ enum SmoothInteractionSmokeTest {
             try require(view.measurementOverlay.annotation == nil, "Overlay toggle did not clear")
             workspace.chooseDragScope(.atom); try await pause()
             let original = workspace.currentFrame!, revision = workspace.geometryRevision
-            func event(_ view: MolecularMTKView, _ type: NSEvent.EventType, point: CGPoint) -> NSEvent {
-                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+            func event(_ view: MolecularMTKView, _ type: NSEvent.EventType, point: CGPoint, flags: NSEvent.ModifierFlags = []) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: flags, timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             }
             let start = view.projectedAtomPoint(0)!
-            view.otherMouseDown(with: event(view, .otherMouseDown, point: start))
+            view.rightMouseDown(with: event(view, .rightMouseDown, point: start, flags: .control))
             let time = CACurrentMediaTime()
             for i in 1...120 {
-                view.otherMouseDragged(with: event(view, .otherMouseDragged, point: CGPoint(x: start.x + CGFloat(i) / 2, y: start.y + CGFloat(i) / 4)))
+                view.rightMouseDragged(with: event(view, .rightMouseDragged, point: CGPoint(x: start.x + CGFloat(i) / 2, y: start.y + CGFloat(i) / 4), flags: .control))
             }
             let elapsed = (CACurrentMediaTime() - time) * 1000
             try require(workspace.geometryRevision == revision && workspace.currentFrame == original, "Drag moves still publish document changes")
             let moved = view.projectedAtomPoint(0)!
             try require(abs(moved.x - start.x - 60) < 0.01 && abs(moved.y - start.y - 30) < 0.01, "Preview does not follow pointer")
-            view.otherMouseUp(with: event(view, .otherMouseUp, point: CGPoint(x: start.x + 60, y: start.y + 30)))
+            view.rightMouseUp(with: event(view, .rightMouseUp, point: CGPoint(x: start.x + 60, y: start.y + 30), flags: .control))
             try require(workspace.currentFrame?.atoms != original.atoms, "Mouse-up did not commit")
             workspace.undoGeometry(); try require(workspace.currentFrame == original && !workspace.canUndoGeometry, "Drag undo count")
             try require(view.meshBuildCount == 1, "Meshes were rebuilt per frame")

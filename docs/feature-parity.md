@@ -635,7 +635,17 @@ Physical/native and downloaded release evidence is tracked in the release PR.
 Implemented: screen-relative right-drag in every direction, six native X/Y/Z
 ±15° camera buttons, closer/further arrows, zoom and centered original-view reset.
 Left-click selects; left-drag moves neither camera nor geometry. Explicit
-coordinate translation uses middle drag; Option-right-drag rotates fragments.
+coordinate translation uses Control-right-drag; Option-right-drag rotates fragments.
 This supersedes earlier Option-left-drag pan / left camera gesture descriptions.
 Native acceptance and its environment limits are recorded in
 scientific-validation.md; this does not establish broader Chemcraft parity.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

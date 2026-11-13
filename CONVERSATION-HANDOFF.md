@@ -1523,7 +1523,7 @@ horizontal, vertical and diagonal movement. Incremental normalized quaternions
 avoid Euler pole inversions. Shift-right-drag rolls; Option-right-drag retains
 the explicit Fragment coordinate-rotation tool. Left-click selects atoms or
 fragments; left-drag changes neither camera nor coordinates. Explicit builder
-coordinate translation now uses middle-button drag. Existing click placement
+coordinate translation now uses Control-right-drag. Existing click placement
 and bond double-click tools remain available.
 
 The right toolbar contains X+/X−, Y+/Y− and Z+/Z− camera rotations (15° per
@@ -1561,3 +1561,13 @@ build was used without modifying system files. Optional OS window capture
 failed with “could not create image from window”; Metal image acceptance passes.
 Hosted checks and downloaded artifact acceptance are tracked in the release PR;
 these local results do not imply either has passed.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

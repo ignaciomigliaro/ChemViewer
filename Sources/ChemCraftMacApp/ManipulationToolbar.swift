@@ -18,7 +18,7 @@ struct ManipulationToolbar: View {
                         workspace.chooseDragScope(scope)
                     } content: { scopeIcon(scope) }
                 }
-                Text(workspace.isDraggingEnabled ? "Middle-drag \(workspace.dragScope.rawValue.lowercased())" : "Camera").font(.caption).frame(width: 125, alignment: .leading)
+                Text(workspace.isDraggingEnabled ? "Control-right-drag \(workspace.dragScope.rawValue.lowercased())" : "Camera").font(.caption).frame(width: 125, alignment: .leading)
                 if workspace.isDraggingEnabled {
                     Picker("Drag axis", selection: $workspace.dragAxis) { ForEach(DragAxis.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 165)
                     Picker("Pivot", selection: $workspace.rotationPivot) { ForEach(RotationPivot.allCases, id: \.self) { Text($0.rawValue).tag($0) } }.frame(width: 230)
@@ -45,7 +45,7 @@ struct ManipulationToolbar: View {
                         Button("\(name)+") { workspace.translateManipulation(axis: axis, sign: 1) }
                     }
                 }.controlSize(.small)
-                Text(workspace.dragScope == .fragment ? "Fragment: middle-drag moves coordinates; left-click selects. Ligand click selects a ligand; metal click selects its attached motif, stopping at other metals. Build → Select Bond Side isolates one side of a selected bond." : "Middle-drag an atom in the screen plane; Option-middle-drag moves in depth. Rotation axes are molecular X/Y/Z.")
+                Text(workspace.dragScope == .fragment ? "Fragment: Control-right-drag moves coordinates; left-click selects. Ligand click selects a ligand; metal click selects its attached motif, stopping at other metals. Build → Select Bond Side isolates one side of a selected bond." : "Control-right-drag an atom in the screen plane; Control-Option-right-drag moves in depth. Rotation axes are molecular X/Y/Z.")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             }
         }.padding(.horizontal, 8).padding(.vertical, 4).background(Color(nsColor: .windowBackgroundColor))

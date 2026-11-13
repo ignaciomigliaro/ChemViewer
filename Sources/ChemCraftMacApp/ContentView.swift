@@ -167,7 +167,11 @@ struct ContentView: View {
             }.fixedSize()
             tool("Fragment library", "plus") { workspace.presentFragmentLibrary() }
             tool("Add atom / replace element", "atom") { workspace.presentPeriodicTable() }
-            tool("Toggle dragging", "hand.point.up.fill") { workspace.isDraggingEnabled.toggle() }
+            Toggle(isOn: $workspace.isDraggingEnabled) {
+                Label("Drag", systemImage: "hand.point.up.fill")
+            }.toggleStyle(.button).controlSize(.small)
+                .help("Toggle coordinate dragging · Control-right-drag moves atoms only while enabled")
+                .accessibilityIdentifier("coordinate-dragging-toggle")
             tool("Select connected molecule", "globe") { workspace.selectConnectedGroup() }
             Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Toggle hydrogen visibility")
             ForEach([(AtomCaption.numbers, "1"), (.elements, "C1"), (.elementNumbers, "A"), (.none, "●")], id: \.0) { caption, title in
@@ -429,9 +433,9 @@ struct ContentView: View {
                 .frame(width: 140)
             }
             Spacer()
-            Text(workspace.isDraggingEnabled ? "Left-click selects • Middle-drag \(workspace.dragScope.rawValue.lowercased()) • Option-right-drag rotates fragment • right-drag rotates camera • Shift-right-drag rolls • right-click clears" : "Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
+            Text(workspace.isDraggingEnabled ? "Left-click selects • Control-right-drag \(workspace.dragScope.rawValue.lowercased()) • Option-right-drag rotates fragment • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears" : "Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears • scroll to zoom")
                 .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
-                .help("Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
+                .help("Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears • scroll to zoom")
                 .foregroundStyle(.secondary)
         }
         .font(.caption)

@@ -33,11 +33,11 @@ import simd
                 b.performClick(nil)
             }
             func action(_ name: String) { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: name) }
-            func drag(_ dx: CGFloat, _ dy: CGFloat, right: Bool = true) {
+            func drag(_ dx: CGFloat, _ dy: CGFloat, right: Bool = true, flags: NSEvent.ModifierFlags = []) {
                 let start = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
                 let end = CGPoint(x: start.x + dx, y: start.y + dy)
                 func event(_ type: NSEvent.EventType, _ p: CGPoint) -> NSEvent {
-                    NSEvent.mouseEvent(with: type, location: view.convert(p, to: nil), modifierFlags: [], timestamp: 0,
+                    NSEvent.mouseEvent(with: type, location: view.convert(p, to: nil), modifierFlags: flags, timestamp: 0,
                         windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
                 }
                 if right {
@@ -86,7 +86,28 @@ import simd
                 drag(dx, dy, right: false)
                 try require(close(view.viewingRotation, initialRotation) && view.captureViewportState().pan == initial.pan, "Left drag changed camera")
             }
+            for start in [view.projectedAtomPoint(0)!, CGPoint(x: 15, y: 15)] {
+                view.restoreViewportState(initial)
+                let before = view.projectedAtomPoint(0)!
+                func panEvent(_ type: NSEvent.EventType, _ point: CGPoint) -> NSEvent {
+                    NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+                        windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+                }
+                let end = CGPoint(x: start.x + 45, y: start.y - 30)
+                view.otherMouseDown(with: panEvent(.otherMouseDown, start))
+                view.otherMouseDragged(with: panEvent(.otherMouseDragged, end))
+                view.otherMouseUp(with: panEvent(.otherMouseUp, end))
+                let after = view.projectedAtomPoint(0)!
+                try require(abs(after.x - before.x - 45) < 0.01 && abs(after.y - before.y + 30) < 0.01, "Middle pan did not follow the pointer")
+                try require(close(view.viewingRotation, initialRotation) && view.captureViewportState().zoom == initial.zoom && workspace.currentFrame == geometry && workspace.selectedAtomIndices == [0, 1], "Middle pan changed orientation, zoom, geometry or selection")
+            }
+            view.restoreViewportState(initial)
             workspace.isDraggingEnabled = false
+            await pause()
+            let disabledGeometry = workspace.currentFrame
+            drag(40, 20, flags: .control)
+            try require(workspace.currentFrame == disabledGeometry && !workspace.canUndoGeometry, "Disabled dragging mode edited coordinates")
+            view.restoreViewportState(initial)
             for (name, axis) in [("x", SIMD3<Float>(1, 0, 0)), ("y", SIMD3<Float>(0, 1, 0)), ("z", SIMD3<Float>(0, 0, 1))] {
                 view.restoreViewportState(initial)
                 try button(name + "Plus")
@@ -121,7 +142,7 @@ import simd
                 }
             }
             try require(try String(contentsOf: input) == bytes, "Source bytes changed")
-            print("CAMERA_PASS: 32 directional/pole cases, inverse drags, screen tracking, left selection-only camera, six native axis buttons, closer/further, centered reset, preserved selection/coordinates/source, saved/export camera.")
+            print("CAMERA_PASS: 32 directional/pole cases, inverse drags, screen tracking, left selection-only camera, middle-button pointer-following pan on atom/background, six native axis buttons, closer/further, centered reset, preserved selection/coordinates/source, saved/export camera.")
             fflush(stdout); exit(0)
         } catch { fputs("CAMERA_FAIL: \(error)\n", stderr); exit(1) }
     }
