@@ -649,3 +649,7 @@ fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state
 The native camera regression checks pan displacement in points and confirms that
 panning preserves orientation, scale, geometry and selection; disabled dragging
 is also checked. Validation above predates this clarification unless stated below.
+
+Clarified mapping: local native camera/pan/gate, manipulation, ligand, fragment,
+smooth and tab checks PASS; downloaded implementation app camera/editing/general
+checks PASS. See scientific-validation.md and PR23 for final CI evidence.
