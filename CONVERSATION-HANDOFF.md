@@ -1514,3 +1514,50 @@ Native --fragment-rotation-smoke-test uses an original substituted hexagon with
 an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
 unchanged camera, topology preservation, Undo and free rigid-rotation checks.
 Physical/native and downloaded release evidence is tracked in the release PR.
+
+
+## Camera controls — 0.13.10
+
+Right-button drag rotates continuously about screen-relative axes, including
+horizontal, vertical and diagonal movement. Incremental normalized quaternions
+avoid Euler pole inversions. Shift-right-drag rolls; Option-right-drag retains
+the explicit Fragment coordinate-rotation tool. Left-click selects atoms or
+fragments; left-drag changes neither camera nor coordinates. Explicit builder
+coordinate translation now uses middle-button drag. Existing click placement
+and bond double-click tools remain available.
+
+The right toolbar contains X+/X−, Y+/Y− and Z+/Z− camera rotations (15° per
+click, right-handed about the view axes), closer/further arrows, magnifier zoom
+and Reset camera. The renderer is orthographic: closer/further changes apparent
+scale without changing molecular coordinates. Reset restores the initial
+orientation and fit, clears camera pan/zoom and centers the current molecule.
+Selection is retained. Saved document cameras and GIF renderers retain the
+accumulated orientation.
+
+Native acceptance: `python3 scripts/check-macos-camera.py --app
+ dist/ChemViewer.app --evidence /private/tmp/chemviewer-camera-evidence` (put
+this command on one line). It creates a signed UUID-isolated app and exercises
+32 direction/orientation combinations against an independent Rodrigues matrix,
+inverse drags, projected non-inverted movement, left-drag isolation, six actual
+native axis buttons, closer/further arrows, reset and saved/export camera.
+`--test smooth`, `animation`, `fragment-placement`, `manipulation`,
+`fragment-rotation`, `document-workspace`, `vibration` and `smoke` repeat related
+regressions in isolated copies. Validation outcomes are recorded below after
+execution; implementation alone does not establish acceptance.
+
+Local validation (2026-11-13, physical arm64 Mac, macOS 27.2, Swift 6.4.2,
+SDK 26.5): camera acceptance PASS; native smooth, manipulation, fragment
+rotation/placement, document-workspace (50 switches), animation/GIF, vibration
+and general smoke PASS. Build passed 51 standalone core regressions and three
+migrated building suites. Signing/arm64, relocated archive, SDK provenance,
+wrong-SDK and missing-resource negative controls PASS. Both conventional app
+installations refreshed; the existing user process was left running.
+
+Raw local evidence: /private/tmp/chemviewer-camera-0.13.10 and
+/private/tmp/chemviewer-camera-build.log (ignored, not distributed). Full local
+XCTest remains unavailable under Command Line Tools (missing XCTest module),
+and SDK 27.2 cannot compile existing SwiftUI macros; the documented SDK 26.5
+build was used without modifying system files. Optional OS window capture
+failed with “could not create image from window”; Metal image acceptance passes.
+Hosted checks and downloaded artifact acceptance are tracked in the release PR;
+these local results do not imply either has passed.

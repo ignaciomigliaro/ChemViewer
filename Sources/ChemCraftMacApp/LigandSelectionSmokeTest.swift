@@ -54,7 +54,7 @@ enum LigandSelectionSmokeTest {
             try require(workspace.selectedAtomIndices == [1,2,3,4,5], "Native ligand click selected \(workspace.selectedAtomIndices) instead of ligand atoms 1–5")
             guard let start = view.projectedAtomPoint(1) else { throw ParseError.noGeometry }
             let end = CGPoint(x: start.x + 28, y: start.y + 15)
-            view.mouseDown(with: event(.leftMouseDown, start)); view.mouseDragged(with: event(.leftMouseDragged, end)); view.mouseUp(with: event(.leftMouseUp, end))
+            view.otherMouseDown(with: event(.otherMouseDown, start)); view.otherMouseDragged(with: event(.otherMouseDragged, end)); view.otherMouseUp(with: event(.otherMouseUp, end))
             try await Task.sleep(nanoseconds: 150_000_000)
             let moved = workspace.currentFrame!
             let delta = moved.atoms[1].position - original.atoms[1].position

@@ -39,7 +39,7 @@ by later recorded native releases and do not describe the current Mac environmen
 | ORCA mode vectors | Implemented for observed block layout | Oracle tested | Block paging, large molecules, missing modes |
 | ORCA IR intensity | Implemented for observed layout | Oracle tested | Unit labels and additional ORCA variants |
 | Metal atoms/bonds | Implemented prototype | Blocked: no macOS host | Depth, picking, Retina, 10k/100k atom benchmarks |
-| Rotate/pan/zoom | Implemented; right-drag now matches Windows rotation, Option-drag pans | Blocked: no macOS host | Gesture/trackpad regression |
+| Rotate/pan/zoom | Implemented; screen-relative right-drag, axis buttons and centered reset (0.13.10); historical evidence below | Blocked: no macOS host | Gesture/trackpad regression |
 | Vibration animation | Implemented | Blocked: no macOS host | Visual/vector comparison against Windows |
 | Displacement-vector arrows | Implemented in Metal | Swift/UI test not run | Direction/scale comparison against Windows |
 | Imaginary-mode marking | Implemented | Swift test not run | Real TS fixture and sign convention |
@@ -628,3 +628,14 @@ Native --fragment-rotation-smoke-test uses an original substituted hexagon with
 an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
 unchanged camera, topology preservation, Undo and free rigid-rotation checks.
 Physical/native and downloaded release evidence is tracked in the release PR.
+
+
+## Camera controls — 0.13.10
+
+Implemented: screen-relative right-drag in every direction, six native X/Y/Z
+±15° camera buttons, closer/further arrows, zoom and centered original-view reset.
+Left-click selects; left-drag moves neither camera nor geometry. Explicit
+coordinate translation uses middle drag; Option-right-drag rotates fragments.
+This supersedes earlier Option-left-drag pan / left camera gesture descriptions.
+Native acceptance and its environment limits are recorded in
+scientific-validation.md; this does not establish broader Chemcraft parity.

@@ -1,6 +1,7 @@
 import AppKit
 import ChemCraftCore
 import ImageIO
+import simd
 
 @MainActor enum AnimationSmokeTest {
     private static var started = false
@@ -21,9 +22,9 @@ import ImageIO
             try await Task.sleep(nanoseconds: 400_000_000)
             guard let view = AnimationExporter.viewport(), let frames = workspace.document?.frames else { throw AnimationExportError.message("Viewport unavailable") }
             // Exercise a non-default camera through the actual mouse handler.
-            let down = NSEvent.mouseEvent(with: .leftMouseDown, location: NSPoint(x: 500, y: 300), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
-            let drag = NSEvent.mouseEvent(with: .leftMouseDragged, location: NSPoint(x: 620, y: 340), modifierFlags: [], timestamp: 0.1, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 1)!
-            view.mouseDown(with: down); view.mouseDragged(with: drag); view.mouseUp(with: drag)
+            let down = NSEvent.mouseEvent(with: .rightMouseDown, location: NSPoint(x: 500, y: 300), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
+            let drag = NSEvent.mouseEvent(with: .rightMouseDragged, location: NSPoint(x: 620, y: 340), modifierFlags: [], timestamp: 0.1, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 2, clickCount: 1, pressure: 1)!
+            view.rightMouseDown(with: down); view.rightMouseDragged(with: drag); view.rightMouseUp(with: drag)
             // Full revolutions in both directions, pole crossing and independent roll.
             let beforeRotation = view.captureViewportState()
             let beforeAtoms = workspace.currentFrame!.atoms
@@ -39,13 +40,17 @@ import ImageIO
                 view.rightMouseDragged(with: event(.rightMouseDragged, end))
                 view.rightMouseUp(with: event(.rightMouseUp, end))
             }
+            let originalRotation = view.viewingRotation
             rightDrag(700, 700)
-            let turned = view.captureViewportState()
-            try require(abs(turned.yaw - beforeRotation.yaw + 7) < 1e-5 && abs(turned.pitch - beforeRotation.pitch - 7) < 1e-5, "Right rotation restricted before a full revolution")
+            try require(view.viewingRotation != originalRotation, "Full-turn drag did not rotate")
             rightDrag(-700, -700)
-            try require(abs(view.captureViewportState().pitch - beforeRotation.pitch) < 1e-5, "Reverse rotation failed")
+            func close(_ a: simd_float4x4, _ b: simd_float4x4) -> Bool {
+                (0..<4).allSatisfy { simd_length(a[$0] - b[$0]) < 1e-5 }
+            }
+            try require(close(view.viewingRotation, originalRotation), "Reverse rotation failed")
             rightDrag(100, 0, flags: .shift)
-            try require(abs(view.captureViewportState().roll - beforeRotation.roll - 1) < 1e-5, "Shift-right roll failed")
+            let expectedRoll = simd_float4x4(simd_quatf(angle: 1, axis: SIMD3<Float>(0, 0, 1))) * originalRotation
+            try require(close(view.viewingRotation, expectedRoll), "Shift-right roll failed")
             try require(workspace.selectedAtomIndices == [0, 1] && workspace.currentFrame!.atoms == beforeAtoms, "Camera rotation edited geometry or cleared selection")
             view.restoreViewportState(beforeRotation)
             workspace.selectedAtomIndices = []

@@ -40,10 +40,10 @@ enum ManipulationSmokeTest {
             func drag(_ seed: Int, _ dx: CGFloat, _ dy: CGFloat) async throws {
                 guard let p = view.projectedAtomPoint(seed) else { throw CocoaError(.coderReadCorrupt) }
                 let q = CGPoint(x: p.x + dx, y: p.y + dy)
-                view.mouseDown(with: event(.leftMouseDown, p))
-                view.mouseDragged(with: event(.leftMouseDragged, q))
-                view.mouseDragged(with: event(.leftMouseDragged, CGPoint(x: q.x + dx, y: q.y + dy)))
-                view.mouseUp(with: event(.leftMouseUp, CGPoint(x: q.x + dx, y: q.y + dy)))
+                view.otherMouseDown(with: event(.otherMouseDown, p))
+                view.otherMouseDragged(with: event(.otherMouseDragged, q))
+                view.otherMouseDragged(with: event(.otherMouseDragged, CGPoint(x: q.x + dx, y: q.y + dy)))
+                view.otherMouseUp(with: event(.otherMouseUp, CGPoint(x: q.x + dx, y: q.y + dy)))
                 try await wait()
             }
             func screenshot(_ name: String) async throws {

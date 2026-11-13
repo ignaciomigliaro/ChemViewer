@@ -913,3 +913,17 @@ Native --fragment-rotation-smoke-test uses an original substituted hexagon with
 an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
 unchanged camera, topology preservation, Undo and free rigid-rotation checks.
 Physical/native and downloaded release evidence is tracked in the release PR.
+
+
+## Camera controls — 0.13.10
+
+Right-drag now precomposes a normalized quaternion about the screen-space
+axis (dy, −dx, 0). This keeps pointer axes fixed after roll and pole crossings;
+it also makes each diagonal event a single rotation. The quaternion accompanies
+legacy initial Euler angles in MolecularViewportState and animationRenderer.
+Reset clears it and restores the initial centered fit. AppKit CameraButton
+controls expose X/Y/Z ±15°, closer/further scale and reset. The orthographic
+projection uses scale for apparent depth; molecular coordinates stay unchanged.
+Left gestures only select, while explicit builder translation uses middle drag
+and Option-right-drag retains fragment rotation. See scientific-validation.md
+for acceptance evidence and scripts/check-macos-camera.py for test isolation.

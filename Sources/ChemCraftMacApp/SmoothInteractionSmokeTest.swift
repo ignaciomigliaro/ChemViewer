@@ -98,16 +98,16 @@ enum SmoothInteractionSmokeTest {
                 NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             }
             let start = view.projectedAtomPoint(0)!
-            view.mouseDown(with: event(view, .leftMouseDown, point: start))
+            view.otherMouseDown(with: event(view, .otherMouseDown, point: start))
             let time = CACurrentMediaTime()
             for i in 1...120 {
-                view.mouseDragged(with: event(view, .leftMouseDragged, point: CGPoint(x: start.x + CGFloat(i) / 2, y: start.y + CGFloat(i) / 4)))
+                view.otherMouseDragged(with: event(view, .otherMouseDragged, point: CGPoint(x: start.x + CGFloat(i) / 2, y: start.y + CGFloat(i) / 4)))
             }
             let elapsed = (CACurrentMediaTime() - time) * 1000
             try require(workspace.geometryRevision == revision && workspace.currentFrame == original, "Drag moves still publish document changes")
             let moved = view.projectedAtomPoint(0)!
             try require(abs(moved.x - start.x - 60) < 0.01 && abs(moved.y - start.y - 30) < 0.01, "Preview does not follow pointer")
-            view.mouseUp(with: event(view, .leftMouseUp, point: CGPoint(x: start.x + 60, y: start.y + 30)))
+            view.otherMouseUp(with: event(view, .otherMouseUp, point: CGPoint(x: start.x + 60, y: start.y + 30)))
             try require(workspace.currentFrame?.atoms != original.atoms, "Mouse-up did not commit")
             workspace.undoGeometry(); try require(workspace.currentFrame == original && !workspace.canUndoGeometry, "Drag undo count")
             try require(view.meshBuildCount == 1, "Meshes were rebuilt per frame")
@@ -117,15 +117,15 @@ enum SmoothInteractionSmokeTest {
             NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "front")
             let geometry = workspace.currentFrame!
             let a = camera.projectedAtomPoint(0)!
-            camera.mouseDown(with: event(camera, .leftMouseDown, point: a))
-            camera.mouseDragged(with: event(camera, .leftMouseDragged, point: CGPoint(x: a.x + 40, y: a.y)))
-            camera.mouseUp(with: event(camera, .leftMouseUp, point: CGPoint(x: a.x + 40, y: a.y)))
+            camera.rightMouseDown(with: event(camera, .rightMouseDown, point: a))
+            camera.rightMouseDragged(with: event(camera, .rightMouseDragged, point: CGPoint(x: a.x + 40, y: a.y)))
+            camera.rightMouseUp(with: event(camera, .rightMouseUp, point: CGPoint(x: a.x + 40, y: a.y)))
             try require(camera.projectedAtomPoint(0)!.x > a.x, "Horizontal camera drag remains inverted")
             NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "front")
             let b = camera.projectedAtomPoint(0)!
-            camera.mouseDown(with: event(camera, .leftMouseDown, point: b))
-            camera.mouseDragged(with: event(camera, .leftMouseDragged, point: CGPoint(x: b.x, y: b.y + 40)))
-            camera.mouseUp(with: event(camera, .leftMouseUp, point: CGPoint(x: b.x, y: b.y + 40)))
+            camera.rightMouseDown(with: event(camera, .rightMouseDown, point: b))
+            camera.rightMouseDragged(with: event(camera, .rightMouseDragged, point: CGPoint(x: b.x, y: b.y + 40)))
+            camera.rightMouseUp(with: event(camera, .rightMouseUp, point: CGPoint(x: b.x, y: b.y + 40)))
             try require(camera.projectedAtomPoint(0)!.y > b.y, "Vertical camera drag does not follow pointer")
             try require(workspace.currentFrame == geometry, "Camera drag changed coordinates")
             // Selection must not resize/recreate the live viewport or move projected atoms.
