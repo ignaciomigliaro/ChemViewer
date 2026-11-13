@@ -505,7 +505,7 @@ extension WorkspaceStore {
                 if let seed = previous.last {
                     selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
                     updateFragmentRotationCenter(seed: seed, frame: frame)
-                    buildingHint = "Fragment: click a ligand or metal motif. Left-drag moves; Option-right-drag rotates coordinates."
+                    buildingHint = "Fragment: click a ligand or metal motif. Control-right-drag moves; Option-right-drag rotates coordinates."
                 } else {
                     selectedAtomIndices = []
                     buildingHint = "Fragment: click a ligand or metal center to select its motif."
@@ -530,7 +530,7 @@ extension WorkspaceStore {
             let group = try GeometryEditor.fragment(in: frame, fixed: fixed, moving: moving)
             isDraggingEnabled = true; dragScope = .fragment
             fragmentBoundary = (fixed, moving); selectedAtomIndices = group
-            buildingHint = "Bond side: left-drag to move; Option-right-drag to rotate about the attachment bond. Fixed side stays in place."
+            buildingHint = "Bond side: Control-right-drag to move; Option-right-drag to rotate about the attachment bond. Fixed side stays in place."
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -544,7 +544,7 @@ extension WorkspaceStore {
                 guard let boundary = fragmentBoundary else {
                     selectedAtomIndices = try GeometryEditor.fragmentAtoms(in: frame, seed: seed)
                     updateFragmentRotationCenter(seed: seed, frame: frame)
-                    buildingHint = "Fragment: click a ligand or metal motif. Left-drag moves; Option-right-drag rotates coordinates."
+                    buildingHint = "Fragment: click a ligand or metal motif. Control-right-drag moves; Option-right-drag rotates coordinates."
                     return true
                 }
                 guard selectedAtomIndices.contains(seed) else { return false }

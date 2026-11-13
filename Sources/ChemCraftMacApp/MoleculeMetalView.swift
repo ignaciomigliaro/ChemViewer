@@ -21,6 +21,7 @@ struct MolecularViewportState {
     var zoom: Float
     var pan: SIMD2<Float>
     var labelOffsets: [String: CGPoint]
+    var orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1))
 }
 
 struct MoleculeMetalView: NSViewRepresentable {
@@ -241,6 +242,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var animationElapsed: Double = 0
     private var fitScale: Float = 0.12
     var preservePlacementCamera = false
+    private var orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1))
     private var roll: Float = 0
     private var yaw: Float = 0.45
     private var pitch: Float = -0.30
@@ -262,6 +264,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     var onPreviewAtomRotation: ((Vector3, Float) -> Void)?
     private var rotatingAtoms = false
     private var rotationRequested = false
+    private var translationRequested = false
     private var rotationAxis = Vector3.zero
     private var rotationDegrees: Float = 0
     private var rotationCenter = Vector3.zero
@@ -308,14 +311,14 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         cameraObserver = NotificationCenter.default.addObserver(forName: .init("ChemViewerViewportAction"), object: nil, queue: .main) { [weak self] note in
             guard let self, self.window != nil, let action = note.object as? String else { return }
             switch action {
-            case "reset": self.recalculateBounds(); self.yaw = 0.45; self.pitch = -0.30; self.roll = 0; self.zoom = 1; self.pan = .zero
-            case "front": self.recalculateBounds(); self.yaw = 0; self.pitch = 0; self.roll = 0; self.zoom = 1; self.pan = .zero
-            case "left": self.yaw += .pi / 12
-            case "right": self.yaw -= .pi / 12
-            case "up": self.pitch += .pi / 12
-            case "down": self.pitch -= .pi / 12
-            case "rollLeft": self.roll += .pi / 12
-            case "rollRight": self.roll -= .pi / 12
+            case "reset": self.recalculateBounds(); self.yaw = 0.45; self.pitch = -0.30; self.roll = 0; self.orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1)); self.zoom = 1; self.pan = .zero
+            case "front": self.recalculateBounds(); self.yaw = 0; self.pitch = 0; self.roll = 0; self.orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1)); self.zoom = 1; self.pan = .zero
+            case "left", "yPlus": self.rotateCamera(axis: SIMD3(0, 1, 0), radians: .pi / 12)
+            case "right", "yMinus": self.rotateCamera(axis: SIMD3(0, 1, 0), radians: -.pi / 12)
+            case "up", "xPlus": self.rotateCamera(axis: SIMD3(1, 0, 0), radians: .pi / 12)
+            case "down", "xMinus": self.rotateCamera(axis: SIMD3(1, 0, 0), radians: -.pi / 12)
+            case "rollLeft", "zPlus": self.rotateCamera(axis: SIMD3(0, 0, 1), radians: .pi / 12)
+            case "rollRight", "zMinus": self.rotateCamera(axis: SIMD3(0, 0, 1), radians: -.pi / 12)
             case "panUp": self.pan.y += 0.08
             case "panDown": self.pan.y -= 0.08
             case "in": self.zoomBy(factor: 1.2, at: CGPoint(x: self.bounds.midX, y: self.bounds.midY))
@@ -406,14 +409,15 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         releaseDrawables()
     }
     func captureViewportState() -> MolecularViewportState {
-        MolecularViewportState(center: center, fitScale: fitScale, yaw: yaw, pitch: pitch, roll: roll, zoom: zoom, pan: pan, labelOffsets: measurementOffsets)
+        MolecularViewportState(center: center, fitScale: fitScale, yaw: yaw, pitch: pitch, roll: roll, zoom: zoom, pan: pan, labelOffsets: measurementOffsets, orbit: orbit)
     }
     func restoreViewportState(_ state: MolecularViewportState) {
         center = state.center; fitScale = state.fitScale; yaw = state.yaw; pitch = state.pitch
-        roll = state.roll; zoom = state.zoom; pan = state.pan; measurementOffsets = state.labelOffsets
+        roll = state.roll; orbit = state.orbit; zoom = state.zoom; pan = state.pan; measurementOffsets = state.labelOffsets
         setNeedsDisplay(bounds)
     }
     func resetDocumentViewport() {
+        orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1))
         yaw = 0.45; pitch = -0.30; roll = 0; zoom = 1; pan = .zero
         measurementOffsets.removeAll(); recalculateBounds(); setNeedsDisplay(bounds)
     }
@@ -592,7 +596,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         renderer.scene.animate = false
         renderer.scene.selectedAtomIndices = []
         renderer.scene.showDisplacementVectors = false
-        renderer.yaw = yaw; renderer.pitch = pitch; renderer.roll = roll
+        renderer.yaw = yaw; renderer.pitch = pitch; renderer.roll = roll; renderer.orbit = orbit
         let points = frames.flatMap { frame in frame.atoms.enumerated().flatMap { i, atom -> [SIMD3<Float>] in
             let p = SIMD3(atom.position.x, atom.position.y, atom.position.z)
             guard displacements.indices.contains(i) else { return [p] }
@@ -771,8 +775,13 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
 
     var viewingRotation: simd_float4x4 { cameraRotation() }
 
+    private func rotateCamera(axis: SIMD3<Float>, radians: Float) {
+        guard simd_length_squared(axis) > 1e-12 else { return }
+        orbit = simd_normalize(simd_quatf(angle: radians, axis: simd_normalize(axis)) * orbit)
+    }
+
     private func cameraRotation() -> simd_float4x4 {
-        simd_float4x4.rotation(radians: roll, axis: SIMD3(0, 0, 1)) *
+        simd_float4x4(orbit) * simd_float4x4.rotation(radians: roll, axis: SIMD3(0, 0, 1)) *
         simd_float4x4.rotation(radians: pitch, axis: SIMD3(1, 0, 0)) *
             simd_float4x4.rotation(radians: yaw, axis: SIMD3(0, 1, 0))
     }
@@ -822,6 +831,29 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
 
     override func mouseDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
+        // Selection only: neither geometry nor the camera moves with the left button.
+    }
+
+    override func otherMouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        previousMouse = convert(event.locationInWindow, from: nil)
+        mouseDownPoint = previousMouse
+        didDrag = false
+    }
+    override func otherMouseUp(with event: NSEvent) {}
+    override func otherMouseDragged(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
+        guard didDrag else { return }
+        pan.x += Float(point.x - previousMouse.x) / max(Float(bounds.width), 1) * 2
+        pan.y += Float(point.y - previousMouse.y) / max(Float(bounds.height), 1) * 2
+        previousMouse = point
+        setNeedsDisplay(bounds)
+    }
+
+    private func translateAtomsDragged(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
         let threshold: CGFloat = draggingEnabled && pressedAtom != nil ? 1 : 3
         didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > threshold
         if draggingEnabled, let seed = pressedAtom {
@@ -853,17 +885,6 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             }
             return
         }
-        // Small pointer jitter while clicking must not rotate or pan the camera.
-        guard didDrag else { return }
-        if event.modifierFlags.contains(.option) {
-            pan.x += Float(point.x - previousMouse.x) / max(Float(bounds.width), 1) * 2
-            pan.y += Float(point.y - previousMouse.y) / max(Float(bounds.height), 1) * 2
-        } else {
-            yaw -= Float(point.x - previousMouse.x) * 0.01
-            pitch += Float(point.y - previousMouse.y) * 0.01
-        }
-        previousMouse = point
-        setNeedsDisplay(bounds)
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -894,13 +915,16 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         previousMouse = convert(event.locationInWindow, from: nil)
         mouseDownPoint = previousMouse
         didDrag = false
-        rotationRequested = draggingEnabled && event.modifierFlags.contains(.option)
+        translationRequested = draggingEnabled && event.modifierFlags.contains(.control)
+        if translationRequested { mouseDown(with: event) }
+        rotationRequested = draggingEnabled && !translationRequested && event.modifierFlags.contains(.option)
         rotatingAtoms = false
         pressedAtom = atomIndex(at: previousMouse)
         dragInverseRotation = cameraRotation().transpose
     }
 
     override func rightMouseDragged(with event: NSEvent) {
+        if translationRequested { translateAtomsDragged(with: event); return }
         let point = convert(event.locationInWindow, from: nil)
         didDrag = didDrag || hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3
         guard didDrag else { return }
@@ -934,16 +958,23 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         let dx = Float(point.x - previousMouse.x) * 0.01
         let dy = Float(point.y - previousMouse.y) * 0.01
         if event.modifierFlags.contains(.shift) {
-            roll += dx + dy
+            rotateCamera(axis: SIMD3(0, 0, 1), radians: dx + dy)
         } else {
-            yaw -= dx
-            pitch += dy
+            // One screen-space axis for diagonal motion; precomposition keeps
+            // directions consistent after any number of turns or pole crossings.
+            let axis = SIMD3<Float>(dy, -dx, 0)
+            rotateCamera(axis: axis, radians: simd_length(axis))
         }
         previousMouse = point
         setNeedsDisplay(bounds)
     }
 
     override func rightMouseUp(with event: NSEvent) {
+        if translationRequested {
+            if atomDragActive { commitAtomDrag() }
+            translationRequested = false
+            return
+        }
         if rotatingAtoms {
             atomDragActive = false; rotatingAtoms = false
             onPreviewAtomRotation?(rotationAxis, rotationDegrees)

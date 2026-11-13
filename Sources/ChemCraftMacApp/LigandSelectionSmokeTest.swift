@@ -32,8 +32,8 @@ enum LigandSelectionSmokeTest {
             try await Task.sleep(nanoseconds: 300_000_000)
             guard let view = NSApp.windows.compactMap({ $0.contentView.flatMap(find) }).first,
                   let window = view.window, let original = workspace.currentFrame else { throw ParseError.noGeometry }
-            func event(_ type: NSEvent.EventType, _ point: CGPoint) -> NSEvent {
-                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+            func event(_ type: NSEvent.EventType, _ point: CGPoint, flags: NSEvent.ModifierFlags = []) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: flags, timestamp: 0,
                     windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             }
             func click(_ index: Int) async throws {
@@ -54,7 +54,7 @@ enum LigandSelectionSmokeTest {
             try require(workspace.selectedAtomIndices == [1,2,3,4,5], "Native ligand click selected \(workspace.selectedAtomIndices) instead of ligand atoms 1–5")
             guard let start = view.projectedAtomPoint(1) else { throw ParseError.noGeometry }
             let end = CGPoint(x: start.x + 28, y: start.y + 15)
-            view.mouseDown(with: event(.leftMouseDown, start)); view.mouseDragged(with: event(.leftMouseDragged, end)); view.mouseUp(with: event(.leftMouseUp, end))
+            view.rightMouseDown(with: event(.rightMouseDown, start, flags: .control)); view.rightMouseDragged(with: event(.rightMouseDragged, end, flags: .control)); view.rightMouseUp(with: event(.rightMouseUp, end, flags: .control))
             try await Task.sleep(nanoseconds: 150_000_000)
             let moved = workspace.currentFrame!
             let delta = moved.atoms[1].position - original.atoms[1].position

@@ -60,6 +60,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--camera-smoke-test") { await Task { @MainActor in await CameraSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--file-open-smoke-test") { await Task { @MainActor in await FileOpenSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--ligand-selection-smoke-test") { await LigandSelectionSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--vibration-smoke-test") { await VibrationSmokeTest.run(workspace: workspace) }
@@ -166,7 +167,11 @@ struct ContentView: View {
             }.fixedSize()
             tool("Fragment library", "plus") { workspace.presentFragmentLibrary() }
             tool("Add atom / replace element", "atom") { workspace.presentPeriodicTable() }
-            tool("Toggle dragging", "hand.point.up.fill") { workspace.isDraggingEnabled.toggle() }
+            Toggle(isOn: $workspace.isDraggingEnabled) {
+                Label("Drag", systemImage: "hand.point.up.fill")
+            }.toggleStyle(.button).controlSize(.small)
+                .help("Toggle coordinate dragging · Control-right-drag moves atoms only while enabled")
+                .accessibilityIdentifier("coordinate-dragging-toggle")
             tool("Select connected molecule", "globe") { workspace.selectConnectedGroup() }
             Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Toggle hydrogen visibility")
             ForEach([(AtomCaption.numbers, "1"), (.elements, "C1"), (.elementNumbers, "A"), (.none, "●")], id: \.0) { caption, title in
@@ -351,18 +356,22 @@ struct ContentView: View {
                 )
                 Divider()
                 VStack(spacing: 7) {
-                    tool("Rotate left", "arrow.counterclockwise") { viewportAction("left") }
-                    tool("Rotate right", "arrow.clockwise") { viewportAction("right") }
-                    tool("Rotate up", "arrow.up") { viewportAction("up") }
-                    tool("Rotate down", "arrow.down") { viewportAction("down") }
+                    ForEach(["X", "Y", "Z"], id: \.self) { axis in
+                        ForEach([true, false], id: \.self) { positive in
+                            CameraButton(title: axis + (positive ? "+" : "−"),
+                                         symbol: positive ? "arrow.clockwise" : "arrow.counterclockwise",
+                                         action: axis.lowercased() + (positive ? "Plus" : "Minus"),
+                                         help: "Rotate camera " + axis + (positive ? " +15°" : " −15°"), showsTitle: true)
+                                .frame(width: 31, height: 35)
+                        }
+                    }
                     Divider()
-                    tool("Roll left", "rotate.left") { viewportAction("rollLeft") }
-                    tool("Roll right", "rotate.right") { viewportAction("rollRight") }
-                    tool("Pan up", "arrow.up.to.line") { viewportAction("panUp") }
-                    tool("Pan down", "arrow.down.to.line") { viewportAction("panDown") }
-                    tool("Zoom in", "plus.magnifyingglass") { viewportAction("in") }
-                    tool("Zoom out", "minus.magnifyingglass") { viewportAction("out") }
-                    tool("Fit and center", "scope") { viewportAction("reset") }
+                    CameraButton(title: "Closer", symbol: "arrow.up", action: "in", help: "Move closer to camera").frame(width: 31, height: 27)
+                    CameraButton(title: "Further", symbol: "arrow.down", action: "out", help: "Move further from camera").frame(width: 31, height: 27)
+                    Divider()
+                    CameraButton(title: "Zoom in", symbol: "plus.magnifyingglass", action: "in", help: "Zoom in").frame(width: 31, height: 27)
+                    CameraButton(title: "Zoom out", symbol: "minus.magnifyingglass", action: "out", help: "Zoom out").frame(width: 31, height: 27)
+                    CameraButton(title: "Reset", symbol: "scope", action: "reset", help: "Reset camera · original orientation, centered molecule").frame(width: 31, height: 27)
                     Spacer()
                 }.padding(5).frame(width: 37).background(Color(nsColor: .windowBackgroundColor))
                 }
@@ -424,9 +433,9 @@ struct ContentView: View {
                 .frame(width: 140)
             }
             Spacer()
-            Text(workspace.isDraggingEnabled ? "Drag \(workspace.dragScope.rawValue.lowercased()) • Option-right-drag rotates fragment • right-drag rotates camera • Shift-right-drag rolls • right-click clears" : "Drag to rotate • Option-drag to pan • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
+            Text(workspace.isDraggingEnabled ? "Left-click selects • Control-right-drag \(workspace.dragScope.rawValue.lowercased()) • Option-right-drag rotates fragment • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears" : "Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears • scroll to zoom")
                 .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
-                .help("Drag to rotate • Option-drag to pan • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • right-click clears • scroll to zoom")
+                .help("Left-click selects atoms/fragments • Enable Fragment + Option-right-drag rotates coordinates • right-drag rotates camera • Shift-right-drag rolls • middle-drag pans • right-click clears • scroll to zoom")
                 .foregroundStyle(.secondary)
         }
         .font(.caption)

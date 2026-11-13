@@ -699,3 +699,55 @@ Native --fragment-rotation-smoke-test uses an original substituted hexagon with
 an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
 unchanged camera, topology preservation, Undo and free rigid-rotation checks.
 Physical/native and downloaded release evidence is tracked in the release PR.
+
+
+## Camera controls — 0.13.10
+
+Right-button drag rotates continuously about screen-relative axes, including
+horizontal, vertical and diagonal movement. Incremental normalized quaternions
+avoid Euler pole inversions. Shift-right-drag rolls; Option-right-drag retains
+the explicit Fragment coordinate-rotation tool. Left-click selects atoms or
+fragments; left-drag changes neither camera nor coordinates. Explicit builder
+coordinate translation now uses Control-right-drag. Existing click placement
+and bond double-click tools remain available.
+
+The right toolbar contains X+/X−, Y+/Y− and Z+/Z− camera rotations (15° per
+click, right-handed about the view axes), closer/further arrows, magnifier zoom
+and Reset camera. The renderer is orthographic: closer/further changes apparent
+scale without changing molecular coordinates. Reset restores the initial
+orientation and fit, clears camera pan/zoom and centers the current molecule.
+Selection is retained. Saved document cameras and GIF renderers retain the
+accumulated orientation.
+
+Native acceptance: `python3 scripts/check-macos-camera.py --app
+ dist/ChemViewer.app --evidence /private/tmp/chemviewer-camera-evidence` (put
+this command on one line). It creates a signed UUID-isolated app and exercises
+32 direction/orientation combinations against an independent Rodrigues matrix,
+inverse drags, projected non-inverted movement, left-drag isolation, six actual
+native axis buttons, closer/further arrows, reset and saved/export camera.
+`--test smooth`, `animation`, `fragment-placement`, `manipulation`,
+`fragment-rotation`, `document-workspace`, `vibration` and `smoke` repeat related
+regressions in isolated copies. Validation outcomes are recorded below after
+execution; implementation alone does not establish acceptance.
+
+CV-CAMERA-001: On an asymmetric structure, hold the right button and drag up,
+down, left, right and all diagonals. Repeat after rotating through vertical;
+motion remains relative to the screen. Left-click an atom and a fragment in
+Fragment mode; left dragging changes neither viewing angle nor coordinates.
+CV-CAMERA-002: Activate X+/X−, Y+/Y−, Z+/Z− on the right; opposite buttons undo
+each other. Up/down arrows enlarge/shrink without editing coordinates. Rotate,
+zoom and displace the camera, then Reset: original orientation, centered fit.
+CV-CAMERA-003: Repeat tab switching and GIF export after compound rotations.
+Verify saved viewing orientation. Control-right-drag under an explicit Atom/Fragment
+tool moves only the chosen atoms with one Undo; Option-right-drag retains the
+fragment rotation tool. Never run tests against a user's live document window.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.

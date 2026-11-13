@@ -112,9 +112,9 @@ enum FragmentPlacementSmokeTest {
             func orbitEvent(_ type: NSEvent.EventType, _ p: CGPoint) -> NSEvent {
                 NSEvent.mouseEvent(with: type, location: view.convert(p, to: nil), modifierFlags: [], timestamp: 0, windowNumber: view.window!.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             }
-            view.mouseDown(with: orbitEvent(.leftMouseDown, start))
+            view.rightMouseDown(with: orbitEvent(.rightMouseDown, start))
             let finish = CGPoint(x: start.x + 40, y: start.y + 20)
-            view.mouseDragged(with: orbitEvent(.leftMouseDragged, finish)); view.mouseUp(with: orbitEvent(.leftMouseUp, finish))
+            view.rightMouseDragged(with: orbitEvent(.rightMouseDragged, finish)); view.rightMouseUp(with: orbitEvent(.rightMouseUp, finish))
             let orbitAfter = atoms.indices.compactMap { view.projectedAtomPoint($0) }
             let afterX = orbitAfter.reduce(CGFloat(0)) { $0 + $1.x } / CGFloat(atoms.count)
             let afterY = orbitAfter.reduce(CGFloat(0)) { $0 + $1.y } / CGFloat(atoms.count)

@@ -27,8 +27,15 @@ and unsupported properties are never filled with guesses.
 
 ## Molecular display and measurements
 
-Rotate by dragging (including Windows-style right dragging), Option-drag to pan,
-and scroll to zoom. Choose a representation/appearance from Display or the toolbar.
+Hold the right mouse button to rotate horizontally, vertically or diagonally;
+middle-drag pans in the pointer direction and scrolling zooms. Left-click selects
+atoms/fragments; left-drag changes neither camera nor coordinates. The right
+rail offers X/Y/Z ±15° rotations, closer/further arrows, magnifier zoom and Reset
+camera (original orientation, centered fit). Toggle **Drag** on to enable
+Control-right-drag coordinate movement; toggle it off to prevent coordinate
+dragging. Option-right-drag rotates the chosen fragment only while Drag is on.
+Middle-drag always pans, including over atoms and in Drag mode.
+Choose a representation/appearance from Display or the toolbar.
 The default Paton appearance uses the attributed xyzrender palette. Bonds are
 initially inferred by distance. Select two atoms and press Control-B to create
 or remove their bond, or double-click the middle of a visible bond to remove it.
@@ -39,8 +46,9 @@ Click atoms in order. Two atoms expose a distance; three expose an angle; four
 expose a signed dihedral. Right-click clears selection. Enable the measurement
 label to annotate it. Persistent labels can coexist, move by dragging, and appear
 in PNG/GIF exports. Visible labels lets you select/remove a label or hide all.
-Distances are in Å, angles in degrees. Choose Fragment, then click or drag an
-ligand atom: its whole connected ligand, including H, moves together. Selection
+Distances are in Å, angles in degrees. Choose Fragment, then left-click a
+ligand atom to select its whole connected ligand, including H. With Drag on,
+Control-right-drag moves that ligand rigidly. Selection
 stops at every metal, so chelating/bridging ligands stay together while metals
 and other ligands stay fixed. A metal click selects its whole attached motif, stopping at other metals,
 and chooses that metal as the rotation pivot. To isolate one side of a bond instead, select the fixed atom

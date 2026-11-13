@@ -783,3 +783,86 @@ Native --fragment-rotation-smoke-test uses an original substituted hexagon with
 an independent 90-degree Cartesian oracle, fixed remainder, actual mouse events,
 unchanged camera, topology preservation, Undo and free rigid-rotation checks.
 Physical/native and downloaded release evidence is tracked in the release PR.
+
+
+## Camera controls — 0.13.10
+
+Right-button drag rotates continuously about screen-relative axes, including
+horizontal, vertical and diagonal movement. Incremental normalized quaternions
+avoid Euler pole inversions. Shift-right-drag rolls; Option-right-drag retains
+the explicit Fragment coordinate-rotation tool. Left-click selects atoms or
+fragments; left-drag changes neither camera nor coordinates. Explicit builder
+coordinate translation now uses Control-right-drag. Existing click placement
+and bond double-click tools remain available.
+
+The right toolbar contains X+/X−, Y+/Y− and Z+/Z− camera rotations (15° per
+click, right-handed about the view axes), closer/further arrows, magnifier zoom
+and Reset camera. The renderer is orthographic: closer/further changes apparent
+scale without changing molecular coordinates. Reset restores the initial
+orientation and fit, clears camera pan/zoom and centers the current molecule.
+Selection is retained. Saved document cameras and GIF renderers retain the
+accumulated orientation.
+
+Native acceptance: `python3 scripts/check-macos-camera.py --app
+ dist/ChemViewer.app --evidence /private/tmp/chemviewer-camera-evidence` (put
+this command on one line). It creates a signed UUID-isolated app and exercises
+32 direction/orientation combinations against an independent Rodrigues matrix,
+inverse drags, projected non-inverted movement, left-drag isolation, six actual
+native axis buttons, closer/further arrows, reset and saved/export camera.
+`--test smooth`, `animation`, `fragment-placement`, `manipulation`,
+`fragment-rotation`, `document-workspace`, `vibration` and `smoke` repeat related
+regressions in isolated copies. Validation outcomes are recorded below after
+execution; implementation alone does not establish acceptance.
+
+Local validation (2026-11-13, physical arm64 Mac, macOS 27.2, Swift 6.4.2,
+SDK 26.5): camera acceptance PASS; native smooth, manipulation, fragment
+rotation/placement, document-workspace (50 switches), animation/GIF, vibration
+and general smoke PASS. Build passed 51 standalone core regressions and three
+migrated building suites. Signing/arm64, relocated archive, SDK provenance,
+wrong-SDK and missing-resource negative controls PASS. Both conventional app
+installations refreshed; the existing user process was left running.
+
+Raw local evidence: /private/tmp/chemviewer-camera-0.13.10 and
+/private/tmp/chemviewer-camera-build.log (ignored, not distributed). Full local
+XCTest remains unavailable under Command Line Tools (missing XCTest module),
+and SDK 27.2 cannot compile existing SwiftUI macros; the documented SDK 26.5
+build was used without modifying system files. Optional OS window capture
+failed with “could not create image from window”; Metal image acceptance passes.
+Hosted checks and downloaded artifact acceptance are tracked in the release PR;
+these local results do not imply either has passed.
+
+User clarification: middle-button drag pans the camera in the pointer direction,
+including over atoms and while editing mode is enabled. It never edits molecular
+coordinates or selection. Coordinate translation uses Control-right-drag only
+while the explicit Drag toggle is on; disabling Drag prevents coordinate edits.
+Ordinary right-drag rotates, left-click selects and Option-right-drag rotates a
+fragment only while Drag is enabled. The top-toolbar Drag toggle shows its state.
+The native camera regression checks pan displacement in points and confirms that
+panning preserves orientation, scale, geometry and selection; disabled dragging
+is also checked. Validation above predates this clarification unless stated below.
+
+
+Final clarified mapping acceptance (2026-11-13): local native camera, middle-pan
+atom/background pointer displacement, disabled-coordinate-drag gate, manipulation,
+smooth interaction, ligand selection/rigid drag, fragment rotation and 50-switch
+document-workspace checks PASS. Pan retains orientation, zoom, selection and all
+coordinates; Control-right coordinate translation remains gated by Drag.
+Both installed executable SHA-256 values match the local release:
+9b79ad5ff8f397a1e09dd4fb59601315c0f8118749ec9a15efa1e00af4bf0f30.
+Local relocated package/SDK and both negative controls also PASS.
+
+Hosted implementation commit 712ae9d passed all six platform/scientific jobs in
+run 43456073106, including genuine native XCTest and the Windows/Linux/Mac
+portable/browser/coverage checks. Its release gate caught the forgotten portable
+CLI version declaration; that declaration is now 0.13.10 and the local docs gate,
+CLI --version and all six CLI regressions PASS. Final revision gate outcomes are
+recorded in PR23; no earlier failed aggregate is relabeled as passed.
+
+Independently downloaded arm64 artifact 14053684779 (implementation 712ae9d),
+SHA-256 d27f5baa24df9ecd6b2fa4963a7ae17c315c57fadce88cc54d8c8d26a2e13c25,
+passed relocated-resource/SDK gates with negative controls and physical-native
+camera/pan/disabled-drag, manipulation and general launch/open/Metal acceptance.
+Evidence: /private/tmp/chemviewer-middle-pan-ci/evidence and
+/private/tmp/chemviewer-middle-pan-0.13.10. The specialized ligand test's first
+run timed out; its final retry passed. Optional OS full-window capture remains
+unavailable; Metal captures pass. No full Chemcraft parity is claimed.

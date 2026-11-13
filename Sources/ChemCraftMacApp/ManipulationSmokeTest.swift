@@ -33,17 +33,17 @@ enum ManipulationSmokeTest {
                   let root = window.contentView, let view = find(MolecularMTKView.self, in: root), let original = workspace.currentFrame else { throw CocoaError(.coderReadCorrupt) }
             window.setContentSize(NSSize(width: 1100, height: 760))
             try await wait()
-            func event(_ type: NSEvent.EventType, _ point: CGPoint) -> NSEvent {
-                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+            func event(_ type: NSEvent.EventType, _ point: CGPoint, flags: NSEvent.ModifierFlags = []) -> NSEvent {
+                NSEvent.mouseEvent(with: type, location: view.convert(point, to: nil), modifierFlags: flags, timestamp: 0,
                     windowNumber: window.windowNumber, context: nil, eventNumber: 1, clickCount: 1, pressure: 1)!
             }
             func drag(_ seed: Int, _ dx: CGFloat, _ dy: CGFloat) async throws {
                 guard let p = view.projectedAtomPoint(seed) else { throw CocoaError(.coderReadCorrupt) }
-                let q = CGPoint(x: p.x + dx, y: p.y + dy)
-                view.mouseDown(with: event(.leftMouseDown, p))
-                view.mouseDragged(with: event(.leftMouseDragged, q))
-                view.mouseDragged(with: event(.leftMouseDragged, CGPoint(x: q.x + dx, y: q.y + dy)))
-                view.mouseUp(with: event(.leftMouseUp, CGPoint(x: q.x + dx, y: q.y + dy)))
+                let q = CGPoint(x: p.x + dx, y: p.y + dy), end = CGPoint(x: p.x + 2*dx, y: p.y + 2*dy)
+                view.rightMouseDown(with: event(.rightMouseDown, p, flags: .control))
+                view.rightMouseDragged(with: event(.rightMouseDragged, q, flags: .control))
+                view.rightMouseDragged(with: event(.rightMouseDragged, end, flags: .control))
+                view.rightMouseUp(with: event(.rightMouseUp, end, flags: .control))
                 try await wait()
             }
             func screenshot(_ name: String) async throws {
