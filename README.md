@@ -713,3 +713,9 @@ retain their 0.13.10 mapping.
 Use **Edit → Paste Coordinates…** (⇧⌘V), the clipboard toolbar icon or the Coord
 action. Paste full XYZ or plain `Element X Y Z` rows in Å, then click **Render**.
 The structure opens in a new unsaved tab, preserving existing documents.
+
+## Direct coordinate paste — 0.13.13
+
+Open **Coord**, paste full XYZ or `Element X Y Z` rows in Å directly into the
+text area, and click **Render**. This works in an empty workspace, without a
+menu or dialog. The existing coordinate table remains below the paste area.

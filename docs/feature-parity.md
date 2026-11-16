@@ -699,3 +699,13 @@ this adds a bounded clipboard workflow and does not establish full format parity
 Local 60 core/three migrated suites, UUID-isolated native text/Render/Metal and
 original edited-tab preservation pass (2026-11-16). Hosted XCTest/downloaded
 artifact and broad manual clipboard ergonomics remain pending.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.

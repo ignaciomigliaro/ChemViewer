@@ -359,9 +359,11 @@ retain their 0.13.10 mapping.
 
 ## Paste a structure
 
-Choose **Edit → Paste Coordinates…** (⇧⌘V) or the clipboard toolbar icon.
-Paste either complete XYZ text (atom count, comment line, then atom rows) or
-plain `Element X Y Z` rows. Coordinates are interpreted in Å. Click **Render**
-to open a new unsaved document tab. Existing documents remain available.
-Full XYZ can contain multiple frames. Use **Save Project** or **Export XYZ**
-to keep the result. Invalid input displays an error in the dialog.
+Open the **Coord** tab, click the **Paste coordinates here (⌘V)** text area,
+and paste your coordinates. Click **Render** to display the molecule in a new
+unsaved document tab. This also works before opening any file.
+
+Use complete XYZ text (atom count, comment line, then atom rows) or plain
+`Element X Y Z` rows in Å. Full XYZ may contain multiple frames. Existing
+per-atom coordinate fields remain below the paste area. Invalid input displays
+an inline error. Save Project or Export XYZ keeps the result.

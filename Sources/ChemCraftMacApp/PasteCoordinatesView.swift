@@ -5,12 +5,13 @@ import SwiftUI
 struct PasteCoordinatesView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
+    var embedded = false
     @State private var text = ""
     @State private var error: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Paste coordinates").font(.title2.bold())
+            Text(embedded ? "Paste coordinates here (⌘V)" : "Paste coordinates").font(.title2.bold())
             Text("Paste a complete XYZ (atom count, comment, coordinates), or Element X Y Z rows. Coordinates are in Å. Render opens a new document tab.")
             TextEditor(text: $text).font(.system(.body, design: .monospaced))
                 .border(Color.secondary.opacity(0.4))
@@ -22,7 +23,7 @@ struct PasteCoordinatesView: View {
                     else { error = "The clipboard contains no text." }
                 }
                 Spacer()
-                Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction)
+                if !embedded { Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
                 GeometryEditButton(title: "Render", id: "render-pasted-coordinates", keyEquivalent: "\r") {
                     do {
                         let parsed = try PastedCoordinates.parse(text)
@@ -33,6 +34,7 @@ struct PasteCoordinatesView: View {
                     .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("render-pasted-coordinates")
             }
-        }.padding().frame(width: 680, height: 470)
+        }.padding()
+            .frame(minWidth: 650, minHeight: embedded ? 220 : 470)
     }
 }

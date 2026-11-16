@@ -946,3 +946,26 @@ Final packaged general launch/open/Metal/XYZ-export/Undo/five-tab/negative-mode
 regression PASS. Both /Applications/ChemViewer.app and the existing
 ~/Applications/ChemViewer.app were refreshed with install-macos.sh --no-build;
 running user work was not closed. Quit and reopen to use 0.13.12.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+0.13.13 local validation (2026-11-16, arm64 macOS27.2, Swift6.4.2/SDK26.5):
+60 standalone core regressions and three migrated suites PASS. UUID-isolated
+native acceptance PASS for direct paste in empty/loaded Coord tabs, no dialog,
+inline invalid refusal, exact fixture coordinates, retained original edits/Undo,
+new dirty tab/source and Metal PNG. General packaged opening/export/Undo/five-tab/
+negative-mode regression and relocated resource/SDK checks with both negative
+controls PASS. Evidence: /private/tmp/chemviewer-coord-direct-paste and
+/private/tmp/chemviewer-coord-direct-general; fixture/hash unchanged from 0.13.12.
+Both installed copies refreshed without closing user work; executable SHA-256:
+166225b80f59dd44fabca84db07346815141624e28a865504fb349c09aad35fa.
+Full XCTest remains unavailable under local CLT; hosted CI/downloaded artifact
+and broad manual clipboard/external-display acceptance remain pending.

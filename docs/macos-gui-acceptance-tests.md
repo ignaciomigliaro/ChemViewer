@@ -816,3 +816,20 @@ Automated physical-Mac subset:
 `python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test paste-coordinates --evidence /private/tmp/chemviewer-paste-evidence`.
 This uses a UUID-isolated app and actual text/Render controls; broad manual
 clipboard ergonomics and external-display coverage remain separate.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+CV-PASTE-003: With no file open, select Coord and paste directly into its text
+area using Command-V, then Render. Repeat from a loaded edited document. No
+sheet should open. Test invalid input inline; verify the existing table below
+remains editable and original document edits/Undo survive the new rendered tab.
+The UUID-isolated paste smoke now exercises empty and loaded Coord directly
+and passed locally on 2026-11-16.

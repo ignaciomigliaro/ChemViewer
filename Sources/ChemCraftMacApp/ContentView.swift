@@ -217,10 +217,13 @@ struct ContentView: View {
         case "Abstract": abstractPanel
         case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)
         case "Coord":
-            if let frame = workspace.currentFrame {
-                CoordinateEditorView(frame: frame, embedded: true) { workspace.replaceCurrentAtoms($0) }
-                    .id("\(workspace.frameIndex)-\(workspace.geometryRevision)")
-            } else { Text("Open a structure to edit coordinates.").frame(maxWidth: .infinity, maxHeight: .infinity) }
+            VSplitView {
+                PasteCoordinatesView(embedded: true)
+                if let frame = workspace.currentFrame {
+                    CoordinateEditorView(frame: frame, embedded: true) { workspace.replaceCurrentAtoms($0) }
+                        .id("\(workspace.frameIndex)-\(workspace.geometryRevision)")
+                }
+            }
         case "Image/Abs":
             HSplitView { mainPanel; abstractPanel.frame(minWidth: 280, idealWidth: 340) }
         default: mainPanel

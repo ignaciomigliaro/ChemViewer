@@ -963,3 +963,13 @@ reservation is bounded by available lines so a corrupt count cannot reserve an
 unbounded atom array. The native paste sheet uses ordinary text editing and an
 explicit clipboard read; Render validates before creating a separate unsaved
 DocumentTabs workspace. Original tabs, edits and clipboard contents are retained.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
