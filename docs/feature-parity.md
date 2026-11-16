@@ -687,3 +687,15 @@ Local native number-field/fragment/bond controls, drag auto-bond on/off, Undo,
 project save, ligand and retained camera/editing workflows PASS. Core runner58
 and independent Python Cartesian oracle PASS. Hosted/downloaded gate outcomes
 are tracked in the release PR; see scientific-validation.md for bounded evidence.
+
+## Paste coordinates — 0.13.12
+
+Native Edit → Paste Coordinates… (Command-Shift-V), toolbar clipboard icon and
+Coord action open a text sheet. Full XYZ trajectories or Element X Y Z rows in Å
+render in a new unsaved tab. Malformed input reports an error without changing
+existing documents. Core numeric and isolated native acceptance are provided;
+this adds a bounded clipboard workflow and does not establish full format parity.
+
+Local 60 core/three migrated suites, UUID-isolated native text/Render/Metal and
+original edited-tab preservation pass (2026-11-16). Hosted XCTest/downloaded
+artifact and broad manual clipboard ergonomics remain pending.

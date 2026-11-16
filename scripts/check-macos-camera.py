@@ -8,10 +8,11 @@ import tempfile
 import os
 import signal
 import uuid
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--app', type=Path, required=True)
-parser.add_argument('--test', choices=['internal-coordinate', 'camera', 'ligand-selection', 'smooth', 'animation', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
+parser.add_argument('--test', choices=['paste-coordinates', 'internal-coordinate', 'camera', 'ligand-selection', 'smooth', 'animation', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
 parser.add_argument('--capture-window', action='store_true')
 parser.add_argument('--evidence', type=Path, required=True)
 args = parser.parse_args()
@@ -37,6 +38,13 @@ with tempfile.TemporaryDirectory(prefix='chemviewer camera isolated ') as folder
         '--internal-coordinate-fixture', str(Path('Tests/fixtures/integrated-building/synthetic-internal-coordinates.cvproject').resolve()), *(['--capture-window'] if args.capture_window else []),
         '-ApplePersistenceIgnoreState', 'YES'])
     try:
+        # A fresh singleton Window may await a reopen event after restoration.
+        # Target only this owned, UUID-identified bundle, never the installed app.
+        for _ in range(100):
+            if error_log.stat().st_size or process.poll() is not None:
+                break
+            time.sleep(0.1)
+        subprocess.run(['open', '-a', str(app)], check=True)
         code = process.wait(timeout=240)
     finally:
         if process.poll() is None:

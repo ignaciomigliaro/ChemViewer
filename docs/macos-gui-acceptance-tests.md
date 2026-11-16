@@ -799,3 +799,20 @@ Reproduce isolated native acceptance with:
 ```bash
 python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test internal-coordinate --evidence /private/tmp/chemviewer-internal-coordinate-evidence
 ```
+
+## Paste coordinates — 0.13.12
+
+CV-PASTE-001: Open Edit → Paste Coordinates… / Command-Shift-V or the toolbar
+clipboard icon. Paste Element X Y Z rows in Å and Render. Verify a new dirty tab,
+correct atom identities/coordinates, bonds and visible molecule. Repeat with
+a complete multi-frame XYZ including a blank comment line, then export XYZ.
+CV-PASTE-002: Keep an edited document open. Submit invalid rows, unknown symbols,
+NaN and truncated XYZ: error stays in the sheet, no tab created and original
+coordinates/Undo remain. Cancel changes nothing. Render valid input and switch
+back to confirm existing edits. Test normal Command-V in the text editor and
+Paste from Clipboard; clipboard contents must not change.
+
+Automated physical-Mac subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test paste-coordinates --evidence /private/tmp/chemviewer-paste-evidence`.
+This uses a UUID-isolated app and actual text/Render controls; broad manual
+clipboard ergonomics and external-display coverage remain separate.

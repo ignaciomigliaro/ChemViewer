@@ -911,3 +911,38 @@ SHA-256: 8d3505f9757528a6170828116fd90abeaa43f1d02eb1dd66b779e990f536e4e0.
 Evidence: /private/tmp/chemviewer-internal-coordinates-0.13.11 and
 /private/tmp/chemviewer-fragment-edit-build.log. Hosted/downloaded/release
 outcomes will be recorded in the release PR. No full Chemcraft parity is claimed.
+
+## Paste coordinates — 0.13.12
+
+Two core regressions exercise exact Cartesian vectors using binary-exact scalar
+values (0, ±0.75, 0.5, −0.25), case/atomic-number normalization, CRLF, full XYZ
+trajectory comments/energy retention, and refusal of malformed, unknown-element,
+nonfinite, empty and corrupt-count input. No coordinate conversion is applied.
+Native `--paste-coordinates-smoke-test` enters text in the real sheet and invokes
+Render, checks invalid refusal, exact coordinates, source retention, dirty state,
+original edited-tab preservation and live Metal PNG output. Execution outcomes
+are recorded in the handoff; hosted XCTest is a separate gate.
+
+Local validation (2026-11-16, arm64 macOS27.2/Swift6.4.2, SDK26.5): 60 standalone
+core regressions and three migrated suites PASS; full swift test attempted and
+blocked by missing XCTest under CLT (not a passing XCTest run). Signed arm64
+build and relocated resource/SDK gates with both negative controls PASS.
+Final UUID-isolated native paste acceptance PASS: real text editor/Render,
+invalid refusal, exact scalar Cartesian oracle, original edited tab/Undo retained,
+new dirty tab/source, live Metal projection and visually inspected PNG. Native
+internal-coordinate regression also PASS. The initial test timed out because its
+singleton window awaited a reopen event; the harness now sends that event only
+to its owned UUID app. Test setup/control lookup failures were corrected before
+the passing final run; they are not relabeled as passes.
+Fixture: Tests/fixtures/pasted-coordinates.txt (synthetic, unoptimized); SHA-256
+dd1fe89a85a24b7d46013bd269cc5a03a1b3c183d24051dc4bf55c52de97be75.
+Evidence: /private/tmp/chemviewer-paste-evidence-validated and
+/private/tmp/chemviewer-paste-internal-regression. Final local executable SHA-256:
+6d51a6c12bf5f30994fce5233bcc1ab5f35eb5fdcc0717e941833bf66e7a4b15.
+Hosted XCTest/coverage, independently downloaded artifact and broad manual
+clipboard/external-display acceptance remain separate and pending.
+
+Final packaged general launch/open/Metal/XYZ-export/Undo/five-tab/negative-mode
+regression PASS. Both /Applications/ChemViewer.app and the existing
+~/Applications/ChemViewer.app were refreshed with install-macos.sh --no-build;
+running user work was not closed. Quit and reopen to use 0.13.12.

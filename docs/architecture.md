@@ -951,3 +951,15 @@ snapshot, invalidates stale energies and renders explicit connectivity. Drag
 preview remains local to Metal; optional new-contact inference runs once at
 release against the gesture's original coordinates, retaining pre-existing manual
 deletions. Explicit Generate merges all present geometric contacts instead.
+
+## Pasted Cartesian coordinates — 0.13.12
+
+`PastedCoordinates` in ChemCraftCore validates full XYZ trajectories or headerless
+Element X Y Z rows in angstrom, normalizes element symbols/atomic numbers and
+rejects nonfinite coordinates, unknown elements and empty frames. Full XYZ keeps
+comment/energy/frame semantics. Headerless rows require exactly four fields.
+Input is bounded to 10 MB, 10,000 atoms/frame and 500,000 atoms total. XYZ parser
+reservation is bounded by available lines so a corrupt count cannot reserve an
+unbounded atom array. The native paste sheet uses ordinary text editing and an
+explicit clipboard read; Render validates before creating a separate unsaved
+DocumentTabs workspace. Original tabs, edits and clipboard contents are retained.

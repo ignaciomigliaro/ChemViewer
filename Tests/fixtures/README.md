@@ -11,3 +11,9 @@ path and SHA-256; they are not copied into the clean-room source tree.
 | `dihedral.xyz` | Four-atom selection and signed dihedral convention | `2c8cf8aaac94de44aff27431ec554814804ef06756acc291cfadf4c99b5e4e14` |
 
 These small geometries were authored for this project and may be committed.
+
+`pasted-coordinates.txt` is an independently authored, headerless Cartesian
+rendering seed, not an optimized geometry. SHA-256:
+`dd1fe89a85a24b7d46013bd269cc5a03a1b3c183d24051dc4bf55c52de97be75`.
+The native paste smoke enters these same literal rows. Its independent oracle is
+O=(0,0,0), H=(0.75,0.5,−0.25), H=(−0.75,0.5,−0.25) Å.

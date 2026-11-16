@@ -23,7 +23,7 @@ public enum XYZParser {
             let comment = lines[cursor]
             cursor += 1
             var atoms: [Atom] = []
-            atoms.reserveCapacity(atomCount)
+            atoms.reserveCapacity(min(atomCount, lines.count - cursor))
 
             for atomIndex in 0..<atomCount {
                 guard cursor < lines.count else {

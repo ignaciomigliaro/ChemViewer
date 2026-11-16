@@ -60,6 +60,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--paste-coordinates-smoke-test") { await Task { @MainActor in await PasteCoordinatesSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--internal-coordinate-smoke-test") { await Task { @MainActor in await InternalCoordinateSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--camera-smoke-test") { await Task { @MainActor in await CameraSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--file-open-smoke-test") { await Task { @MainActor in await FileOpenSmokeTest.run(workspace: workspace) }.value }
@@ -122,6 +123,7 @@ struct ContentView: View {
         } message: {
             Text(workspace.errorMessage ?? "Unknown error")
         }
+        .sheet(isPresented: $workspace.isPasteCoordinatesPresented) { PasteCoordinatesView() }
         .sheet(isPresented: $remote.presented) { RemoteConnectionView().environmentObject(workspace) }
         .sheet(isPresented: $workspace.isPeriodicTablePresented) { PeriodicTableView() }
         .sheet(isPresented: $workspace.isFragmentLibraryPresented) { FragmentBrowserView() }
@@ -156,6 +158,7 @@ struct ContentView: View {
     private var classicToolbar: some View {
         HStack(spacing: 5) {
             tool("Open chemistry file", "folder") { workspace.isImporterPresented = true }
+            tool("Paste Coordinates…", "doc.on.clipboard") { workspace.isPasteCoordinatesPresented = true }
             tool("Export PNG image", "camera") {
                 workspace.activeTab = "Image"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { viewportAction("export") }

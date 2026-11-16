@@ -707,3 +707,9 @@ interconnected branches that cannot separate rigidly are refused without edits.
 Numeric editing is an explicit action; the Drag toggle continues to gate only
 coordinate dragging. Camera/right-drag, middle-button pan and left selection
 retain their 0.13.10 mapping.
+
+## Paste coordinates — 0.13.12
+
+Use **Edit → Paste Coordinates…** (⇧⌘V), the clipboard toolbar icon or the Coord
+action. Paste full XYZ or plain `Element X Y Z` rows in Å, then click **Render**.
+The structure opens in a new unsaved tab, preserving existing documents.

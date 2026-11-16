@@ -356,3 +356,12 @@ interconnected branches that cannot separate rigidly are refused without edits.
 Numeric editing is an explicit action; the Drag toggle continues to gate only
 coordinate dragging. Camera/right-drag, middle-button pan and left selection
 retain their 0.13.10 mapping.
+
+## Paste a structure
+
+Choose **Edit → Paste Coordinates…** (⇧⌘V) or the clipboard toolbar icon.
+Paste either complete XYZ text (atom count, comment line, then atom rows) or
+plain `Element X Y Z` rows. Coordinates are interpreted in Å. Click **Render**
+to open a new unsaved document tab. Existing documents remain available.
+Full XYZ can contain multiple frames. Use **Save Project** or **Export XYZ**
+to keep the result. Invalid input displays an error in the dialog.

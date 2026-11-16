@@ -3,6 +3,7 @@ import ChemCraftCore
 import SwiftUI
 
 struct CoordinateEditorView: View {
+    @EnvironmentObject private var workspace: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
     @State private var atoms: [Atom]
     private let embedded: Bool
@@ -60,6 +61,7 @@ struct CoordinateEditorView: View {
                 Text("Enter a valid element symbol or atomic number in each row.").font(.caption).foregroundStyle(.red)
             }
             HStack {
+                Button("Paste Coordinates…") { workspace.isPasteCoordinatesPresented = true }
                 Button("Copy coordinates") { _ = ClipboardSupport.copy(ClipboardSupport.coordinates(normalizedAtoms)) }.disabled(!elementsValid)
                 Button("Copy XYZ") { _ = ClipboardSupport.copy(XYZWriter.string(frame: MoleculeFrame(id: 0, atoms: normalizedAtoms, comment: "Cartesian coordinates"))) }
                 .disabled(!elementsValid)
