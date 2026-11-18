@@ -719,3 +719,9 @@ The structure opens in a new unsaved tab, preserving existing documents.
 Open **Coord**, paste full XYZ or `Element X Y Z` rows in Å directly into the
 text area, and click **Render**. This works in an empty workspace, without a
 menu or dialog. The existing coordinate table remains below the paste area.
+
+
+Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
+with the **H** button or Display menu. Selected H atoms and their bonds remain
+visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
+back on to show all. This also applies to exported images and animations (0.13.14).

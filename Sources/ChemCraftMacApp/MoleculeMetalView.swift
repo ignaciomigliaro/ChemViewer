@@ -163,6 +163,14 @@ struct RenderScene {
     var vibrationSpeed: Float = 0.48
     var geometryID: Int = 0
     var vibrationPlayback: VibrationPlayback? = nil
+
+    // Export renderers clear selection highlighting but preserve its H visibility.
+    var preservedHydrogenIndices: [Int] = []
+
+    /// Selection keeps reaction hydrogens visible with the global H display off.
+    func isAtomVisible(_ index: Int) -> Bool {
+        atoms.indices.contains(index) && (showHydrogens || atoms[index].element != "H" || selectedAtomIndices.contains(index) || preservedHydrogenIndices.contains(index))
+    }
 }
 
 private struct MetalVertex {
@@ -515,7 +523,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         var atomInstances: [MetalInstance] = []
         atomInstances.reserveCapacity(scene.atoms.count)
         let selected = Set(scene.selectedAtomIndices)
-        for (index, atom) in scene.atoms.enumerated() where scene.showHydrogens || atom.element != "H" {
+        for (index, atom) in scene.atoms.enumerated() where scene.isAtomVisible(index) {
             let base = ElementTable.color(for: atom.element)
             // xyzrender paton-inspired pale C/H/N palette; all source atoms stay visible.
             var color = SIMD4<Float>(base.0, base.1, base.2, 1)
@@ -535,7 +543,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         var bondInstances: [MetalInstance] = []
         let bondColor = (scene.style == .publication || scene.style == .paton) ? SIMD4<Float>(0.008, 0.008, 0.008, 1) : SIMD4<Float>(0.08, 0.08, 0.08, 1)
         for bond in scene.bonds where scene.style != .spaceFilling && positions.indices.contains(bond.first) && positions.indices.contains(bond.second) {
-            if !scene.showHydrogens && (scene.atoms[bond.first].element == "H" || scene.atoms[bond.second].element == "H") { continue }
+            if !scene.isAtomVisible(bond.first) || !scene.isAtomVisible(bond.second) { continue }
             var color = bondColor; color.w = 0
             appendCylinderInstance(from: positions[bond.first], to: positions[bond.second], radius: scene.style == .paton ? 0.07894737 : 0.085, color: color, into: &bondInstances)
         }
@@ -543,7 +551,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             // Instance alpha is the Paton whitening mask, not transparency. A value of 1
             // turns arrows white; keep it zero and use saturated dark violet.
             let vectorColor = SIMD4<Float>(0.12, 0.015, 0.32, 0)
-            for index in scene.atoms.indices where scene.displacements.indices.contains(index) && (scene.showHydrogens || scene.atoms[index].element != "H") {
+            for index in scene.atoms.indices where scene.displacements.indices.contains(index) && scene.isAtomVisible(index) {
                 let origin = SIMD3(
                     scene.atoms[index].position.x,
                     scene.atoms[index].position.y,
@@ -594,6 +602,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         renderer.scene = scene
         renderer.measurementOffsets = measurementOffsets
         renderer.scene.animate = false
+        renderer.scene.preservedHydrogenIndices = Array(Set(scene.preservedHydrogenIndices + scene.selectedAtomIndices.filter { scene.atoms.indices.contains($0) && scene.atoms[$0].element == "H" }))
         renderer.scene.selectedAtomIndices = []
         renderer.scene.showDisplacementVectors = false
         renderer.yaw = yaw; renderer.pitch = pitch; renderer.roll = roll; renderer.orbit = orbit
@@ -695,7 +704,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         guard scene.atomCaption != .none else { return [] }
         let mvp = makeMVP(size: size)
         return scene.atoms.enumerated().compactMap { index, atom in
-            guard positions.indices.contains(index), scene.showHydrogens || atom.element != "H" else { return nil }
+            guard positions.indices.contains(index), scene.isAtomVisible(index) else { return nil }
             let clip = mvp * SIMD4(positions[index], 1)
             guard abs(clip.w) > 0.000001 else { return nil }
             return AtomCaptionAnnotation(point: CGPoint(x: CGFloat(clip.x / clip.w + 1) * size.width / 2, y: CGFloat(clip.y / clip.w + 1) * size.height / 2), label: scene.atomCaption.label(element: atom.element, index: index))
@@ -1049,7 +1058,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         for bond in scene.bonds {
             guard projected.indices.contains(bond.first), projected.indices.contains(bond.second),
                   let a = projected[bond.first], let b = projected[bond.second],
-                  scene.showHydrogens || (scene.atoms[bond.first].element != "H" && scene.atoms[bond.second].element != "H") else { continue }
+                  scene.isAtomVisible(bond.first) && scene.isAtomVisible(bond.second) else { continue }
             let dx = b.x-a.x, dy = b.y-a.y, length = dx*dx+dy*dy
             guard length > 1 else { continue }
             let t = max(0, min(1, ((point.x-a.x)*dx+(point.y-a.y)*dy)/length))
@@ -1063,7 +1072,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         let mvp = makeMVP()
         var best: (index: Int, depth: Float)?
         for (index, position) in displacedPositions().enumerated() {
-            if !scene.showHydrogens && scene.atoms[index].element == "H" { continue }
+            if !scene.isAtomVisible(index) { continue }
             let clip = mvp * SIMD4(position.x, position.y, position.z, 1)
             guard abs(clip.w) > 1e-7 else { continue }
             let ndc = clip / clip.w

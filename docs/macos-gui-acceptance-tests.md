@@ -833,3 +833,17 @@ sheet should open. Test invalid input inline; verify the existing table below
 remains editable and original document edits/Undo survive the new rendered tab.
 The UUID-isolated paste smoke now exercises empty and loaded Coord directly
 and passed locally on 2026-11-16.
+
+
+## Selected hydrogen visibility — 0.13.14
+
+CV-HYDROGEN-001: Select a reaction H, then turn off Hydrogens using H or Display.
+Only selected H atoms remain, with bonds, labels and displacement arrows. Select
+several H atoms and a heavy atom; all selected H atoms stay visible. Deselect an
+H: it disappears. Clear selection: all H atoms hide. Turn Hydrogens on: all return.
+Hidden H atoms and their bonds must not be clickable; visible H atoms and bonds
+remain clickable. Export PNG/GIF and verify the same visibility. Confirm source
+coordinates and connectivity are unchanged.
+
+Reproduce the isolated native subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test hydrogen-visibility --evidence /private/tmp/chemviewer-hydrogen-0.13.14`.

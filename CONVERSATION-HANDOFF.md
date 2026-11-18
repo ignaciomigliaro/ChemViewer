@@ -1713,3 +1713,42 @@ Both installed copies refreshed without closing user work; executable SHA-256:
 166225b80f59dd44fabca84db07346815141624e28a865504fb349c09aad35fa.
 Full XCTest remains unavailable under local CLT; hosted CI/downloaded artifact
 and broad manual clipboard/external-display acceptance remain pending.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+GIF renderers preserve the selected H visibility separately when clearing orange
+selection highlighting, including the second renderer used for style refitting.
+The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+Local acceptance (2026-11-18, arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5):
+60 standalone core regressions and three migrated suites PASS. The isolated native
+hydrogen-visibility test PASS, including actual mouse deselection, bond picking,
+caption counts, two-stage GIF renderer retention and Metal export. Captured PNG
+visually verified: O and the selected H/bond only. General packaged opening,
+export, Undo, selection, source, five tabs, depth, negative-mode and animation
+regression PASS. Relocated resource/SDK checks and both negative controls PASS.
+Full swift test attempted: blocked by missing XCTest under CLT. Initial default
+SDK27.2 build failed on its documented missing SwiftUIMacros; final compatible
+SDK26.5 build passed. Hosted CI/downloaded artifact and broader manual acceptance
+remain separate; no full Chemcraft parity claimed.
+Evidence: /private/tmp/chemviewer-hydrogen-0.13.14,
+/private/tmp/chemviewer-hydrogen-general-0.13.14,
+/private/tmp/chemviewer-hydrogen-build.log. Executable SHA-256:
+ec652228cf4431f28ad4405dd87eef6438f8f0b056865d39e02fbb67fb7f9d36.
+Both installed app copies refreshed using install-macos.sh --no-build without
+closing user work. Quit and reopen /Applications/ChemViewer.app to use 0.13.14.

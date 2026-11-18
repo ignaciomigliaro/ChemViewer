@@ -64,7 +64,7 @@ import ChemCraftCore
             view.draw(); try await pause()
             try check(view.renderingReady && view.scene.style == .paton, "Paton renderer not retained")
             try check(view.scene.showHydrogens == false && view.scene.atomCaption == .elementNumbers && !view.measurementOverlay.captions.isEmpty, "Captions or H visibility not connected")
-            try check(view.measurementOverlay.captions.count == project.atoms.filter { $0.element != "H" }.count, "Hidden H captions visible")
+            try check(view.measurementOverlay.captions.count == project.atoms.indices.filter { project.atoms[$0].element != "H" || project.selection.contains($0) }.count, "Hidden H captions visible")
             workspace.showHydrogens = true; workspace.atomCaption = .none
             let evidence = URL(fileURLWithPath: "/Users/nacho/Downloads/chemviewer-merge-work")
             try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
