@@ -847,3 +847,21 @@ coordinates and connectivity are unchanged.
 
 Reproduce the isolated native subset:
 `python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test hydrogen-visibility --evidence /private/tmp/chemviewer-hydrogen-0.13.14`.
+
+## Viewport activation — 0.13.15
+
+CV-FOCUS-001: Open water.xyz, rotate and select two atoms. Switch to another
+app with Command-Tab, cover ChemViewer, then return. Right-drag must rotate,
+scroll must zoom and selection must respond immediately. Repeat after minimize /
+restore and a prolonged background period. Camera and selection must survive.
+CV-FOCUS-002: Repeat with a playing normal mode and after switching document
+tabs. Verify animation resumes drawing and geometry edits/Undo remain intact.
+Run in a disposable copy; never close or modify the user's live calculations.
+
+Automated subset: `python3 scripts/check-macos-camera.py --app
+dist/ChemViewer.app --test viewport-activation --evidence
+/private/tmp/chemviewer-focus-fixed` (one line). It checks completed GPU frames
+following lifecycle notifications, preserved scientific/camera state, camera
+response, continuous rendering and dismantled-renderer isolation. Notification
+injection alone does not establish reproduction of the original intermittent
+freeze or long-background/external-display acceptance.

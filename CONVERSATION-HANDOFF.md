@@ -1752,3 +1752,41 @@ Evidence: /private/tmp/chemviewer-hydrogen-0.13.14,
 ec652228cf4431f28ad4405dd87eef6438f8f0b056865d39e02fbb67fb7f9d36.
 Both installed app copies refreshed using install-macos.sh --no-build without
 closing user work. Quit and reopen /Applications/ChemViewer.app to use 0.13.14.
+
+## Viewport activation recovery — 0.13.15 (2026-11-20)
+
+User reports that only the molecule freezes after leaving and returning to the
+app; menus/tabs continue responding. Read-only sample of installed 0.13.14
+PID 50886 showed an idle AppKit event loop, no main-thread deadlock. Sample:
+/private/tmp/chemviewer-focus-before.sample.txt. A short isolated Command-Tab
+roundtrip with original synthetic water did not reproduce the intermittent
+freeze. Missing activation recovery is confirmed; the original freeze's precise
+trigger remains unproven. Avoid presenting this as a fully reproduced root cause.
+
+Static Metal scenes have a paused display timer and relied on setNeedsDisplay.
+The new app/window activation, occlusion and deminiaturization observers coalesce
+a deferred refresh, release size-dependent targets and explicitly submit a frame.
+Camera, coordinates, selection and animation mode are retained. Dismantling
+removes observers and callbacks check resources before requesting drawables.
+
+Native regression fails against previous renderer: No new GPU frame after
+NSApplicationDidBecomeActiveNotification. Fixed regression PASS for four lifecycle
+notifications, exact atom/selection/camera preservation, subsequent camera
+rotation, continuous drawing and released-renderer isolation. The test injects
+notifications; prolonged background, full minimize/restore and external-display
+manual acceptance remain pending. Reproduce with scripts/check-macos-camera.py
+--app dist/ChemViewer.app --test viewport-activation --evidence /private/tmp/focus.
+
+Local arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5 build PASS. Standalone 60 core
+cases plus three migrated building suites PASS. Full swift test attempted with
+compatible SDK: blocked by missing XCTest under CLT (not a pass). Camera 32-case
+native regression, 50 document switches, general Metal/open/export/Undo/selection/
+source/five-tab/negative-mode animation acceptance PASS. Relocated package, SDK
+and missing-resource negative controls PASS. Hosted CI/downloaded artifact
+validation remains separate. Evidence: /private/tmp/chemviewer-focus-baseline,
+/private/tmp/chemviewer-focus-fixed, /private/tmp/chemviewer-focus-camera,
+/private/tmp/chemviewer-focus-document-workspace, /private/tmp/chemviewer-focus-smoke;
+build log /private/tmp/chemviewer-focus-fixed-build.log; XCTest log
+/private/tmp/chemviewer-focus-xctest.log. Executable SHA-256:
+cf60180b54085797adb74e8bad69e6f2997fdc329d2a7ec7fdd9ee108bfe791f.
+User changes in AGENTS.md, .vscode and Tests/geometry.xyz remain excluded.

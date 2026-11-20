@@ -1008,3 +1008,14 @@ Evidence: /private/tmp/chemviewer-hydrogen-0.13.14,
 ec652228cf4431f28ad4405dd87eef6438f8f0b056865d39e02fbb67fb7f9d36.
 Both installed app copies refreshed using install-macos.sh --no-build without
 closing user work. Quit and reopen /Applications/ChemViewer.app to use 0.13.14.
+
+## Viewport activation recovery — 0.13.15
+
+This change affects AppKit/Metal lifecycle only. The native regression uses
+original synthetic O/H/H Cartesian rows and checks exact atom and selection
+preservation plus unchanged projection/camera across activation notifications.
+Completed GPU frames, subsequent camera response and continued animated drawing
+are separate assertions. The regression fails on the unpatched renderer at
+NSApplicationDidBecomeActiveNotification. No parser, units, energies or
+normal-mode mathematics changed. Original intermittent-freeze reproduction
+remains unconfirmed; see CONVERSATION-HANDOFF.md for executed checks.

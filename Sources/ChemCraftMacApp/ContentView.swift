@@ -60,6 +60,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--viewport-activation-smoke-test") { await ViewportActivationSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--hydrogen-visibility-smoke-test") { await HydrogenVisibilitySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--paste-coordinates-smoke-test") { await Task { @MainActor in await PasteCoordinatesSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--internal-coordinate-smoke-test") { await Task { @MainActor in await InternalCoordinateSmokeTest.run(workspace: workspace) }.value }

@@ -730,3 +730,16 @@ the installed Command Line Tools cannot supply XCTest.
 Tested locally on 2026-11-18: native hydrogen selection/deselection, visible/hidden
 bond picking, captions and Metal export; general packaged regression passed.
 Evidence and remaining XCTest/hosted/manual limits are recorded in the handoff.
+
+## Viewport activation recovery — 0.13.15 (2026-11-20)
+
+Implemented an explicit Metal refresh after app activation, window uncovering,
+key-window return and restore from minimize. Static molecules previously relied
+on an on-demand invalidation with no activation recovery. The reported symptom
+is a frozen molecule while menus/tabs respond. A sample of the user's 0.13.14
+process showed an idle AppKit event loop, not a main-thread deadlock. A brief
+isolated Command-Tab test did not reproduce the intermittent freeze. The new
+regression failed on the previous renderer because activation submitted no new
+GPU frame. This establishes a recovery gap, not a proven cause for every freeze.
+Validation outcomes follow in the handoff; prolonged background and external
+display checks remain pending.

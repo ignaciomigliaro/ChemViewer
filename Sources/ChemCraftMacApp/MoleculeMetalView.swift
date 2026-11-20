@@ -245,6 +245,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var depthState: MTLDepthStencilState?
     private var captureURL: URL?
     private var cameraObserver: NSObjectProtocol?
+    private var activationObservers: [NSObjectProtocol] = []
+    private var activationRedrawPending = false
     private var center = SIMD3<Float>(repeating: 0)
     private var animationStart = CACurrentMediaTime()
     private var animationElapsed: Double = 0
@@ -343,7 +345,51 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         }
     }
 
-    deinit { if let cameraObserver { NotificationCenter.default.removeObserver(cameraObserver) } }
+    deinit {
+        if let cameraObserver { NotificationCenter.default.removeObserver(cameraObserver) }
+        for observer in activationObservers { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        for observer in activationObservers { NotificationCenter.default.removeObserver(observer) }
+        activationObservers.removeAll()
+        guard let window else { return }
+        let center = NotificationCenter.default
+        activationObservers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: NSApp, queue: .main) { [weak self] _ in
+            self?.requestActivationRedraw()
+        })
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didChangeOcclusionStateNotification,
+                     NSWindow.didDeminiaturizeNotification] {
+            activationObservers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                self?.requestActivationRedraw()
+            })
+        }
+        requestActivationRedraw()
+    }
+
+    private func requestActivationRedraw() {
+        guard !activationRedrawPending else { return }
+        activationRedrawPending = true
+        // AppKit can still be updating the window/layer during activation.
+        // Coalesce notifications and acquire the next drawable on the next turn.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.activationRedrawPending = false
+            guard self.renderingReady, let window = self.window, window.isVisible,
+                  !window.isMiniaturized, window.occlusionState.contains(.visible),
+                  !self.isHiddenOrHasHiddenAncestor else { return }
+            // Static scenes have no display timer to recover a missed redraw.
+            // Refresh the size-dependent targets and explicitly submit one frame;
+            // retain continuous rendering for vibrations and coordinate dragging.
+            self.releaseDrawables()
+            let continuous = self.scene.animate || self.atomDragActive
+            self.enableSetNeedsDisplay = !continuous
+            self.isPaused = !continuous
+            self.setNeedsDisplay(self.bounds)
+            self.draw()
+        }
+    }
 
     func capture(to url: URL) { captureURL = url; draw() }
 
@@ -410,6 +456,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     func releaseDetachedResources() {
+        for observer in activationObservers { NotificationCenter.default.removeObserver(observer) }
+        activationObservers.removeAll()
         delegate = nil; isPaused = true; enableSetNeedsDisplay = false
         scene = RenderScene(atoms: [], bonds: [], displacements: [], amplitude: 0, animate: false, showDisplacementVectors: false, selectedAtomIndices: [])
         sphereMesh = nil; cylinderMesh = nil; commandQueue = nil
@@ -446,7 +494,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     func draw(in view: MTKView) {
-        guard let drawable = currentDrawable,
+        guard renderingReady,
+              let drawable = currentDrawable,
               let pass = currentRenderPassDescriptor,
               let commandBuffer = commandQueue?.makeCommandBuffer(),
               let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass),

@@ -994,3 +994,13 @@ the installed Command Line Tools cannot supply XCTest.
 GIF renderers preserve the selected H visibility separately when clearing orange
 selection highlighting, including the second renderer used for style refitting.
 The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+## Viewport reactivation recovery — 0.13.15
+
+MolecularMTKView observes app activation and its own window's key, occlusion
+and deminiaturization notifications. It coalesces them onto the next main-queue
+turn, refreshes size-dependent render targets and explicitly draws a frame for
+a visible attached renderer. Static scenes retain on-demand rendering; animated
+scenes retain their display loop. Dismantling removes observers, and pending
+callbacks check rendering resources before acquiring a drawable. No scientific
+state or camera reset is involved.
