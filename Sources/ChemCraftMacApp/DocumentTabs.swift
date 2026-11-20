@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ChemCraftCore
 import Foundation
 
 struct RemoteFileOrigin {
@@ -63,6 +64,13 @@ final class DocumentTabs: ObservableObject {
         if let index = files.firstIndex(where: { $0.id == workspace.documentIdentity }) { files[index].url = url; files[index].origin = origin; files[index].identitySuffix = identitySuffix }
         workspace.open(url, externalXYZFiles: companions)
         return workspace
+    }
+    func openPastedCoordinates(_ parsed: ParsedDocument, source: String) {
+        let workspace = WorkspaceStore()
+        attach(workspace)
+        files.append(FileTab(id: workspace.documentIdentity, workspace: workspace))
+        workspace.loadPastedCoordinates(parsed, source: source)
+        activate(workspace.documentIdentity)
     }
     func newMolecule() {
         if activeWorkspace.document != nil || activeWorkspace.isLoading {

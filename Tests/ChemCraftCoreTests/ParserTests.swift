@@ -2,6 +2,24 @@ import XCTest
 @testable import ChemCraftCore
 
 final class ParserTests: XCTestCase {
+    func testPastedCoordinatesPreserveCartesianValues() throws {
+        let raw = "o\t0 0 0\r\nh 0.75 0.5 -0.25\r\n8 -1 2 3\r\n"
+        let parsed = try PastedCoordinates.parse(raw)
+        XCTAssertEqual(parsed.frames[0].atoms.map(\.element), ["O", "H", "O"])
+        XCTAssertEqual(parsed.frames[0].atoms.map(\.position), [Vector3(0,0,0), Vector3(0.75,0.5,-0.25), Vector3(-1,2,3)])
+        XCTAssertTrue(parsed.energyRecords.isEmpty)
+        let trajectory = try PastedCoordinates.parse("1\nE=-1 Eh\nH 0 0 0\n1\n\nH 1 2 3\n")
+        XCTAssertEqual(trajectory.frames.count, 2)
+        XCTAssertEqual(trajectory.frames[0].energyHartree!, -1, accuracy: 1e-12)
+        XCTAssertEqual(trajectory.frames[1].atoms[0].position, Vector3(1,2,3))
+    }
+    func testPastedCoordinatesRejectMalformedInput() {
+        for text in ["", "C 0 0", "Qq 0 0 0", "H nan 0 0", "H inf 0 0", "H 0 0 0 extra", "2\ncomment\nH 0 0 0", "0\nempty\n", "999999999\ncomment\nH 0 0 0"] {
+            do { _ = try PastedCoordinates.parse(text); XCTAssertTrue(false) }
+            catch { /* Invalid paste must never create a partial document. */ }
+        }
+    }
+
     private func internalCoordinateFixture() throws -> (MoleculeFrame, [String: [[Double]]]) {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let data = try Data(contentsOf: root.appendingPathComponent("Tests/fixtures/integrated-building/synthetic-internal-coordinates.cvproject"))

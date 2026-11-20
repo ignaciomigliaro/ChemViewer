@@ -211,6 +211,7 @@ final class WorkspaceStore: ObservableObject {
     @Published var isExporterPresented = false
     @Published var isSpectrumPresented = false
     @Published var isCoordinateEditorPresented = false
+    @Published var isPasteCoordinatesPresented = false
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var showDisplacementVectors = false
@@ -674,6 +675,15 @@ extension WorkspaceStore {
         groupsByFrame = [:]; geometryUndoStacks = [:]; geometryRedoStacks = [:]; editedFrames = []
         calculationFacts = []; modesByFrame = [:]; storedBondAxis = nil; charge = 0; multiplicity = 1
         activeTab = "Image"; isBuilderVisible = false; geometryRevision += 1
+    }
+    func importPastedCoordinates(_ parsed: ParsedDocument, source: String) {
+        if let documents { documents.openPastedCoordinates(parsed, source: source); return }
+        loadPastedCoordinates(parsed, source: source)
+    }
+    func loadPastedCoordinates(_ parsed: ParsedDocument, source: String) {
+        newMolecule()
+        document = parsed; sourceText = source; isVibrating = false
+        frameIndex = 0; activeTab = "Image"
     }
     func buildingProject() throws -> BuildingProject {
         var project = try BuildingProject(atoms: currentFrame?.atoms ?? [], groups: currentGroups, selection: selectedAtomIndices, charge: charge, multiplicity: multiplicity)

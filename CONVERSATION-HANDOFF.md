@@ -1656,3 +1656,137 @@ SHA-256: 8d3505f9757528a6170828116fd90abeaa43f1d02eb1dd66b779e990f536e4e0.
 Evidence: /private/tmp/chemviewer-internal-coordinates-0.13.11 and
 /private/tmp/chemviewer-fragment-edit-build.log. Hosted/downloaded/release
 outcomes will be recorded in the release PR. No full Chemcraft parity is claimed.
+
+## Paste coordinates — 0.13.12 (2026-11-16)
+
+Added native paste sheet via Edit/Command-Shift-V, toolbar and Coord. Accepts
+complete XYZ trajectories or headerless Element X Y Z rows in Å. Render creates
+a new dirty tab, retains raw source and preserves edited documents. Validation
+rejects malformed/nonfinite/unknown/empty data before document creation. Shared
+XYZ parser now bounds reserve capacity by available rows for corrupt counts.
+Two core regressions and isolated native paste acceptance added. User AGENTS.md,
+.vscode and Tests/geometry.xyz changes remain excluded. Validation below.
+
+Local validation (2026-11-16, arm64 macOS27.2/Swift6.4.2, SDK26.5): 60 standalone
+core regressions and three migrated suites PASS; full swift test attempted and
+blocked by missing XCTest under CLT (not a passing XCTest run). Signed arm64
+build and relocated resource/SDK gates with both negative controls PASS.
+Final UUID-isolated native paste acceptance PASS: real text editor/Render,
+invalid refusal, exact scalar Cartesian oracle, original edited tab/Undo retained,
+new dirty tab/source, live Metal projection and visually inspected PNG. Native
+internal-coordinate regression also PASS. The initial test timed out because its
+singleton window awaited a reopen event; the harness now sends that event only
+to its owned UUID app. Test setup/control lookup failures were corrected before
+the passing final run; they are not relabeled as passes.
+Fixture: Tests/fixtures/pasted-coordinates.txt (synthetic, unoptimized); SHA-256
+dd1fe89a85a24b7d46013bd269cc5a03a1b3c183d24051dc4bf55c52de97be75.
+Evidence: /private/tmp/chemviewer-paste-evidence-validated and
+/private/tmp/chemviewer-paste-internal-regression. Final local executable SHA-256:
+6d51a6c12bf5f30994fce5233bcc1ab5f35eb5fdcc0717e941833bf66e7a4b15.
+Hosted XCTest/coverage, independently downloaded artifact and broad manual
+clipboard/external-display acceptance remain separate and pending.
+
+Final packaged general launch/open/Metal/XYZ-export/Undo/five-tab/negative-mode
+regression PASS. Both /Applications/ChemViewer.app and the existing
+~/Applications/ChemViewer.app were refreshed with install-macos.sh --no-build;
+running user work was not closed. Quit and reopen to use 0.13.12.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+0.13.13 local validation (2026-11-16, arm64 macOS27.2, Swift6.4.2/SDK26.5):
+60 standalone core regressions and three migrated suites PASS. UUID-isolated
+native acceptance PASS for direct paste in empty/loaded Coord tabs, no dialog,
+inline invalid refusal, exact fixture coordinates, retained original edits/Undo,
+new dirty tab/source and Metal PNG. General packaged opening/export/Undo/five-tab/
+negative-mode regression and relocated resource/SDK checks with both negative
+controls PASS. Evidence: /private/tmp/chemviewer-coord-direct-paste and
+/private/tmp/chemviewer-coord-direct-general; fixture/hash unchanged from 0.13.12.
+Both installed copies refreshed without closing user work; executable SHA-256:
+166225b80f59dd44fabca84db07346815141624e28a865504fb349c09aad35fa.
+Full XCTest remains unavailable under local CLT; hosted CI/downloaded artifact
+and broad manual clipboard/external-display acceptance remain pending.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+GIF renderers preserve the selected H visibility separately when clearing orange
+selection highlighting, including the second renderer used for style refitting.
+The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+Local acceptance (2026-11-18, arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5):
+60 standalone core regressions and three migrated suites PASS. The isolated native
+hydrogen-visibility test PASS, including actual mouse deselection, bond picking,
+caption counts, two-stage GIF renderer retention and Metal export. Captured PNG
+visually verified: O and the selected H/bond only. General packaged opening,
+export, Undo, selection, source, five tabs, depth, negative-mode and animation
+regression PASS. Relocated resource/SDK checks and both negative controls PASS.
+Full swift test attempted: blocked by missing XCTest under CLT. Initial default
+SDK27.2 build failed on its documented missing SwiftUIMacros; final compatible
+SDK26.5 build passed. Hosted CI/downloaded artifact and broader manual acceptance
+remain separate; no full Chemcraft parity claimed.
+Evidence: /private/tmp/chemviewer-hydrogen-0.13.14,
+/private/tmp/chemviewer-hydrogen-general-0.13.14,
+/private/tmp/chemviewer-hydrogen-build.log. Executable SHA-256:
+ec652228cf4431f28ad4405dd87eef6438f8f0b056865d39e02fbb67fb7f9d36.
+Both installed app copies refreshed using install-macos.sh --no-build without
+closing user work. Quit and reopen /Applications/ChemViewer.app to use 0.13.14.
+
+## Viewport activation recovery — 0.13.15 (2026-11-20)
+
+User reports that only the molecule freezes after leaving and returning to the
+app; menus/tabs continue responding. Read-only sample of installed 0.13.14
+PID 50886 showed an idle AppKit event loop, no main-thread deadlock. Sample:
+/private/tmp/chemviewer-focus-before.sample.txt. A short isolated Command-Tab
+roundtrip with original synthetic water did not reproduce the intermittent
+freeze. Missing activation recovery is confirmed; the original freeze's precise
+trigger remains unproven. Avoid presenting this as a fully reproduced root cause.
+
+Static Metal scenes have a paused display timer and relied on setNeedsDisplay.
+The new app/window activation, occlusion and deminiaturization observers coalesce
+a deferred refresh, release size-dependent targets and explicitly submit a frame.
+Camera, coordinates, selection and animation mode are retained. Dismantling
+removes observers and callbacks check resources before requesting drawables.
+
+Native regression fails against previous renderer: No new GPU frame after
+NSApplicationDidBecomeActiveNotification. Fixed regression PASS for four lifecycle
+notifications, exact atom/selection/camera preservation, subsequent camera
+rotation, continuous drawing and released-renderer isolation. The test injects
+notifications; prolonged background, full minimize/restore and external-display
+manual acceptance remain pending. Reproduce with scripts/check-macos-camera.py
+--app dist/ChemViewer.app --test viewport-activation --evidence /private/tmp/focus.
+
+Local arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5 build PASS. Standalone 60 core
+cases plus three migrated building suites PASS. Full swift test attempted with
+compatible SDK: blocked by missing XCTest under CLT (not a pass). Camera 32-case
+native regression, 50 document switches, general Metal/open/export/Undo/selection/
+source/five-tab/negative-mode animation acceptance PASS. Relocated package, SDK
+and missing-resource negative controls PASS. Hosted CI/downloaded artifact
+validation remains separate. Evidence: /private/tmp/chemviewer-focus-baseline,
+/private/tmp/chemviewer-focus-fixed, /private/tmp/chemviewer-focus-camera,
+/private/tmp/chemviewer-focus-document-workspace, /private/tmp/chemviewer-focus-smoke;
+build log /private/tmp/chemviewer-focus-fixed-build.log; XCTest log
+/private/tmp/chemviewer-focus-xctest.log. Executable SHA-256:
+cf60180b54085797adb74e8bad69e6f2997fdc329d2a7ec7fdd9ee108bfe791f.
+User changes in AGENTS.md, .vscode and Tests/geometry.xyz remain excluded.

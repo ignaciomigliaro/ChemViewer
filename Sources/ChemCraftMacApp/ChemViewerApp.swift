@@ -43,6 +43,10 @@ struct ChemViewerApp: App {
             CommandGroup(after: .newItem) {
                 Button("SSH connection…") { RemoteConnection.shared.presented = true }.keyboardShortcut("o", modifiers: [.command, .shift])
             }
+            CommandGroup(after: .pasteboard) {
+                Button("Paste Coordinates…") { workspace.isPasteCoordinatesPresented = true }
+                    .keyboardShortcut("v", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .undoRedo) {
                 Button(workspace.activeTab == "Draw" ? "Undo Drawing Edit" : "Undo Geometry Edit") {
                     if workspace.activeTab == "Draw" { workspace.drawing.undo() } else { workspace.undoGeometry() }

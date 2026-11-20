@@ -799,3 +799,69 @@ Reproduce isolated native acceptance with:
 ```bash
 python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test internal-coordinate --evidence /private/tmp/chemviewer-internal-coordinate-evidence
 ```
+
+## Paste coordinates — 0.13.12
+
+CV-PASTE-001: Open Edit → Paste Coordinates… / Command-Shift-V or the toolbar
+clipboard icon. Paste Element X Y Z rows in Å and Render. Verify a new dirty tab,
+correct atom identities/coordinates, bonds and visible molecule. Repeat with
+a complete multi-frame XYZ including a blank comment line, then export XYZ.
+CV-PASTE-002: Keep an edited document open. Submit invalid rows, unknown symbols,
+NaN and truncated XYZ: error stays in the sheet, no tab created and original
+coordinates/Undo remain. Cancel changes nothing. Render valid input and switch
+back to confirm existing edits. Test normal Command-V in the text editor and
+Paste from Clipboard; clipboard contents must not change.
+
+Automated physical-Mac subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test paste-coordinates --evidence /private/tmp/chemviewer-paste-evidence`.
+This uses a UUID-isolated app and actual text/Render controls; broad manual
+clipboard ergonomics and external-display coverage remain separate.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+CV-PASTE-003: With no file open, select Coord and paste directly into its text
+area using Command-V, then Render. Repeat from a loaded edited document. No
+sheet should open. Test invalid input inline; verify the existing table below
+remains editable and original document edits/Undo survive the new rendered tab.
+The UUID-isolated paste smoke now exercises empty and loaded Coord directly
+and passed locally on 2026-11-16.
+
+
+## Selected hydrogen visibility — 0.13.14
+
+CV-HYDROGEN-001: Select a reaction H, then turn off Hydrogens using H or Display.
+Only selected H atoms remain, with bonds, labels and displacement arrows. Select
+several H atoms and a heavy atom; all selected H atoms stay visible. Deselect an
+H: it disappears. Clear selection: all H atoms hide. Turn Hydrogens on: all return.
+Hidden H atoms and their bonds must not be clickable; visible H atoms and bonds
+remain clickable. Export PNG/GIF and verify the same visibility. Confirm source
+coordinates and connectivity are unchanged.
+
+Reproduce the isolated native subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test hydrogen-visibility --evidence /private/tmp/chemviewer-hydrogen-0.13.14`.
+
+## Viewport activation — 0.13.15
+
+CV-FOCUS-001: Open water.xyz, rotate and select two atoms. Switch to another
+app with Command-Tab, cover ChemViewer, then return. Right-drag must rotate,
+scroll must zoom and selection must respond immediately. Repeat after minimize /
+restore and a prolonged background period. Camera and selection must survive.
+CV-FOCUS-002: Repeat with a playing normal mode and after switching document
+tabs. Verify animation resumes drawing and geometry edits/Undo remain intact.
+Run in a disposable copy; never close or modify the user's live calculations.
+
+Automated subset: `python3 scripts/check-macos-camera.py --app
+dist/ChemViewer.app --test viewport-activation --evidence
+/private/tmp/chemviewer-focus-fixed` (one line). It checks completed GPU frames
+following lifecycle notifications, preserved scientific/camera state, camera
+response, continuous rendering and dismantled-renderer isolation. Notification
+injection alone does not establish reproduction of the original intermittent
+freeze or long-background/external-display acceptance.

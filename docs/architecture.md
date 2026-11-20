@@ -951,3 +951,56 @@ snapshot, invalidates stale energies and renders explicit connectivity. Drag
 preview remains local to Metal; optional new-contact inference runs once at
 release against the gesture's original coordinates, retaining pre-existing manual
 deletions. Explicit Generate merges all present geometric contacts instead.
+
+## Pasted Cartesian coordinates — 0.13.12
+
+`PastedCoordinates` in ChemCraftCore validates full XYZ trajectories or headerless
+Element X Y Z rows in angstrom, normalizes element symbols/atomic numbers and
+rejects nonfinite coordinates, unknown elements and empty frames. Full XYZ keeps
+comment/energy/frame semantics. Headerless rows require exactly four fields.
+Input is bounded to 10 MB, 10,000 atoms/frame and 500,000 atoms total. XYZ parser
+reservation is bounded by available lines so a corrupt count cannot reserve an
+unbounded atom array. The native paste sheet uses ordinary text editing and an
+explicit clipboard read; Render validates before creating a separate unsaved
+DocumentTabs workspace. Original tabs, edits and clipboard contents are retained.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+GIF renderers preserve the selected H visibility separately when clearing orange
+selection highlighting, including the second renderer used for style refitting.
+The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+## Viewport reactivation recovery — 0.13.15
+
+MolecularMTKView observes app activation and its own window's key, occlusion
+and deminiaturization notifications. It coalesces them onto the next main-queue
+turn, refreshes size-dependent render targets and explicitly draws a frame for
+a visible attached renderer. Static scenes retain on-demand rendering; animated
+scenes retain their display loop. Dismantling removes observers, and pending
+callbacks check rendering resources before acquiring a drawable. No scientific
+state or camera reset is involved.

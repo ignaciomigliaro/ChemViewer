@@ -356,3 +356,20 @@ interconnected branches that cannot separate rigidly are refused without edits.
 Numeric editing is an explicit action; the Drag toggle continues to gate only
 coordinate dragging. Camera/right-drag, middle-button pan and left selection
 retain their 0.13.10 mapping.
+
+## Paste a structure
+
+Open the **Coord** tab, click the **Paste coordinates here (⌘V)** text area,
+and paste your coordinates. Click **Render** to display the molecule in a new
+unsaved document tab. This also works before opening any file.
+
+Use complete XYZ text (atom count, comment line, then atom rows) or plain
+`Element X Y Z` rows in Å. Full XYZ may contain multiple frames. Existing
+per-atom coordinate fields remain below the paste area. Invalid input displays
+an inline error. Save Project or Export XYZ keeps the result.
+
+
+Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
+with the **H** button or Display menu. Selected H atoms and their bonds remain
+visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
+back on to show all. This also applies to exported images and animations (0.13.14).
