@@ -752,3 +752,6 @@ display checks remain pending.
 | Initial and product core authoring | Native whole-frame and selected-atom capture passed. The one-based metal anchor, original row order, Å distances and conserved atom inventories were checked. |
 | Linked stages and workflow authoring | Generated YAML and assets opened and saved in the real embedded editor. The independent oracle verified eight stage plans, two retained catalyst identities and four fresh reagent identities in the second stage of each variant. |
 | Execution and results | Existing local runner, ORCA/UMA starter templates and a link to ChemRefine's report. This release exercised planning and the editor, with new ORCA/UMA calculations and SSH/SLURM mechanism execution pending. |
+
+ChemRefine's **Run on** control was checked on macOS 0.14.1 with a long SSH
+hostname. Both destinations and the mechanism composer remained reachable.

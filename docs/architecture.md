@@ -1018,3 +1018,10 @@ before publishing the folder. Single entries use `input`, and lists use separate
 atom correspondence, optimized endpoint handoff, calculation and reports.
 The optional runtime remains separately packaged. It is pinned to the published
 mechanism revision of the user's ChemRefine fork.
+
+## ChemRefine destination header — 0.14.1
+
+The segmented destination picker and its label share their intrinsic width.
+The SSH hostname sits in a separate single-line field with middle truncation
+and a tooltip. Header actions use intrinsic button widths. Compact layouts
+give the destination control its own horizontal row.

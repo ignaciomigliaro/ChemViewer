@@ -1825,3 +1825,20 @@ Saved YAML SHA-256 d505abb1b43a2a7ccdd96aea5d746064805e1ab478178604095f81398752c
 Executable SHA-256 8e4694215e3c5e029f2ac39f7bb8b2b6ef5f329fb5d7d13816ee4761a25ba541.
 Both installed app copies were updated and verified. Quit and reopen to use
 0.14.0. User edits in AGENTS.md, .vscode and Tests/geometry.xyz were excluded.
+
+## ChemRefine destination header — 0.14.1 (2026-11-23)
+
+A long synthetic SSH hostname reproduced overlap in the 0.14.0 Run on header
+at 1100 × 760. The new picker keeps This Mac and SSH / SLURM side by side,
+with a separate hostname and intrinsic header button sizes. A compact layout
+moves the destination control as a unit to its own row. The matching 0.14.1
+physical Mac check showed the hostname truncating independently and both
+destinations and mechanism composer opening. The separate minimum-width
+layout was not captured.
+
+Signed arm64 SDK 26.5 release build, 60 standalone core cases, three building
+suites, relocated packaging with negative controls, real native mechanism
+editor round trip and four-variant planning oracle passed. Native mechanism
+evidence is in /private/tmp/cv-runon-mechanism. Both installed app copies were
+refreshed without closing user work. Executable SHA-256
+13078c94db6da133c286b8faec274340ed1eefecf013707b8a6bcd31e0c7c7c0.

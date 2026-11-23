@@ -1039,3 +1039,6 @@ No refinement or optimization was submitted during this check.
 Run `scripts/check-mechanism-plan.py` with the chemistry environment's Python
 and the `input.yaml` path saved in the native evidence directory's
 `workflow-path.txt`. The ChemRefine CLI dry run also passed.
+
+The 0.14.1 destination-header layout change passed the same linked mechanism
+planning oracle with the synthetic four-variant fixture.

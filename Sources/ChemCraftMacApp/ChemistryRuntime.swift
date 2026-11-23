@@ -255,25 +255,61 @@ struct LocalWorkflowView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("ChemRefine").font(.headline)
-                Picker("Run on", selection: $remote.workflowRemoteSelected) {
-                    Text("This Mac").tag(false)
-                    Text(remote.profile.host.isEmpty ? "SSH / SLURM" : "SSH / SLURM · " + remote.profile.host).tag(true)
-                }.pickerStyle(.segmented).frame(maxWidth: 390)
-                Spacer()
-                GeometryEditButton(title: mechanism.visible ? "Workflow editor" : "Reaction mechanism…", id: "mechanism-composer") {
-                    mechanism.visible.toggle()
-                    mechanism.pending = nil
-                    mechanism.choosingCatalysts = false
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    headerTitle
+                    destinationPicker
+                    destinationHost.frame(maxWidth: 160, alignment: .leading)
+                    Spacer(minLength: 8)
+                    headerActions
                 }
-                Button("SSH settings…") { remote.presented = true }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        headerTitle
+                        Spacer()
+                        headerActions
+                    }
+                    HStack {
+                        destinationPicker
+                        destinationHost
+                    }
+                }
             }.padding(10)
             Divider()
             if mechanism.visible { MechanismComposerView() }
             else if remote.workflowRemoteSelected { RemoteWorkflowView() }
             else { localContent }
         }.frame(minWidth: embedded ? 400 : 1000, minHeight: embedded ? 300 : 700)
+    }
+    private var headerTitle: some View {
+        Text("ChemRefine").font(.headline).fixedSize()
+    }
+    private var destinationPicker: some View {
+        HStack {
+            Text("Run on").accessibilityHidden(true)
+            Picker("Run on", selection: $remote.workflowRemoteSelected) {
+                Text("This Mac").tag(false)
+                Text("SSH / SLURM").tag(true)
+            }.pickerStyle(.segmented).labelsHidden()
+        }.fixedSize()
+    }
+    @ViewBuilder private var destinationHost: some View {
+        if !remote.profile.host.isEmpty {
+            Text(remote.profile.host)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(1).truncationMode(.middle)
+                .help(remote.profile.host)
+        }
+    }
+    private var headerActions: some View {
+        HStack {
+            GeometryEditButton(title: mechanism.visible ? "Workflow editor" : "Reaction mechanism…", id: "mechanism-composer") {
+                mechanism.visible.toggle()
+                mechanism.pending = nil
+                mechanism.choosingCatalysts = false
+            }
+            Button("SSH settings…") { remote.presented = true }
+        }.fixedSize()
     }
     private var localContent: some View {
         VStack(spacing: 0) {

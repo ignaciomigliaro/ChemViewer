@@ -885,3 +885,10 @@ handoff. Validated planning requires no calculation submission.
 Run the isolated native subset with `python3 scripts/check-macos-camera.py
 --app dist/ChemViewer.app --test mechanism --evidence /private/tmp/cv-mechanism`
 on one line.
+
+CV-MECHANISM-003 (0.14.1). In a disposable app window, open ChemRefine and set
+a long synthetic hostname in SSH settings. Close the settings sheet and verify
+that Run on, This Mac, and SSH / SLURM read horizontally with distinct segments.
+Verify that the hostname can shorten independently, the header buttons fit,
+both destinations select their panes, and Reaction mechanism opens the draft.
+Visual baseline overlap and repaired layout were reproduced at 1100 × 760.
