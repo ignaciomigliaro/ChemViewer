@@ -865,3 +865,23 @@ following lifecycle notifications, preserved scientific/camera state, camera
 response, continuous rendering and dismantled-renderer isolation. Notification
 injection alone does not establish reproduction of the original intermittent
 freeze or long-background/external-display acceptance.
+
+## Reaction mechanism composer — 0.14.0
+
+CV-MECHANISM-001. Open ChemRefine → Reaction mechanism. From BOS-TMC, index a
+synthetic catalog with embedded XYZ, collect two catalyst records and try the
+same preview twice. Return to the draft and verify both entries and charges.
+Add two single-frame substrate XYZs and verify four combinations. Use the 3D
+builder to capture an initial core and a selected product core. Check that
+the metal's row is correctly numbered and source geometry and selection survive.
+
+CV-MECHANISM-002. Add a stage and choose an optimized product from its
+predecessor. Set the variant limit below the expected count and verify export is
+refused. Restore the limit, create the workflow folder and confirm the editor
+loads both stages. Verify ChemRefine expands and plans four variants with
+isolated directories, appropriate CPU budgets, atom inventories and consistent
+handoff. Validated planning requires no calculation submission.
+
+Run the isolated native subset with `python3 scripts/check-macos-camera.py
+--app dist/ChemViewer.app --test mechanism --evidence /private/tmp/cv-mechanism`
+on one line.

@@ -725,3 +725,11 @@ Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
 with the **H** button or Display menu. Selected H atoms and their bonds remain
 visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
 back on to show all. This also applies to exported images and animations (0.13.14).
+
+### Reaction mechanism composer (0.14.0)
+
+Open **ChemRefine → Reaction mechanism…** to collect BOS-TMC catalyst
+alternatives, add substrate lists and fixed reagents, and capture initial and
+product cores from the 3D builder. **Create input.yaml…** packages geometries
+and templates and opens the linked mechanism in ChemRefine. See the
+[reaction mechanism guide](docs/user-guide.md#build-a-reaction-mechanism).

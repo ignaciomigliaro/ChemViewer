@@ -1019,3 +1019,23 @@ are separate assertions. The regression fails on the unpatched renderer at
 NSApplicationDidBecomeActiveNotification. No parser, units, energies or
 normal-mode mathematics changed. Original intermittent-freeze reproduction
 remains unconfirmed; see CONVERSATION-HANDOFF.md for executed checks.
+
+## Reaction mechanism planning — 0.14.0
+
+The isolated Mac fixture uses original CuCl and CuBr XYZ records and two
+independently specified NH₃ geometries, with first-H x coordinates of 0.28 and
+0.30 Å. The fixture exercises synthetic coordination, dissociation and rebinding
+for integration validation. It establishes no chemical pathway or barrier.
+
+After the real WebKit editor round trip, ChemRefine's directory planner and a
+separate ASE/Python oracle verified four unique variant output directories,
+two CPU cores per worker, zero GPU budget, and eight ordered stage plans.
+Initial assembly adds one Cu–N contact at a core distance of 2.10 Å. The two
+product-core distances are 4.20 and 2.05 Å, with one bond edit per stage and
+six conserved atoms per endpoint. Stage two keeps identifiers 1 and 2 from
+the optimized metal-complex reference and allocates 7–10 for fresh ammonia.
+No refinement or optimization was submitted during this check.
+
+Run `scripts/check-mechanism-plan.py` with the chemistry environment's Python
+and the `input.yaml` path saved in the native evidence directory's
+`workflow-path.txt`. The ChemRefine CLI dry run also passed.

@@ -373,3 +373,45 @@ Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
 with the **H** button or Display menu. Selected H atoms and their bonds remain
 visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
 back on to show all. This also applies to exported images and animations (0.13.14).
+
+## Build a reaction mechanism
+
+1. Open **ChemRefine → Reaction mechanism…** and choose **Choose from BOS-TMC…**.
+   Search or filter the catalog, preview a structure, and click **Add previewed
+   catalyst** for each candidate. Choose **Back to mechanism** when your list is
+   ready. You can also import catalyst XYZ files.
+2. Add **Substrate alternatives** to each stage. Import multiple XYZ files at
+   once or capture structures from the 3D builder. Add reactants that participate
+   together under **Fixed reagents**. Enter molecular charges for XYZ sources
+   and the total charge and spin multiplicity of each stage. Alternatives in a
+   single list share an electronic state.
+3. Add an optional **Initial coordination core** if separate sources need a
+   starting arrangement. Under **Product definition**, add a reduced core,
+   complete product XYZ, or complete product SMILES. For a core, click
+   **Build in 3D…**, build or edit the geometry in Image, then capture the whole
+   structure or select just the motif atoms and capture those. Choose the
+   one-based metal anchor in the returned core. The core uses XYZ coordinates
+   in Å and ChemRefine perceives connectivity from the geometry.
+4. **Add stage** to reuse an earlier optimized product. Select the entire
+   single product, the unique metal complex, or a molecule matching a SMILES
+   selector. A selector occurrence starts at zero.
+5. **Create input.yaml…** writes a new folder containing the YAML, XYZ inputs
+   and starter templates and opens it in the local ChemRefine editor. **Check
+   workflow** plans the chemistry and checks engines before submission.
+   **Mechanism report…** opens ChemRefine's report after execution.
+
+Two catalyst alternatives and three substrate alternatives produce six
+independent mechanisms. Each follows the declared stages. The ORCA starter uses
+r2SCAN-3c with IDPP path guessing and a TS frequency calculation. The UMA starter
+uses ORCA ExtOpt with the CPU omol model. Review the method, electronic states
+and templates for your system. A predicted transition state requires vibrational
+and IRC verification.
+
+The embedded editor supports additional ChemRefine YAML options such as
+explicit connectivity, match hints, dissociation, per-variant overrides and
+custom guessers. For cluster use, transfer the workflow folder and configure
+SLURM dispatch and templates on a host with a compatible ChemRefine runtime.
+
+Upgrade an existing local chemistry environment with `bash scripts/setup-chemistry.sh`.
+Use `CHEMVIEWER_CHEMREFINE_MAPPING=1` for automatic SMILES atom mapping, or set
+`CHEMVIEWER_CHEMREFINE_CHECKOUT` to install a specific local ChemRefine checkout.

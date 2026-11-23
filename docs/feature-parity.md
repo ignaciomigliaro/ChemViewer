@@ -743,3 +743,12 @@ regression failed on the previous renderer because activation submitted no new
 GPU frame. This establishes a recovery gap, not a proven cause for every freeze.
 Validation outcomes follow in the handoff; prolonged background and external
 display checks remain pending.
+
+## Reaction mechanism composer — 0.14.0
+
+| Workflow | Implementation and local evidence |
+|---|---|
+| BOS-TMC catalyst list, substrate alternatives and fixed reagents | Native catalyst controls exercised against a synthetic catalog. Four independent catalyst/substrate combinations passed ChemRefine planning. |
+| Initial and product core authoring | Native whole-frame and selected-atom capture passed. The one-based metal anchor, original row order, Å distances and conserved atom inventories were checked. |
+| Linked stages and workflow authoring | Generated YAML and assets opened and saved in the real embedded editor. The independent oracle verified eight stage plans, two retained catalyst identities and four fresh reagent identities in the second stage of each variant. |
+| Execution and results | Existing local runner, ORCA/UMA starter templates and a link to ChemRefine's report. This release exercised planning and the editor, with new ORCA/UMA calculations and SSH/SLURM mechanism execution pending. |

@@ -1004,3 +1004,17 @@ a visible attached renderer. Static scenes retain on-demand rendering; animated
 scenes retain their display loop. Dismantling removes observers, and pending
 callbacks check rendering resources before acquiring a drawable. No scientific
 state or camera reset is involved.
+
+## Reaction mechanism composer — 0.14.0
+
+The native draft survives navigation among ChemRefine, BOS-TMC and Image.
+Catalyst capture uses the catalog's resolved XYZ and source metadata. Builder
+capture snapshots a complete frame or selected atoms in source row order.
+The exporter writes relative paths and generated ORCA or UMA starter templates
+in a staging directory. The local Python bridge serializes the YAML, loads
+it through the installed ChemRefine schema and checks directory expansion
+before publishing the folder. Single entries use `input`, and lists use separate
+`input_dir` slots. ChemRefine owns Cartesian expansion, chemistry planning,
+atom correspondence, optimized endpoint handoff, calculation and reports.
+The optional runtime remains separately packaged. It is pinned to the published
+mechanism revision of the user's ChemRefine fork.

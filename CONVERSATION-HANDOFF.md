@@ -1790,3 +1790,38 @@ build log /private/tmp/chemviewer-focus-fixed-build.log; XCTest log
 /private/tmp/chemviewer-focus-xctest.log. Executable SHA-256:
 cf60180b54085797adb74e8bad69e6f2997fdc329d2a7ec7fdd9ee108bfe791f.
 User changes in AGENTS.md, .vscode and Tests/geometry.xyz remain excluded.
+
+## ChemRefine reaction mechanism composer — 0.14.0 (2026-11-23)
+
+Use ChemRefine → Reaction mechanism. Collect multiple BOS-TMC catalysts,
+stage substrate alternatives and fixed reagents. Capture whole builder frames
+or selected atoms for the initial and product cores. Linked stages can carry
+a previous optimized product or selected component. Create input.yaml writes
+a relocatable folder and opens it in the local ChemRefine editor. The app
+uses the published ChemRefine fork commit ac09bd97a4c14722fbb5df26f19d2876a3b1a79b.
+The runtime setup handles replacement of the earlier package with the same
+distribution version. Uncommitted ChemRefine work is accessible via the optional
+local checkout installer setting.
+
+On arm64 macOS 27.2.1 and Swift 6.4.2, the SDK 26.5 release build passed with
+a signed arm64 executable. The 60 standalone core cases and three building
+suites passed. Full XCTest was attempted and stopped at missing XCTest under
+Command Line Tools. Python regression results were 117 passed and 3 skipped
+for optional licensed fixtures, with all coverage floors met. The pre-existing
+coverage inventory omission for PastedCoordinates.swift was registered using
+its existing parser tests. The isolated native mechanism test, four-variant
+and eight-stage ASE/Python oracle, ChemRefine CLI dry run, general native
+Metal regression and relocated bundle checks with two negative controls passed.
+The initial native harness could not find a SwiftUI control. It subsequently
+exercised the actual buttons using ChemViewer's existing AppKit control wrapper.
+The original synthetic fixture's unchanged connectivity was refused during
+prototype planning and was corrected to exercise a bond edit in each stage.
+ORCA/UMA mechanism calculations, cluster submission and independently downloaded
+artifact validation are pending.
+
+Evidence at /private/tmp/cv-mechanism-validated and /private/tmp/cv-mechanism-general.
+Synthetic catalog SHA-256 1d5e7518749080c07e82c2cb4ad2ed396a5a5e210adf2a424c7afe582cc10320.
+Saved YAML SHA-256 d505abb1b43a2a7ccdd96aea5d746064805e1ab478178604095f81398752c563.
+Executable SHA-256 8e4694215e3c5e029f2ac39f7bb8b2b6ef5f329fb5d7d13816ee4761a25ba541.
+Both installed app copies were updated and verified. Quit and reopen to use
+0.14.0. User edits in AGENTS.md, .vscode and Tests/geometry.xyz were excluded.

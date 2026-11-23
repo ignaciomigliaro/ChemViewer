@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 from pathlib import Path
 import sys
@@ -31,6 +32,41 @@ class WorkflowTests(unittest.TestCase):
         report = bridge.inspect_workflow(self.path)
         self.assertFalse(report['ok'])
         self.assertIn('input.yaml', report['checks'][0]['name'])
+
+    def test_mechanism_yaml_uses_relocatable_xyz_variants(self):
+        import yaml
+        from chemrefine.config import load_config
+        from chemrefine.mechanism_batch import expand
+
+        alternatives = self.root / 'substrates'
+        alternatives.mkdir()
+        (alternatives / 'A.xyz').write_bytes((self.root / 'seed.xyz').read_bytes())
+        (alternatives / 'B.xyz').write_bytes((self.root / 'seed.xyz').read_bytes())
+        step = {'step': 1, 'engine': 'orca', 'template': 'ts.inp'}
+        stage = {
+            'name': 'stage_1',
+            'reactant': {'sources': [{'input_dir': 'substrates'}]},
+            'product': {'input': 'seed.xyz'},
+            'ts_guesser': {'method': 'idpp', 'scoring_steps': [{**step, 'operation': 'sp', 'on_failure': 'stop'}]},
+            'ts_steps': [step],
+        }
+        self.path.write_text(json.dumps({'mechanism': {'max_variants': 2, 'stages': [stage]}}))
+        self.assertTrue(bridge.act({'action': 'write-mechanism-yaml', 'config_path': str(self.path)})['ok'])
+        text = self.path.read_text()
+        self.assertTrue(text.startswith('mechanism:\n'))
+        self.assertEqual(yaml.safe_load(text)['mechanism']['stages'][0], stage)
+        self.assertEqual([variant.name for variant in expand(load_config(self.path))], ['A', 'B'])
+        (self.root / 'templates/ts.inp').write_text('! HF STO-3G\n')
+        (self.root / 'templates/cpu.slurm.header').write_text('#!/bin/bash\n')
+        with patch.dict(os.environ, {'PATH': str(self.root)}):
+            report = bridge.inspect_workflow(self.path)
+        self.assertTrue(any(row['name'] == 'Workflow YAML' for row in report['checks']), report)
+        self.assertTrue(any(row['name'] == 'orca' and row['status'] == 'error' for row in report['checks']))
+        self.assertFalse(any(row['name'] == 'Input structures' for row in report['checks']))
+        (alternatives / 'C.xyz').write_bytes((self.root / 'seed.xyz').read_bytes())
+        self.path.write_text(json.dumps({'mechanism': {'max_variants': 2, 'stages': [stage]}}))
+        with self.assertRaisesRegex(Exception, 'produces 3 variants'):
+            bridge.act({'action': 'write-mechanism-yaml', 'config_path': str(self.path)})
 
     def test_missing_seed_and_template_block_before_launch(self):
         self.config()

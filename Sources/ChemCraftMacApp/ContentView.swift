@@ -7,6 +7,7 @@ struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var chemistry = ChemistryRuntime.shared
     @ObservedObject private var remote = RemoteConnection.shared
+    @ObservedObject private var mechanism = MechanismDraft.shared
 
     private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BosTMC"]
 
@@ -33,6 +34,9 @@ struct ContentView: View {
             if !["Draw","BosTMC"].contains(workspace.activeTab) { ScrollView(.horizontal, showsIndicators: false) { classicToolbar } }
             Divider()
             if workspace.isDraggingEnabled && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) { ManipulationToolbar() }
+            if workspace.activeTab == "Image", let target = mechanism.pending {
+                MechanismCaptureBar(target: target)
+            }
             if !workspace.buildingHint.isEmpty && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) {
                 HStack {
                     if let element = workspace.pendingElement {
@@ -60,6 +64,7 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--mechanism-smoke-test") { await MechanismSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--viewport-activation-smoke-test") { await ViewportActivationSmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--hydrogen-visibility-smoke-test") { await HydrogenVisibilitySmokeTest.run(workspace: workspace) }
             if CommandLine.arguments.contains("--paste-coordinates-smoke-test") { await Task { @MainActor in await PasteCoordinatesSmokeTest.run(workspace: workspace) }.value }
