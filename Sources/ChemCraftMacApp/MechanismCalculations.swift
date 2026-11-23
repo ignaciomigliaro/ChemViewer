@@ -12,10 +12,10 @@ enum MechanismBranch: String {
         }
     }
 
-    var defaultOperation: String {
+    var defaultOperation: String? {
         switch self {
         case .scoring: "sp"
-        case .reactant, .product: "opt_sp"
+        case .reactant, .product: nil
         case .ts: ""
         }
     }
@@ -25,8 +25,8 @@ struct MechanismCalculation: Identifiable {
     let id = UUID()
     var name = ""
     var engine = "orca"
-    var operation: String
-    var method = "r2SCAN-3c"
+    var operation: String?
+    var method = ""
     var template = ""
     var settingsYAML = ""
     var onFailure = "stop"

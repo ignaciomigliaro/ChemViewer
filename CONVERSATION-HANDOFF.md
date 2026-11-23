@@ -1868,3 +1868,16 @@ Saved YAML SHA-256 dc7fecbf7c7b544355057c58f408b36102e08011fee767d06f2019762cf2b
 Executable SHA-256 eeebf0c3008101639cd7522191864555cc7fa119ef16a558177ffd75252dbae5.
 Both installed app copies were refreshed and verified. Quit and reopen to
 use 0.15.0. Existing local user changes were excluded from the release.
+
+## Calculation editor defaults and layout — 0.15.1
+
+Optional endpoint preparation starts empty. Calculation rows show engine,
+operation and free-text method immediately. The native 1100 × 760 window
+was exercised with a fresh draft and an added reactant calculation. Its
+operation showed Choose operation and its method was blank with details closed.
+The native mechanism harness, independent plan check, ChemRefine dry-run and
+relocated signed arm64 package checks passed. Local evidence is under
+/private/tmp/cv-mech-0151. The chemistry interpreter passed 118 Python tests
+with three optional fixture skips. The standalone runner passed 60 core cases
+and the parser, editing and project suites. XCTest is unavailable in the
+installed command-line tools. Both application folders received 0.15.1.

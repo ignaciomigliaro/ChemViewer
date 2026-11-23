@@ -139,24 +139,37 @@ private struct MechanismStageView: View {
     private var calculations: some View {
         VStack(alignment: .leading, spacing: 8) {
             let number = earlier.count + 1
-            MechanismCalculationList(branch: .reactant, stageNumber: number, steps: $stage.reactantSteps, schema: draft.schema)
-            MechanismCalculationList(branch: .product, stageNumber: number, steps: $stage.productSteps, schema: draft.schema)
-            GroupBox("TS guesser") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Picker("Guesser", selection: $stage.guesser) {
-                            ForEach(draft.schema?.guessers ?? ["idpp"], id: \.self) { Text($0).tag($0) }
-                        }.fixedSize()
-                        Stepper("Images  \(stage.images)", value: $stage.images, in: 3...999).fixedSize()
-                        TextField("Timeout (s)", value: $stage.guesserTimeout, format: .number)
-                            .frame(width: 125)
-                    }
-                    MechanismSettingsEditor(title: "Guesser settings", yaml: $stage.guesserYAML,
-                        keys: draft.schema?.keys("TSGuesserConfig") ?? [])
-                }.frame(maxWidth: .infinity, alignment: .leading)
+            Picker("Calculation group", selection: $stage.calculationBranch) {
+                Text("Reactants").tag(MechanismBranch.reactant)
+                Text("Products").tag(MechanismBranch.product)
+                Text("Path & scoring").tag(MechanismBranch.scoring)
+                Text("TS refinement").tag(MechanismBranch.ts)
+            }.pickerStyle(.segmented)
+            switch stage.calculationBranch {
+            case .reactant:
+                MechanismCalculationList(branch: .reactant, stageNumber: number, steps: $stage.reactantSteps, schema: draft.schema)
+            case .product:
+                MechanismCalculationList(branch: .product, stageNumber: number, steps: $stage.productSteps, schema: draft.schema)
+            case .scoring:
+                GroupBox("Transition-state guess") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Picker("Guesser", selection: $stage.guesser) {
+                                ForEach(draft.schema?.guessers ?? ["idpp"], id: \.self) { Text($0).tag($0) }
+                            }.fixedSize()
+                            Stepper("Images  \(stage.images)", value: $stage.images, in: 3...999).fixedSize()
+                            Text("Timeout")
+                            TextField("Seconds", value: $stage.guesserTimeout, format: .number).frame(width: 60)
+                            Text("s").foregroundStyle(.secondary)
+                        }
+                        MechanismSettingsEditor(title: "Guesser settings", yaml: $stage.guesserYAML,
+                            keys: draft.schema?.keys("TSGuesserConfig") ?? [])
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                MechanismCalculationList(branch: .scoring, stageNumber: number, steps: $stage.scoringSteps, schema: draft.schema)
+            case .ts:
+                MechanismCalculationList(branch: .ts, stageNumber: number, steps: $stage.tsSteps, schema: draft.schema)
             }
-            MechanismCalculationList(branch: .scoring, stageNumber: number, steps: $stage.scoringSteps, schema: draft.schema)
-            MechanismCalculationList(branch: .ts, stageNumber: number, steps: $stage.tsSteps, schema: draft.schema)
         }
     }
 

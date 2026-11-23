@@ -1049,3 +1049,9 @@ templates, PySCF HF/sto-3g options, an ORCA PBE/def2-SVP frequency template,
 single-point scoring, and the configured guesser timeout, conformer count and
 seed. The updated ChemRefine dry run passed through all eight stage plans.
 No engine calculations were submitted.
+
+For 0.15.1 the native fixture explicitly selects an ORCA single point with
+HF def2-SVP on the first reactant and leaves both endpoint preparation lists
+empty on the second stage. The independent plan check verifies the exact ORCA
+input and both empty lists after the WebKit round trip. ChemRefine dry-run
+planned all eight stages. These checks cover configuration and planning.

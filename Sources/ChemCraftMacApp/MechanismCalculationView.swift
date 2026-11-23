@@ -13,10 +13,14 @@ struct MechanismCalculationList: View {
                 Text("\(steps.count)").font(.caption).foregroundStyle(.secondary)
                 Spacer()
                 GeometryEditButton(title: "Add calculation", id: "mechanism-add-\(stageNumber)-\(branch.rawValue)") {
-                    var step = MechanismCalculation(branch, expanded: true)
-                    if branch == .ts && !steps.isEmpty { step.operation = "sp" }
+                    var step = MechanismCalculation(branch)
+                    if branch == .ts && !steps.isEmpty { step.operation = nil }
                     steps.append(step)
                 }.fixedSize()
+            }
+            if steps.isEmpty && (branch == .reactant || branch == .product) {
+                Text("Optional. Add a calculation to prepare this endpoint.")
+                    .font(.callout).foregroundStyle(.secondary)
             }
             if branch == .scoring {
                 Text("Scoring calculations use the single-point operation (sp).")
@@ -61,90 +65,89 @@ private struct MechanismCalculationView<Actions: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                DisclosureGroup(isExpanded: $step.expanded) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ViewThatFits(in: .horizontal) {
-                            HStack(spacing: 12) { engineField; operationField; methodField }.fixedSize(horizontal: true, vertical: false)
-                            VStack(alignment: .leading, spacing: 8) { engineField; operationField; methodField }
-                        }
-                        LabeledContent("Name") {
-                            TextField("Optional", text: $step.name).textFieldStyle(.roundedBorder)
-                        }
-                        if branch != .scoring {
-                            HStack {
-                                Picker("On failure", selection: $step.onFailure) {
-                                    Text("Stop").tag("stop")
-                                    Text("Skip failed").tag("skip")
-                                    Text("Keep best").tag("best")
-                                }.fixedSize()
-                                if descriptor?.capabilities.contains("nms") == true {
-                                    Toggle("Normal-mode sampling", isOn: $step.nms)
-                                }
-                            }
-                        }
-                        if step.engine == "orca" || descriptor?.templateSuffix != nil {
-                            DisclosureGroup("Input template") {
-                                Text("Leave empty to generate a starter. Enter the full template for custom keywords and operations.")
-                                    .font(.caption).foregroundStyle(.secondary)
-                                TextEditor(text: $step.template)
-                                    .font(.system(.body, design: .monospaced))
-                                    .frame(minHeight: 100).border(.quaternary)
-                                    .accessibilityLabel("Input template")
-                            }
-                        }
-                        MechanismSettingsEditor(title: "Calculation settings", yaml: $step.settingsYAML,
-                            keys: schema?.keys("StepConfig") ?? [],
-                            extra: optionHelp)
-                    }.padding(.top, 8)
-                } label: {
-                    HStack(spacing: 8) {
-                        Text("\(number). \(step.name.isEmpty ? step.engine : step.name)").fontWeight(.medium).lineLimit(1)
-                        if !step.name.isEmpty { Text(step.engine).foregroundStyle(.secondary) }
-                        if !step.operation.isEmpty { Text(step.operation).foregroundStyle(.secondary) }
-                        if !step.method.isEmpty { Text(step.method).foregroundStyle(.secondary).lineLimit(1) }
-                    }.font(.callout)
-                }
+            HStack {
+                Text(step.name.isEmpty ? "Calculation \(number)" : "\(number). \(step.name)").font(.headline)
+                Spacer()
                 actions().fixedSize()
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .bottom, spacing: 14) { engineField; operationField; methodField }
+                VStack(alignment: .leading, spacing: 8) { engineField; operationField; methodField }
+            }
+            DisclosureGroup("Calculation details", isExpanded: $step.expanded) {
+                VStack(alignment: .leading, spacing: 8) {
+                    LabeledContent("Name") {
+                        TextField("Optional", text: $step.name).textFieldStyle(.roundedBorder)
+                    }
+                    if branch != .scoring {
+                        HStack {
+                            Picker("On failure", selection: $step.onFailure) {
+                                Text("Stop").tag("stop")
+                                Text("Skip failed").tag("skip")
+                                Text("Keep best").tag("best")
+                            }.fixedSize()
+                            if descriptor?.capabilities.contains("nms") == true {
+                                Toggle("Normal-mode sampling", isOn: $step.nms)
+                            }
+                        }
+                    }
+                    if step.engine == "orca" || descriptor?.templateSuffix != nil {
+                        DisclosureGroup("Input template") {
+                            Text("Leave empty to generate a starter. Enter the full template for custom keywords and operations.")
+                                .font(.caption).foregroundStyle(.secondary)
+                            TextEditor(text: $step.template)
+                                .font(.system(.body, design: .monospaced))
+                                .frame(minHeight: 100).border(.quaternary)
+                                .accessibilityLabel("Input template")
+                        }
+                    }
+                    MechanismSettingsEditor(title: "Calculation settings", yaml: $step.settingsYAML,
+                        keys: schema?.keys("StepConfig") ?? [],
+                        extra: optionHelp)
+                }.padding(.top, 6)
             }
         }.padding(8).background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6))
     }
 
     private var engineField: some View {
-        Picker("Engine", selection: $step.engine) {
-            ForEach(engineNames, id: \.self) { Text($0).tag($0) }
-        }.frame(minWidth: 130).onChange(of: step.engine) { engine in
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Engine").font(.caption).foregroundStyle(.secondary)
+            Picker("Engine", selection: $step.engine) {
+                ForEach(engineNames, id: \.self) { Text($0).tag($0) }
+            }.labelsHidden().frame(minWidth: 105)
+        }.onChange(of: step.engine) { engine in
             let available = schema?.engines[engine]?.operations ?? []
-            if branch != .scoring && !available.isEmpty && !available.contains(step.operation) {
-                step.operation = ""
+            if branch != .scoring, let operation = step.operation, !operation.isEmpty, !available.contains(operation) {
+                step.operation = nil
             }
-            if step.method == "r2SCAN-3c" && engine != "orca" { step.method = "" }
-            if engine == "orca" && step.method.isEmpty { step.method = "r2SCAN-3c" }
         }
     }
 
-    @ViewBuilder private var operationField: some View {
-        if branch == .scoring {
-            LabeledContent("Operation", value: "sp").fixedSize()
-        } else if operations.isEmpty {
-            TextField("Operation", text: $step.operation).frame(minWidth: 115, idealWidth: 140)
-        } else {
-            Picker("Operation", selection: $step.operation) {
-                Text("Infer from input").tag("")
-                ForEach(operations, id: \.self) { Text($0).tag($0) }
-                if !step.operation.isEmpty && !operations.contains(step.operation) {
-                    Text(step.operation).tag(step.operation)
-                }
-            }.frame(minWidth: 140)
+    private var operationField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Operation").font(.caption).foregroundStyle(.secondary)
+            if branch == .scoring {
+                Text("Single point").frame(height: 22)
+            } else {
+                Picker("Operation", selection: $step.operation) {
+                    if step.operation == nil { Text("Choose operation…").tag(String?.none) }
+                    Text("Infer from input").tag(Optional(""))
+                    ForEach(operations, id: \.self) { op in
+                        Text(["opt_sp": "Geometry optimization", "sp": "Single point", "freq": "Frequencies"][op] ?? op).tag(Optional(op))
+                    }
+                }.labelsHidden().frame(minWidth: 150)
+            }
         }
     }
 
     private var methodField: some View {
         let label = step.engine.hasPrefix("mlip") ? "Model" : "Method"
-        return LabeledContent(label) {
-            TextField(label, text: $step.method)
-                .textFieldStyle(.roundedBorder).frame(minWidth: 130, idealWidth: 160)
-        }.help("Enter an engine keyword or model name, such as r2SCAN-3c or uma-s-1p2.")
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            TextField(label == "Method" ? "Enter method" : "Enter model", text: $step.method)
+                .textFieldStyle(.roundedBorder).frame(minWidth: 120)
+                .accessibilityLabel(label)
+        }
     }
 
     private var optionHelp: String {

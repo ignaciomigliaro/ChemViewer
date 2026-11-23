@@ -62,8 +62,9 @@ struct MechanismStageDraft: Identifiable {
     var productKind = ProductKind.core
     var expanded = true
     var section = Section.structures
-    var reactantSteps = [MechanismCalculation(.reactant)]
-    var productSteps = [MechanismCalculation(.product)]
+    var calculationBranch = MechanismBranch.reactant
+    var reactantSteps: [MechanismCalculation] = []
+    var productSteps: [MechanismCalculation] = []
     var scoringSteps = [MechanismCalculation(.scoring)]
     var tsSteps = [MechanismCalculation(.ts)]
     var guesser = "idpp"

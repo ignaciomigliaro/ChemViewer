@@ -90,8 +90,15 @@ extension MechanismDraft {
                 var step: [String: Any] = ["step": number, "engine": engine, "on_failure": calculation.onFailure]
                 if calculation.nms { step["nms"] = true }
                 let name = calculation.name.trimmingCharacters(in: .whitespaces)
-                let operation = calculation.operation.trimmingCharacters(in: .whitespaces)
                 let method = calculation.method.trimmingCharacters(in: .whitespaces)
+                let location = "Stage \(stageNumber), \(branch.label.lowercased()), calculation \(number)"
+                guard let operation = calculation.operation?.trimmingCharacters(in: .whitespaces) else {
+                    throw ParseError.malformed("\(location): choose an operation.")
+                }
+                if engine == "orca", method.isEmpty, calculation.template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                   calculation.settingsYAML.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    throw ParseError.malformed("\(location): enter a method or supply an ORCA input template.")
+                }
                 if !name.isEmpty { step["name"] = name }
                 if !operation.isEmpty { step["operation"] = operation }
                 var options: [String: String] = [:]

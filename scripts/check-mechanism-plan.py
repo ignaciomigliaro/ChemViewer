@@ -24,6 +24,9 @@ def check(config_path: Path) -> None:
     branches = (reaction.reactant.steps, reaction.product.steps, reaction.ts_guesser.scoring_steps, reaction.ts_steps)
     assert all([step.step for step in branch] == [1, 2] for branch in branches)
     assert len({step.template for branch in branches for step in branch}) == 8
+    assert not stages[1].reactant.steps and not stages[1].product.steps
+    first = reaction.reactant.steps[0]
+    assert first.operation == "sp" and (config.template_dir / first.template).read_text() == "! HF def2-SVP\n"
     single_point = reaction.reactant.steps[1]
     assert single_point.engine == "pyscf" and single_point.operation == "sp"
     assert single_point.options == {"method": "hf", "basis": "sto-3g"}

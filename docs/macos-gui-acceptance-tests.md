@@ -900,3 +900,10 @@ YAML setting, then review and export. Reopen in ChemRefine and confirm both
 calculations in every branch plus the original stage settings. The isolated
 mechanism harness checks the four native Add calculation controls, preview,
 real WebKit round trip and fixture output used by the independent plan check.
+
+CV-MECHANISM-005. Open Calculations in a fresh stage. Reactants and products
+start empty. Add a row and check that Engine, Operation and Method are visible
+with details collapsed. Switch groups and return to the row. Pick Single point,
+enter HF def2-SVP and export. Confirm the generated ORCA template contains
+that method and no optimization directive. Leave the second stage's endpoint
+lists empty and check that ChemRefine accepts both stages.

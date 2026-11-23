@@ -401,18 +401,19 @@ back on to show all. This also applies to exported images and animations (0.13.1
    **Mechanism report…** opens ChemRefine's report after execution.
 
 Two catalyst alternatives and three substrate alternatives produce six
-independent mechanisms. Each follows the declared stages. The ORCA starter uses
-r2SCAN-3c with IDPP path guessing and a TS frequency calculation. The UMA starter
-uses ORCA ExtOpt with the CPU omol model. Review the method, electronic states
-and templates for your system. A predicted transition state requires vibrational
+independent mechanisms. Each follows the declared stages. New stages use IDPP path guessing. Enter the method for path scoring and TS
+refinement, and review the electronic states and templates for your system. A predicted transition state requires vibrational
 and IRC verification.
 
 ### Configure each calculation
 
 In a stage, switch from **Structures** to **Calculations**. Add and reorder
 calculations separately for reactant preparation, product preparation, path
-scoring and TS refinement. Expand a calculation to set **Engine**,
-**Operation** and a write-in **Method** or **Model**. ChemRefine defines the
+scoring and TS refinement. Reactants and products start with empty preparation
+lists. Select a group, then choose **Add calculation** when you need one. Each
+row shows **Engine**, **Operation** and a write-in **Method** or **Model**.
+**Geometry optimization** is written as `opt_sp` in ChemRefine YAML. Expand
+**Calculation details** for the template, failure policy and advanced options. ChemRefine defines the
 available engines and their operations. Path scoring uses single points.
 For ORCA, the method field becomes the keywords in the generated input.
 For engines with a method or model option, the field sets that option.

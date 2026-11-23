@@ -1037,3 +1037,8 @@ document with broader overrides applied last. The same merge runs for preview
 and export. ChemRefine validates the schema and expands variants before the
 folder is published. Generated templates use distinct branch and step paths,
 and a custom package-relative template root receives the generated files.
+
+Each stage remembers the selected calculation group. Endpoint lists start empty.
+An unset operation prompts for a choice, while an explicit “Infer from input”
+omits the operation from YAML. Method and model text belongs to its calculation
+and survives engine changes.

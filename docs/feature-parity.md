@@ -761,3 +761,8 @@ every reaction stage, with installed engine and operation choices, write-in
 methods or models and contextual structured YAML overrides. Native UI acceptance,
 YAML preview and export, and ChemRefine dry-run planning passed. Execution of
 the new mixed-engine calculation sequence remains unverified.
+
+The 0.15.1 native mechanism editor groups calculations by endpoint, path
+scoring and TS refinement. Method and model fields start blank. Endpoint
+preparation is optional, and the operation picker uses descriptive names for
+optimization, single points and frequencies.

@@ -106,12 +106,36 @@ enum MechanismSmokeTest {
             draft.stages[1].expanded = false
             draft.stages[0].expanded = true
             draft.stages[0].section = .calculations
+            try require(draft.stages[0].reactantSteps.isEmpty && draft.stages[0].productSteps.isEmpty
+                        && draft.stages[0].tsSteps[0].method.isEmpty && draft.stages[0].scoringSteps[0].method.isEmpty,
+                        "A fresh stage preselected endpoint chemistry or a method")
             for branch in [MechanismBranch.reactant, .product, .scoring, .ts] {
+                draft.stages[0].calculationBranch = branch
+                await pause()
+                if branch == .reactant || branch == .product {
+                    try await click("Add calculation", identifier: "mechanism-add-1-\(branch.rawValue)")
+                }
                 try await click("Add calculation", identifier: "mechanism-add-1-\(branch.rawValue)")
             }
             try require(draft.stages[0].reactantSteps.count == 2 && draft.stages[0].productSteps.count == 2
                         && draft.stages[0].scoringSteps.count == 2 && draft.stages[0].tsSteps.count == 2,
                         "Adding calculations did not target the intended branch")
+            try require(draft.stages[0].reactantSteps[0].operation == nil,
+                        "New preparation calculation chose an operation")
+            draft.stages[0].reactantSteps[0].operation = "sp"
+            do {
+                _ = try await draft.previewYAML()
+                throw ParseError.malformed("Blank ORCA method generated a template")
+            } catch {
+                try require(error.localizedDescription.contains("enter a method"), error.localizedDescription)
+            }
+            draft.stages[0].reactantSteps[0].method = "HF def2-SVP"
+            draft.stages[0].productSteps[0].operation = "opt_sp"
+            draft.stages[0].productSteps[0].method = "PBE def2-SVP"
+            for index in draft.stages.indices {
+                for step in draft.stages[index].scoringSteps.indices { draft.stages[index].scoringSteps[step].method = "HF def2-SVP" }
+                for step in draft.stages[index].tsSteps.indices { draft.stages[index].tsSteps[step].method = "PBE def2-SVP" }
+            }
             draft.stages[0].reactantSteps[1].engine = "pyscf"
             await pause()
             draft.stages[0].reactantSteps[1].operation = "sp"
