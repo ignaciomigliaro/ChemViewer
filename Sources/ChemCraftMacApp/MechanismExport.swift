@@ -29,7 +29,7 @@ extension MechanismDraft {
     }
 
     func export(to parent: URL) async throws -> URL {
-        let (config, files) = try makePackage()
+        let (config, files, overrides) = try makePackage()
         let key = UUID().uuidString
         let staging = parent.appendingPathComponent(".ChemViewer-mechanism-" + key)
         let destination = parent.appendingPathComponent("ChemViewer-mechanism-" + key.prefix(8))
@@ -44,12 +44,22 @@ extension MechanismDraft {
         let yaml = staging.appendingPathComponent("input.yaml")
         let data = try JSONSerialization.data(withJSONObject: config, options: [.sortedKeys])
         try data.write(to: yaml)
-        _ = try await WorkflowRunner.shared.bridge(action: "write-mechanism-yaml", path: yaml.path)
+        _ = try await WorkflowRunner.shared.bridge(action: "write-mechanism-yaml", path: yaml.path, fields: ["overrides": overrides])
         try manager.moveItem(at: staging, to: destination)
         return destination.appendingPathComponent("input.yaml")
     }
 
-    private func makePackage() throws -> ([String: Any], [String: String]) {
+    func previewYAML() async throws -> String {
+        let (config, _, overrides) = try makePackage()
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("input.yaml")
+        let data = try await WorkflowRunner.shared.bridge(
+            action: "preview-mechanism-yaml", path: url.path, fields: ["config": config, "overrides": overrides]
+        )
+        struct Preview: Decodable { let yaml: String }
+        return try JSONDecoder().decode(Preview.self, from: data).yaml
+    }
+
+    private func makePackage() throws -> ([String: Any], [String: String], [[String: Any]]) {
         guard let variantCount, variantCount <= maxVariants else {
             throw ParseError.malformed("Reduce the combinations or raise the variant limit of \(maxVariants).")
         }
@@ -57,34 +67,82 @@ extension MechanismDraft {
             throw ParseError.malformed("Set parallel mechanisms to at most the total CPU budget.")
         }
 
-        let method = engine == .uma ? "ExtOpt" : "r2SCAN-3c"
-        let minimum = "! \(method) Opt TightOpt\n"
-        let scoring = "! \(method)\n"
-        let hessian = engine == .uma ? "  NumHess true\n" : ""
-        let frequency = engine == .uma ? "NumFreq" : "Freq"
-        let ts = "! \(method) OptTS TightOpt \(frequency)\n%geom\n  Calc_Hess true\n\(hessian)end\n"
-        var files = [
-            "templates/minimum.inp": minimum,
-            "templates/score.inp": scoring,
-            "templates/ts.inp": ts,
-            "templates/cpu.slurm.header": "#!/bin/bash\n"
-        ]
+        var files = ["templates/cpu.slurm.header": "#!/bin/bash\n"]
         var stageConfigs: [[String: Any]] = []
         var stageNames: [UUID: String] = [:]
+        var overrides: [[String: Any]] = []
 
-        func step(_ template: String, operation: String? = nil) -> [String: Any] {
-            var step: [String: Any] = [
-                "step": 1, "engine": engine == .uma ? "mlip-extopt" : "orca",
-                "template": template, "on_failure": "stop"
-            ]
-            if let operation { step["operation"] = operation }
-            if engine == .uma {
-                var options = ["task_name": "omol", "model_name": "uma-s-1p2", "device": "cpu"]
-                let python = WorkflowRunner.shared.resolvedUMAPython
-                if !python.isEmpty { options["backend_python"] = python }
-                step["options"] = options
+        func addOverride(_ path: [String], _ yaml: String) {
+            if !yaml.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                overrides.append(["path": path, "yaml": yaml])
             }
-            return step
+        }
+
+        func calculations(_ steps: [MechanismCalculation], _ branch: MechanismBranch,
+                          stageNumber: Int, path: [String]) throws -> [[String: Any]] {
+            try steps.enumerated().map { offset, calculation in
+                let number = offset + 1
+                let engine = calculation.engine
+                let descriptor = schema?.engines[engine]
+                guard descriptor != nil || engine == "orca" else {
+                    throw ParseError.malformed("Load the ChemRefine engine registry before exporting \(engine).")
+                }
+                var step: [String: Any] = ["step": number, "engine": engine, "on_failure": calculation.onFailure]
+                if calculation.nms { step["nms"] = true }
+                let name = calculation.name.trimmingCharacters(in: .whitespaces)
+                let operation = calculation.operation.trimmingCharacters(in: .whitespaces)
+                let method = calculation.method.trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty { step["name"] = name }
+                if !operation.isEmpty { step["operation"] = operation }
+                var options: [String: String] = [:]
+                if let key = descriptor?.methodOption, !method.isEmpty { options[key] = method }
+                if engine == "mlip-extopt", method.hasPrefix("uma") {
+                    options["task_name"] = "omol"
+                    options["device"] = "cpu"
+                    let python = WorkflowRunner.shared.resolvedUMAPython
+                    if !python.isEmpty { options["backend_python"] = python }
+                }
+                if !options.isEmpty { step["options"] = options }
+                if let suffix = descriptor?.templateSuffix ?? (engine == "orca" ? "inp" : nil) {
+                    let filename = "stage_\(stageNumber)_\(branch.rawValue)_\(number).\(suffix)"
+                    let custom = calculation.template.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !custom.isEmpty {
+                        files["templates/\(filename)"] = calculation.template
+                    } else if suffix == "inp", engine == "orca" || engine.hasSuffix("-extopt") {
+                        let keyword = engine == "orca" ? method : "ExtOpt"
+                        let frequency = engine.hasSuffix("-extopt") ? "NumFreq" : "Freq"
+                        let directive: String
+                        switch operation {
+                        case "sp": directive = ""
+                        case "freq": directive = frequency
+                        case "": directive = branch == .ts ? "OptTS TightOpt " + frequency : "Opt TightOpt"
+                        case "opt_sp": directive = branch == .ts ? "OptTS TightOpt" : "Opt TightOpt"
+                        default: directive = "" // Specialized operations use the engine template entered by the user.
+                        }
+                        if ["", "sp", "freq", "opt_sp"].contains(operation), !keyword.isEmpty {
+                            let isTS = branch == .ts && ["", "opt_sp"].contains(operation)
+                            let hessian = engine == "orca" ? "" : "  NumHess true\n"
+                            let block = isTS ? "%geom\n  Calc_Hess true\n\(hessian)end\n" : ""
+                            files["templates/\(filename)"] = "! " + [keyword, directive].filter { !$0.isEmpty }.joined(separator: " ") + "\n" + block
+                        } else if calculation.settingsYAML.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            throw ParseError.malformed("Enter template contents for \(branch.label) calculation \(number).")
+                        }
+                    } else if let starter = descriptor?.starter {
+                        var content = starter
+                        if engine == "qchem" {
+                            if !method.isEmpty {
+                                content = content.replacingOccurrences(of: "  method      b3lyp", with: "  method      " + method)
+                            }
+                            let job: String = operation == "freq" ? "freq" : (operation == "sp" ? "sp" : (branch == .ts ? "ts" : "opt"))
+                            content = content.replacingOccurrences(of: "  jobtype     opt", with: "  jobtype     " + job)
+                        }
+                        files["templates/\(filename)"] = content
+                    }
+                    step["template"] = filename
+                }
+                addOverride(path + [String(offset)], calculation.settingsYAML)
+                return step
+            }
         }
 
         func source(_ geometries: [MechanismGeometry], folder: String, label: String) throws -> [String: Any] {
@@ -152,32 +210,52 @@ extension MechanismDraft {
             for (offset, reagent) in stage.reagents.enumerated() {
                 sources.append(try source([reagent], folder: folder + "/reagent_\(offset + 1)", label: "fixed reagent"))
             }
-            guard !sources.isEmpty else { throw ParseError.malformed("Add a reactant source for \(name).") }
-            var reactant: [String: Any] = ["sources": sources, "steps": [step("minimum.inp")]]
+            guard !sources.isEmpty || !stage.reactantYAML.isEmpty || !stage.settingsYAML.isEmpty || !mechanismYAML.isEmpty || !workflowYAML.isEmpty else {
+                throw ParseError.malformed("Add a reactant source for \(name).")
+            }
+            let path = ["mechanism", "stages", String(index)]
+            let stageNumber = index + 1
+            var reactant: [String: Any] = [
+                "sources": sources, "steps": try calculations(stage.reactantSteps, .reactant, stageNumber: stageNumber, path: path + ["reactant", "steps"])
+            ]
             if let core = stage.initialCore {
                 reactant["initial_core"] = coreConfig(core, path: folder + "/initial_core.xyz")
             }
-            var product: [String: Any] = ["steps": [step("minimum.inp")]]
+            var product: [String: Any] = [
+                "steps": try calculations(stage.productSteps, .product, stageNumber: stageNumber, path: path + ["product", "steps"])
+            ]
+            let customProduct = !stage.productYAML.isEmpty || !stage.settingsYAML.isEmpty || !mechanismYAML.isEmpty || !workflowYAML.isEmpty
             switch stage.productKind {
             case .core:
-                guard let core = stage.productCore else { throw ParseError.malformed("Add a product core for \(name).") }
+                guard let core = stage.productCore else {
+                    if customProduct { break }
+                    throw ParseError.malformed("Add a product core for \(name).")
+                }
                 product["core"] = coreConfig(core, path: folder + "/product_core.xyz")
             case .xyz:
-                guard let xyz = stage.productXYZ else { throw ParseError.malformed("Add a complete product XYZ for \(name).") }
+                guard let xyz = stage.productXYZ else {
+                    if customProduct { break }
+                    throw ParseError.malformed("Add a complete product XYZ for \(name).")
+                }
                 let path = folder + "/product.xyz"
                 files[path] = xyz.xyz
                 product["input"] = path
             case .smiles:
                 let smiles = stage.productSMILES.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !smiles.isEmpty else { throw ParseError.malformed("Enter the complete product SMILES for \(name).") }
-                product["smiles"] = smiles
+                if !smiles.isEmpty { product["smiles"] = smiles }
+                else if !customProduct { throw ParseError.malformed("Enter the complete product SMILES for \(name).") }
             }
             stageConfigs.append([
                 "name": name, "charge": charge, "multiplicity": multiplicity, "reactant": reactant,
                 "product": product, "ts_guesser": [
-                    "method": "idpp", "n_images": images, "scoring_steps": [step("score.inp", operation: "sp")]
-                ], "ts_steps": [step("ts.inp")]
+                    "method": stage.guesser, "n_images": stage.images, "timeout_seconds": stage.guesserTimeout,
+                    "scoring_steps": try calculations(stage.scoringSteps, .scoring, stageNumber: stageNumber, path: path + ["ts_guesser", "scoring_steps"])
+                ], "ts_steps": try calculations(stage.tsSteps, .ts, stageNumber: stageNumber, path: path + ["ts_steps"])
             ])
+            addOverride(path, stage.settingsYAML)
+            addOverride(path + ["reactant"], stage.reactantYAML)
+            addOverride(path + ["product"], stage.productYAML)
+            addOverride(path + ["ts_guesser"], stage.guesserYAML)
             stageNames[stage.id] = name
         }
 
@@ -186,9 +264,11 @@ extension MechanismDraft {
         if forceMetalContacts { mechanism["force"] = true }
         let config: [String: Any] = [
             "dispatch": "local", "template_dir": "templates", "output_dir": "outputs",
-            "max_cores": cores, "max_gpus": 0, "executables": ["orca": orca.isEmpty ? "orca" : orca],
+            "max_cores": cores, "max_gpus": maxGPUs, "executables": ["orca": orca.isEmpty ? "orca" : orca],
             "mechanism": mechanism
         ]
-        return (config, files)
+        addOverride(["mechanism"], mechanismYAML)
+        addOverride([], workflowYAML)
+        return (config, files, overrides)
     }
 }

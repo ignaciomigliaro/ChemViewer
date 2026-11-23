@@ -198,12 +198,14 @@ final class WorkflowRunner: ObservableObject {
         let data = try await bridge(action: "status", path: path)
         return try JSONDecoder().decode(RunStatus.self, from: data)
     }
-    func bridge(action: String, path: String, trackPreparation: Bool = false, target: String? = nil, pythonPath: String? = nil) async throws -> Data {
+    func bridge(action: String, path: String, trackPreparation: Bool = false, target: String? = nil, pythonPath: String? = nil, fields: [String: Any] = [:]) async throws -> Data {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("ChemViewer-Workflow-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let input = directory.appendingPathComponent("request.json"), output = directory.appendingPathComponent("result.json"), log = directory.appendingPathComponent("bridge.log")
-        var payload: [String: Any] = ["action": action, "config_path": path]
+        var payload = fields
+        payload["action"] = action
+        payload["config_path"] = path
         if let target, !target.isEmpty { payload["target"] = target }
         if let pythonPath { payload["python_path"] = pythonPath }
         try JSONSerialization.data(withJSONObject: payload).write(to: input)

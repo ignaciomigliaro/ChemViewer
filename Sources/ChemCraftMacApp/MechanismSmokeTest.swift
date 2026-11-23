@@ -101,6 +101,28 @@ enum MechanismSmokeTest {
             draft.stages[1].reagents = [substrates[0]]
             let rebound = try MechanismGeometry(name: "Rebind NH3", xyz: "2\nRebinding core\nN 2.05 0 0\nCu 0 0 0\n")
             try draft.add([rebound], to: .init(stage: draft.stages[1].id, kind: .productCore))
+            await draft.loadSchema()
+            try await wait("Installed ChemRefine engine schema unavailable") { draft.schema?.engines["pyscf"] != nil }
+            draft.stages[1].expanded = false
+            draft.stages[0].expanded = true
+            draft.stages[0].section = .calculations
+            for branch in [MechanismBranch.reactant, .product, .scoring, .ts] {
+                try await click("Add calculation", identifier: "mechanism-add-1-\(branch.rawValue)")
+            }
+            try require(draft.stages[0].reactantSteps.count == 2 && draft.stages[0].productSteps.count == 2
+                        && draft.stages[0].scoringSteps.count == 2 && draft.stages[0].tsSteps.count == 2,
+                        "Adding calculations did not target the intended branch")
+            draft.stages[0].reactantSteps[1].engine = "pyscf"
+            await pause()
+            draft.stages[0].reactantSteps[1].operation = "sp"
+            draft.stages[0].reactantSteps[1].method = "hf"
+            draft.stages[0].reactantSteps[1].settingsYAML = "options:\n  basis: sto-3g"
+            draft.stages[0].productSteps[1].operation = "freq"
+            draft.stages[0].productSteps[1].method = "PBE def2-SVP"
+            draft.stages[0].tsSteps[1].operation = "sp"
+            draft.stages[0].guesserYAML = "timeout_seconds: 321"
+            draft.mechanismYAML = "conformers: 5\nseed: 73"
+            draft.workflowYAML = "template_dir: templates/custom"
             draft.cores = 4
             draft.workers = 2
             try require(draft.variantCount == 4, "Wrong Cartesian product count")
@@ -113,6 +135,9 @@ enum MechanismSmokeTest {
             }
             draft.maxVariants = 64
 
+            let preview = try await draft.previewYAML()
+            try require(preview.contains("engine: pyscf") && preview.contains("basis: sto-3g") && preview.contains("timeout_seconds: 321"),
+                        "YAML preview omitted calculation or guesser settings")
             let url = try await draft.export(to: evidence)
             try url.path.write(to: evidence.appendingPathComponent("workflow-path.txt"), atomically: true, encoding: .utf8)
             draft.visible = false
@@ -129,6 +154,18 @@ enum MechanismSmokeTest {
             let savedPath = try await runtime.saveWorkflowEditor(orcaPath: "")
             try require(savedPath == url.path || URL(fileURLWithPath: savedPath).resolvingSymlinksInPath() == url.resolvingSymlinksInPath(),
                         "Saving the form changed the workflow path")
+            let roundTrip = try await browser.evaluateJavaScript("""
+                (() => {
+                  const stage = Alpine.$data(document.body).cfg.mechanism.stages[0];
+                  const steps = stage.reactant.steps;
+                  return steps.length === 2 && steps[1].engine === 'pyscf' &&
+                    steps[1].options.method === 'hf' && steps[1].options.basis === 'sto-3g' &&
+                    stage.product.steps[1].operation === 'freq' &&
+                    stage.ts_guesser.scoring_steps.length === 2 &&
+                    stage.ts_steps.length === 2;
+                })()
+                """) as? Bool
+            try require(roundTrip == true, "The editor lost a method, engine, operation, or branch step")
             runtime.stopWorkflowTestServer()
             print("MECHANISM_PASS: native BOS-TMC selection, two catalysts and two substrates, core capture and anchor order, linked stages, limit validation, YAML export and real WebKit editor round trip.")
             fflush(stdout)

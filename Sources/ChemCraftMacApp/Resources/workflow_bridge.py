@@ -222,23 +222,74 @@ def workflow_summary(path):
     return dict(steps=result, running=state['running'])
 
 
+def mechanism_yaml(request, target, *, write):
+    import yaml
+    from chemrefine.config import Config, load_config
+
+    if 'mechanism' not in Config.model_fields:
+        raise RuntimeError('Update the ChemViewer chemistry runtime with scripts/setup-chemistry.sh for linked mechanisms.')
+    from chemrefine import mechanism_batch
+
+    data = json.loads(target.read_text()) if write else request['config']
+
+    def merge(base, changes):
+        for key, value in changes.items():
+            if isinstance(value, dict) and isinstance(base.get(key), dict):
+                merge(base[key], value)
+            else:
+                base[key] = value
+
+    for override in sorted(request.get('overrides', []), key=lambda item: -len(item['path'])):
+        destination = data
+        for part in override['path']:
+            destination = destination[int(part)] if isinstance(destination, list) else destination[part]
+        label = '.'.join(override['path']) or 'workflow'
+        try:
+            changes = yaml.safe_load(override['yaml'])
+        except yaml.YAMLError as error:
+            raise ValueError(f'{label}: {error}') from error
+        if changes is None:
+            continue
+        if not isinstance(changes, dict):
+            raise ValueError(f'{label}: enter a YAML mapping of setting names and values')
+        merge(destination, changes)
+
+    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    if not write:
+        Config.model_validate(data)
+        return {'yaml': text}
+    target.write_text(text)
+    config = load_config(target)
+    if mechanism_batch.enabled(config):
+        mechanism_batch.expand(config)
+
+    # Keep package-generated templates together when the user chooses another
+    # relative directory. An external directory explicitly refers to user files.
+    generated = target.parent / 'templates'
+    if (generated.is_dir() and config.template_dir != generated
+            and config.template_dir.is_relative_to(target.parent)):
+        config.template_dir.mkdir(parents=True, exist_ok=True)
+        for source in generated.iterdir():
+            target_file = config.template_dir / source.name
+            if source.is_file() and not target_file.exists():
+                shutil.copyfile(source, target_file)
+    return {'ok': True}
+
+
 def act(request):
     from chemrefine import agent_tools
     path = str(Path(request['config_path']).expanduser().resolve())
     action = request.get('action', 'check')
-    if action == 'write-mechanism-yaml':
-        import yaml
-        from chemrefine.config import Config, load_config
-        if 'mechanism' not in Config.model_fields:
-            raise RuntimeError('Update the ChemViewer chemistry runtime with scripts/setup-chemistry.sh for linked mechanisms.')
-        from chemrefine import mechanism_batch
-        target = Path(path)
-        data = json.loads(target.read_text())
-        target.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
-        config = load_config(target)
-        if mechanism_batch.enabled(config):
-            mechanism_batch.expand(config)
-        return {'ok': True}
+    if action == 'mechanism-schema':
+        from chemrefine.scaffold import TemplatePlan, _starter_for
+        schema = agent_tools.get_schema()
+        for name, engine in schema['engines'].items():
+            if engine['template_driven']:
+                plan = TemplatePlan(Path('step1.' + engine['template_suffix']), False, 'step', 1, name)
+                engine['starter'] = _starter_for(plan)
+        return schema
+    if action in ('write-mechanism-yaml', 'preview-mechanism-yaml'):
+        return mechanism_yaml(request, Path(path), write=action == 'write-mechanism-yaml')
     if action == 'check-python':
         if not str(request.get('python_path', '')).strip():
             raise ValueError('Choose a Python interpreter first.')

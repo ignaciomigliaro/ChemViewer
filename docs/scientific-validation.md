@@ -1042,3 +1042,10 @@ and the `input.yaml` path saved in the native evidence directory's
 
 The 0.14.1 destination-header layout change passed the same linked mechanism
 planning oracle with the synthetic four-variant fixture.
+
+In 0.15.0, the same four-variant fixture includes independent two-step lists
+in each first-stage branch. The oracle checks branch numbering, eight distinct
+templates, PySCF HF/sto-3g options, an ORCA PBE/def2-SVP frequency template,
+single-point scoring, and the configured guesser timeout, conformer count and
+seed. The updated ChemRefine dry run passed through all eight stage plans.
+No engine calculations were submitted.

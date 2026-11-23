@@ -892,3 +892,11 @@ that Run on, This Mac, and SSH / SLURM read horizontally with distinct segments.
 Verify that the hostname can shorten independently, the header buttons fit,
 both destinations select their panes, and Reaction mechanism opens the draft.
 Visual baseline overlap and repaired layout were reproduced at 1100 × 760.
+
+CV-MECHANISM-004 (0.15.0). Open a reaction stage's Calculations section and
+add one calculation in each branch. Expand a row and verify the engine menu,
+engine-specific operation and write-in method. Edit a template or contextual
+YAML setting, then review and export. Reopen in ChemRefine and confirm both
+calculations in every branch plus the original stage settings. The isolated
+mechanism harness checks the four native Add calculation controls, preview,
+real WebKit round trip and fixture output used by the independent plan check.

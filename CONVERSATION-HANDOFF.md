@@ -1842,3 +1842,29 @@ editor round trip and four-variant planning oracle passed. Native mechanism
 evidence is in /private/tmp/cv-runon-mechanism. Both installed app copies were
 refreshed without closing user work. Executable SHA-256
 13078c94db6da133c286b8faec274340ed1eefecf013707b8a6bcd31e0c7c7c0.
+
+## Multi-calculation reaction composer — 0.15.0 (2026-11-23)
+
+The native stage card separates Structures and Calculations. Each stage has
+ordered, expandable reactant, product, path-scoring and TS-refinement lists.
+The installed ChemRefine registry supplies engine operations and setting keys.
+Methods and models are write-in, and custom template text can be entered
+directly. Contextual YAML supports the full configuration schema, with preview
+before export. Settings mappings merge recursively and lists replace.
+
+The signed arm64 SDK 26.5 build, 60 standalone core cases, three building
+suites and relocated package checks including both negative controls passed.
+Python ran 121 tests with 118 passes and three optional licensed-fixture skips.
+All existing coverage floors passed. Physical Mac visual checks confirmed the
+Calculations view, added row, registry menus and free-text method. Native
+mechanism acceptance passed with two calculations per first-stage branch,
+advanced overrides, template-root relocation, preview and WebKit round trip.
+The independent oracle and actual ChemRefine CLI dry run passed all four
+variants and eight stage plans. Mixed-engine calculations were not submitted.
+
+Evidence is at /private/tmp/cv-composer-015. Synthetic catalog SHA-256
+1d5e7518749080c07e82c2cb4ad2ed396a5a5e210adf2a424c7afe582cc10320.
+Saved YAML SHA-256 dc7fecbf7c7b544355057c58f408b36102e08011fee767d06f2019762cf2b522.
+Executable SHA-256 eeebf0c3008101639cd7522191864555cc7fa119ef16a558177ffd75252dbae5.
+Both installed app copies were refreshed and verified. Quit and reopen to
+use 0.15.0. Existing local user changes were excluded from the release.

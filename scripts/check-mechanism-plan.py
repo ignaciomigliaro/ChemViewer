@@ -18,6 +18,20 @@ def check(config_path: Path) -> None:
     assert [stage.product.core.anchor for stage in stages] == [2, 2]
     assert stages[1].reactant.sources[0].select == "metal_complex"
     assert all(stage.charge == 0 and stage.multiplicity == 1 for stage in stages)
+    reaction = stages[0]
+    assert config.mechanism.seed == 73 and config.mechanism.conformers == 5
+    assert reaction.ts_guesser.timeout_seconds == 321
+    branches = (reaction.reactant.steps, reaction.product.steps, reaction.ts_guesser.scoring_steps, reaction.ts_steps)
+    assert all([step.step for step in branch] == [1, 2] for branch in branches)
+    assert len({step.template for branch in branches for step in branch}) == 8
+    single_point = reaction.reactant.steps[1]
+    assert single_point.engine == "pyscf" and single_point.operation == "sp"
+    assert single_point.options == {"method": "hf", "basis": "sto-3g"}
+    frequency = reaction.product.steps[1]
+    assert frequency.operation == "freq"
+    assert (config.template_dir / frequency.template).read_text() == "! PBE def2-SVP Freq\n"
+    assert all(step.operation == "sp" for step in reaction.ts_guesser.scoring_steps)
+    assert reaction.ts_steps[1].operation == "sp"
     variants = mechanism_batch.expand(config)
     assert len(variants) == len({variant.config.output_dir for variant in variants}) == 4
     combinations = set()

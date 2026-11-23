@@ -755,3 +755,9 @@ display checks remain pending.
 
 ChemRefine's **Run on** control was checked on macOS 0.14.1 with a long SSH
 hostname. Both destinations and the mechanism composer remained reachable.
+
+ChemRefine 0.15.0's native composer exposes expandable calculation lists in
+every reaction stage, with installed engine and operation choices, write-in
+methods or models and contextual structured YAML overrides. Native UI acceptance,
+YAML preview and export, and ChemRefine dry-run planning passed. Execution of
+the new mixed-engine calculation sequence remains unverified.

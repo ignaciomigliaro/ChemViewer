@@ -733,3 +733,10 @@ alternatives, add substrate lists and fixed reagents, and capture initial and
 product cores from the 3D builder. **Create input.yaml…** packages geometries
 and templates and opens the linked mechanism in ChemRefine. See the
 [reaction mechanism guide](docs/user-guide.md#build-a-reaction-mechanism).
+
+### Multi-calculation reaction stages (0.15.0)
+
+Open a stage's **Calculations** section to configure independent reactant,
+product, scoring and TS refinement sequences. Expand a row to set its engine,
+operation and write-in method. Use **Review YAML** to see the combined
+configuration, including advanced settings. [Workflow guide](docs/user-guide.md#configure-each-calculation)

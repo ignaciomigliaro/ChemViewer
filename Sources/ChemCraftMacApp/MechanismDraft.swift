@@ -60,6 +60,23 @@ struct MechanismStageDraft: Identifiable {
     var productXYZ: MechanismGeometry?
     var productSMILES = ""
     var productKind = ProductKind.core
+    var expanded = true
+    var section = Section.structures
+    var reactantSteps = [MechanismCalculation(.reactant)]
+    var productSteps = [MechanismCalculation(.product)]
+    var scoringSteps = [MechanismCalculation(.scoring)]
+    var tsSteps = [MechanismCalculation(.ts)]
+    var guesser = "idpp"
+    var images = 9
+    var guesserTimeout = 600
+    var settingsYAML = ""
+    var reactantYAML = ""
+    var productYAML = ""
+    var guesserYAML = ""
+
+    enum Section: String, CaseIterable {
+        case structures = "Structures", calculations = "Calculations"
+    }
 
     enum CarrySelector: String, CaseIterable, Identifiable {
         case whole = "Single product", metal = "Metal complex", smiles = "Match SMILES"
@@ -93,13 +110,26 @@ final class MechanismDraft: ObservableObject {
     @Published var cores = 1
     @Published var workers = 1
     @Published var maxVariants = 64
-    @Published var images = 9
-    @Published var engine = Engine.orca
+    @Published var maxGPUs = 0
+    @Published var workflowYAML = ""
+    @Published var mechanismYAML = ""
+    @Published var schema: MechanismSchema?
+    @Published var schemaError = ""
+    private var loadingSchema = false
     @Published var forceMetalContacts = false
 
-    enum Engine: String, CaseIterable, Identifiable {
-        case orca = "ORCA · r2SCAN-3c", uma = "ORCA ExtOpt · UMA CPU"
-        var id: Self { self }
+    func loadSchema() async {
+        guard schema == nil, !loadingSchema else { return }
+        loadingSchema = true
+        defer { loadingSchema = false }
+        do {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("chemrefine-schema")
+            let data = try await WorkflowRunner.shared.bridge(action: "mechanism-schema", path: url.path)
+            schema = try JSONDecoder().decode(MechanismSchema.self, from: data)
+            schemaError = ""
+        } catch {
+            schemaError = error.localizedDescription
+        }
     }
 
     struct CaptureTarget {
@@ -116,6 +146,7 @@ final class MechanismDraft: ObservableObject {
             stage.charge = previous.charge
             stage.multiplicity = previous.multiplicity
         }
+        for index in stages.indices { stages[index].expanded = false }
         stages.append(stage)
     }
 

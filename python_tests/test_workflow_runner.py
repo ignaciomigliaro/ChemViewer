@@ -68,6 +68,44 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, 'produces 3 variants'):
             bridge.act({'action': 'write-mechanism-yaml', 'config_path': str(self.path)})
 
+    def test_mechanism_schema_and_contextual_yaml(self):
+        from chemrefine.config import load_config
+
+        schema = bridge.act({'action': 'mechanism-schema', 'config_path': str(self.path)})
+        self.assertIn('operation', schema['config']['$defs']['StepConfig']['properties'])
+        self.assertIn('freq', schema['engines']['orca']['operations'])
+        self.assertIn('basis', schema['engines']['pyscf']['options_schema']['properties'])
+        self.assertNotIn('$OUTPUT_CONTRACT', schema['engines']['pyscf']['starter'])
+
+        step = {'step': 1, 'engine': 'pyscf', 'options': {'method': 'hf'}, 'template': 'seed.py'}
+        stages = [{
+            'name': 'example',
+            'reactant': {'sources': [{'input': 'seed.xyz'}], 'steps': [step]},
+            'product': {'input': 'seed.xyz'},
+            'ts_guesser': {'method': 'idpp', 'scoring_steps': [{**step, 'operation': 'sp'}]},
+            'ts_steps': [step],
+        }]
+        config = {'mechanism': {'stages': stages}}
+        first = ['mechanism', 'stages', '0', 'reactant', 'steps', '0']
+        request = {'config': config, 'config_path': str(self.path), 'overrides': [
+            {'path': [], 'yaml': 'template_dir: templates/inside'},
+            {'path': first, 'yaml': 'options:\n  basis: sto-3g'},
+            {'path': ['mechanism'], 'yaml': 'seed: 73'},
+        ]}
+        preview = bridge.act({**request, 'action': 'preview-mechanism-yaml'})['yaml']
+        self.assertIn('basis: sto-3g', preview)
+        self.assertFalse(self.path.exists())
+        (self.root / 'templates/seed.py').write_text('# fixture template\n')
+        self.path.write_text(json.dumps(config))
+        bridge.act({**request, 'action': 'write-mechanism-yaml'})
+        exported = load_config(self.path)
+        self.assertEqual(exported.mechanism.seed, 73)
+        self.assertEqual(exported.mechanism.stages[0].reactant.steps[0].options, {'method': 'hf', 'basis': 'sto-3g'})
+        self.assertEqual((exported.template_dir / 'seed.py').read_text(), '# fixture template\n')
+        for invalid, detail in [('[]', 'mapping'), ('[', 'workflow')]:
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, detail):
+                bridge.act({**request, 'action': 'preview-mechanism-yaml', 'overrides': [{'path': [], 'yaml': invalid}]})
+
     def test_missing_seed_and_template_block_before_launch(self):
         self.config()
         (self.root / 'seed.xyz').unlink()

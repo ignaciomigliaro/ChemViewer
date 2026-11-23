@@ -1025,3 +1025,15 @@ The segmented destination picker and its label share their intrinsic width.
 The SSH hostname sits in a separate single-line field with middle truncation
 and a tooltip. Header actions use intrinsic button widths. Compact layouts
 give the destination control its own horizontal row.
+
+## Multi-calculation reaction stages — 0.15.0
+
+Each reaction stage stores four independent ordered calculation lists.
+ChemViewer reads the installed ChemRefine engine registry and model schema
+through the existing local workflow bridge. Each engine supplies its
+operations, template suffix, starter text and declared options. Native
+fields set common choices. Contextual YAML mappings merge into the generated
+document with broader overrides applied last. The same merge runs for preview
+and export. ChemRefine validates the schema and expands variants before the
+folder is published. Generated templates use distinct branch and step paths,
+and a custom package-relative template root receives the generated files.

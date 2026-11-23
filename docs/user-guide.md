@@ -407,10 +407,28 @@ uses ORCA ExtOpt with the CPU omol model. Review the method, electronic states
 and templates for your system. A predicted transition state requires vibrational
 and IRC verification.
 
-The embedded editor supports additional ChemRefine YAML options such as
-explicit connectivity, match hints, dissociation, per-variant overrides and
-custom guessers. For cluster use, transfer the workflow folder and configure
-SLURM dispatch and templates on a host with a compatible ChemRefine runtime.
+### Configure each calculation
+
+In a stage, switch from **Structures** to **Calculations**. Add and reorder
+calculations separately for reactant preparation, product preparation, path
+scoring and TS refinement. Expand a calculation to set **Engine**,
+**Operation** and a write-in **Method** or **Model**. ChemRefine defines the
+available engines and their operations. Path scoring uses single points.
+For ORCA, the method field becomes the keywords in the generated input.
+For engines with a method or model option, the field sets that option.
+
+Use **Input template** for custom input text and **Calculation settings**
+for settings such as engine options, sample filters and per-step SLURM
+headers. The settings panels at the workflow, mechanism, stage, reactant,
+product and guesser levels expose their matching YAML mappings. **Insert
+setting** lists the keys from the installed ChemRefine schema. Values you
+enter override the generated settings. Nested mappings merge, while lists
+replace the generated list. You can set advanced values such as connectivity,
+match hints, dissociation, per-variant overrides and external guesser commands.
+**Review YAML** shows the combined configuration before writing the project.
+
+For cluster use, transfer the workflow folder and configure SLURM dispatch
+and templates on a host with a compatible ChemRefine runtime.
 
 Upgrade an existing local chemistry environment with `bash scripts/setup-chemistry.sh`.
 Use `CHEMVIEWER_CHEMREFINE_MAPPING=1` for automatic SMILES atom mapping, or set
