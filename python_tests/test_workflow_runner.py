@@ -92,6 +92,9 @@ class WorkflowTests(unittest.TestCase):
             {'path': first, 'yaml': 'options:\n  basis: sto-3g'},
             {'path': ['mechanism'], 'yaml': 'seed: 73'},
         ]}
+        partial = bridge.act({'action': 'draft-mechanism-yaml', 'config_path': str(self.path),
+                              'config': {'mechanism': {'stages': []}}})
+        self.assertIn('stages: []', partial['yaml'])
         preview = bridge.act({**request, 'action': 'preview-mechanism-yaml'})['yaml']
         self.assertIn('basis: sto-3g', preview)
         self.assertFalse(self.path.exists())

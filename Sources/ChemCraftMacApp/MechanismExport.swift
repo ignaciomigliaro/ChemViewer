@@ -29,7 +29,7 @@ extension MechanismDraft {
     }
 
     func export(to parent: URL) async throws -> URL {
-        let (config, files, overrides) = try makePackage()
+        let (config, files, overrides, _) = try makePackage()
         let key = UUID().uuidString
         let staging = parent.appendingPathComponent(".ChemViewer-mechanism-" + key)
         let destination = parent.appendingPathComponent("ChemViewer-mechanism-" + key.prefix(8))
@@ -50,21 +50,31 @@ extension MechanismDraft {
     }
 
     func previewYAML() async throws -> String {
-        let (config, _, overrides) = try makePackage()
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("input.yaml")
-        let data = try await WorkflowRunner.shared.bridge(
-            action: "preview-mechanism-yaml", path: url.path, fields: ["config": config, "overrides": overrides]
-        )
-        struct Preview: Decodable { let yaml: String }
-        return try JSONDecoder().decode(Preview.self, from: data).yaml
+        try await renderYAML(allowIncomplete: false).yaml
     }
 
-    private func makePackage() throws -> ([String: Any], [String: String], [[String: Any]]) {
-        guard let variantCount, variantCount <= maxVariants else {
-            throw ParseError.malformed("Reduce the combinations or raise the variant limit of \(maxVariants).")
+    func renderYAML(allowIncomplete: Bool) async throws -> (yaml: String, issue: String?) {
+        let (config, _, overrides, issue) = try makePackage(allowIncomplete: allowIncomplete)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("input.yaml")
+        let data = try await WorkflowRunner.shared.bridge(
+            action: allowIncomplete ? "draft-mechanism-yaml" : "preview-mechanism-yaml",
+            path: url.path, fields: ["config": config, "overrides": overrides]
+        )
+        struct Preview: Decodable { let yaml: String }
+        return (try JSONDecoder().decode(Preview.self, from: data).yaml, issue)
+    }
+
+    private func makePackage(allowIncomplete: Bool = false) throws -> ([String: Any], [String: String], [[String: Any]], String?) {
+        var issue: String?
+        func missing(_ message: String) throws {
+            guard allowIncomplete else { throw ParseError.malformed(message) }
+            if issue == nil { issue = message }
         }
-        guard (1...cores).contains(workers) else {
-            throw ParseError.malformed("Set parallel mechanisms to at most the total CPU budget.")
+        if variantCount.map({ $0 <= maxVariants }) != true {
+            try missing("Reduce the combinations or raise the variant limit of \(maxVariants).")
+        }
+        if !(1...cores).contains(workers) {
+            try missing("Set parallel mechanisms to at most the total CPU budget.")
         }
 
         var files = ["templates/cpu.slurm.header": "#!/bin/bash\n"]
@@ -84,20 +94,21 @@ extension MechanismDraft {
                 let number = offset + 1
                 let engine = calculation.engine
                 let descriptor = schema?.engines[engine]
-                guard descriptor != nil || engine == "orca" else {
-                    throw ParseError.malformed("Load the ChemRefine engine registry before exporting \(engine).")
+                if descriptor == nil && engine != "orca" {
+                    try missing("Load the ChemRefine engine registry before exporting \(engine).")
                 }
                 var step: [String: Any] = ["step": number, "engine": engine, "on_failure": calculation.onFailure]
                 if calculation.nms { step["nms"] = true }
                 let name = calculation.name.trimmingCharacters(in: .whitespaces)
                 let method = calculation.method.trimmingCharacters(in: .whitespaces)
                 let location = "Stage \(stageNumber), \(branch.label.lowercased()), calculation \(number)"
-                guard let operation = calculation.operation?.trimmingCharacters(in: .whitespaces) else {
-                    throw ParseError.malformed("\(location): choose an operation.")
+                let operation = calculation.operation?.trimmingCharacters(in: .whitespaces) ?? ""
+                if calculation.operation == nil {
+                    try missing("\(location): choose an operation.")
                 }
                 if engine == "orca", method.isEmpty, calculation.template.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                    calculation.settingsYAML.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    throw ParseError.malformed("\(location): enter a method or supply an ORCA input template.")
+                    try missing("\(location): enter a method or supply an ORCA input template.")
                 }
                 if !name.isEmpty { step["name"] = name }
                 if !operation.isEmpty { step["operation"] = operation }
@@ -132,7 +143,7 @@ extension MechanismDraft {
                             let block = isTS ? "%geom\n  Calc_Hess true\n\(hessian)end\n" : ""
                             files["templates/\(filename)"] = "! " + [keyword, directive].filter { !$0.isEmpty }.joined(separator: " ") + "\n" + block
                         } else if calculation.settingsYAML.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            throw ParseError.malformed("Enter template contents for \(branch.label) calculation \(number).")
+                            try missing("Enter template contents for \(branch.label) calculation \(number).")
                         }
                     } else if let starter = descriptor?.starter {
                         var content = starter
@@ -154,21 +165,22 @@ extension MechanismDraft {
 
         func source(_ geometries: [MechanismGeometry], folder: String, label: String) throws -> [String: Any] {
             let charges = geometries.compactMap { Int($0.charge.trimmingCharacters(in: .whitespaces)) }
-            guard charges.count == geometries.count, let charge = charges.first else {
-                throw ParseError.malformed("Enter the XYZ source charge for each \(label).")
+            if charges.count != geometries.count || charges.isEmpty {
+                try missing("Enter the XYZ source charge for each \(label).")
             }
-            guard charges.allSatisfy({ $0 == charge }),
-                  Set(geometries.compactMap(\.multiplicity)).count <= 1 else {
-                throw ParseError.malformed("The \(label) alternatives must share charge and spin. Use separate workflows for different electronic states.")
+            if Set(charges).count > 1 || Set(geometries.compactMap(\.multiplicity)).count > 1 {
+                try missing("The \(label) alternatives must share charge and spin. Use separate workflows for different electronic states.")
             }
             for (index, geometry) in geometries.enumerated() {
                 let slug = geometry.name.replacingOccurrences(of: "[^A-Za-z0-9_-]+", with: "_", options: .regularExpression)
                 let filename = "\(index + 1)_\(slug.prefix(60)).xyz"
                 files["\(folder)/\(filename)"] = geometry.xyz
             }
-            if geometries.count > 1 { return ["input_dir": folder, "charge": charge] }
-            guard let path = files.keys.first(where: { $0.hasPrefix(folder + "/") }) else { throw ParseError.noGeometry }
-            return ["input": path, "charge": charge]
+            var entry: [String: Any] = [:]
+            if charges.count == geometries.count, Set(charges).count == 1 { entry["charge"] = charges.first }
+            if geometries.count > 1 { entry["input_dir"] = folder }
+            else { entry["input"] = files.keys.first(where: { $0.hasPrefix(folder + "/") }) }
+            return entry
         }
 
         func coreConfig(_ core: MechanismCore, path: String) -> [String: Any] {
@@ -178,30 +190,33 @@ extension MechanismDraft {
 
         for (index, stage) in stages.enumerated() {
             let name = stage.name.trimmingCharacters(in: .whitespaces)
-            guard name.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil,
-                  !["guesser", "_inputs"].contains(name), !stageNames.values.contains(name) else {
-                throw ParseError.malformed("Use unique stage names made of letters, digits, hyphens and underscores.")
+            if name.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) == nil ||
+                  ["guesser", "_inputs"].contains(name) || stageNames.values.contains(name) {
+                try missing("Use unique stage names made of letters, digits, hyphens and underscores.")
             }
-            guard let charge = Int(stage.charge), let multiplicity = Int(stage.multiplicity), multiplicity > 0 else {
-                throw ParseError.malformed("Enter an integer charge and a positive spin multiplicity for \(name).")
+            let charge = Int(stage.charge), multiplicity = Int(stage.multiplicity)
+            if charge == nil || (multiplicity ?? 0) <= 0 {
+                try missing("Enter an integer charge and a positive spin multiplicity for \(name).")
             }
             let folder = "inputs/stage_\(index + 1)"
             var sources: [[String: Any]] = []
             if let carry = stage.carry {
-                guard let previous = stageNames[carry] else {
-                    throw ParseError.malformed("Choose an earlier stage to carry into \(name).")
+                if stageNames[carry] == nil {
+                    try missing("Choose an earlier stage to carry into \(name).")
                 }
-                var selection: [String: Any] = ["from": previous]
+                var selection: [String: Any] = [:]
+                selection["from"] = stageNames[carry]
                 switch stage.selector {
                 case .whole: break
                 case .metal: selection["select"] = "metal_complex"
                 case .smiles:
                     let smiles = stage.selectSMILES.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !smiles.isEmpty else { throw ParseError.malformed("Enter an intermediate selector SMILES for \(name).") }
+                    if smiles.isEmpty { try missing("Enter an intermediate selector SMILES for \(name).") }
                     selection["select_smiles"] = smiles
                     if !stage.selectIndex.isEmpty {
-                        guard let occurrence = Int(stage.selectIndex), occurrence >= 0 else {
-                            throw ParseError.malformed("Use a zero-based occurrence for the intermediate selector in \(name).")
+                        let occurrence = Int(stage.selectIndex)
+                        if (occurrence ?? -1) < 0 {
+                            try missing("Use a zero-based occurrence for the intermediate selector in \(name).")
                         }
                         selection["select_index"] = occurrence
                     }
@@ -217,8 +232,8 @@ extension MechanismDraft {
             for (offset, reagent) in stage.reagents.enumerated() {
                 sources.append(try source([reagent], folder: folder + "/reagent_\(offset + 1)", label: "fixed reagent"))
             }
-            guard !sources.isEmpty || !stage.reactantYAML.isEmpty || !stage.settingsYAML.isEmpty || !mechanismYAML.isEmpty || !workflowYAML.isEmpty else {
-                throw ParseError.malformed("Add a reactant source for \(name).")
+            if sources.isEmpty && stage.reactantYAML.isEmpty && stage.settingsYAML.isEmpty && mechanismYAML.isEmpty && workflowYAML.isEmpty {
+                try missing("Add a reactant source for \(name).")
             }
             let path = ["mechanism", "stages", String(index)]
             let stageNumber = index + 1
@@ -236,13 +251,15 @@ extension MechanismDraft {
             case .core:
                 guard let core = stage.productCore else {
                     if customProduct { break }
-                    throw ParseError.malformed("Add a product core for \(name).")
+                    try missing("Add a product core for \(name).")
+                    break
                 }
                 product["core"] = coreConfig(core, path: folder + "/product_core.xyz")
             case .xyz:
                 guard let xyz = stage.productXYZ else {
                     if customProduct { break }
-                    throw ParseError.malformed("Add a complete product XYZ for \(name).")
+                    try missing("Add a complete product XYZ for \(name).")
+                    break
                 }
                 let path = folder + "/product.xyz"
                 files[path] = xyz.xyz
@@ -250,10 +267,10 @@ extension MechanismDraft {
             case .smiles:
                 let smiles = stage.productSMILES.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !smiles.isEmpty { product["smiles"] = smiles }
-                else if !customProduct { throw ParseError.malformed("Enter the complete product SMILES for \(name).") }
+                else if !customProduct { try missing("Enter the complete product SMILES for \(name).") }
             }
             stageConfigs.append([
-                "name": name, "charge": charge, "multiplicity": multiplicity, "reactant": reactant,
+                "name": name, "charge": charge as Any, "multiplicity": multiplicity as Any, "reactant": reactant,
                 "product": product, "ts_guesser": [
                     "method": stage.guesser, "n_images": stage.images, "timeout_seconds": stage.guesserTimeout,
                     "scoring_steps": try calculations(stage.scoringSteps, .scoring, stageNumber: stageNumber, path: path + ["ts_guesser", "scoring_steps"])
@@ -276,6 +293,6 @@ extension MechanismDraft {
         ]
         addOverride(["mechanism"], mechanismYAML)
         addOverride([], workflowYAML)
-        return (config, files, overrides)
+        return (config, files, overrides, issue)
     }
 }

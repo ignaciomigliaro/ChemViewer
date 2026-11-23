@@ -5,53 +5,31 @@ struct MechanismComposerView: View {
     @ObservedObject private var draft = MechanismDraft.shared
     @EnvironmentObject private var workspace: WorkspaceStore
 
-    @State private var reviewing = false
+    var pasteboard: NSPasteboard = .general
+
+    @State private var revision = 0
+    @State private var issue = ""
+    @State private var copied = false
     @State private var preview = ""
-    @State private var loadingPreview = false
+    @State private var loadingPreview = true
 
     var body: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    GroupBox("Starting catalysts") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                GeometryEditButton(title: "Choose from BOS-TMC…", id: "mechanism-catalog") {
-                                    draft.choosingCatalysts = true
-                                    workspace.activeTab = "BosTMC"
-                                }.fixedSize()
-                                Button("Import XYZ…") { draft.importXYZ() }
-                            }
-                            MechanismGeometryList(geometries: $draft.catalysts)
-                            Text("Each catalyst runs as a separate alternative in the first stage.")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }.frame(maxWidth: .infinity, alignment: .leading)
+            GeometryReader { geometry in
+                if geometry.size.width >= 980 {
+                    HSplitView {
+                        form.frame(minWidth: 560, maxWidth: .infinity, maxHeight: .infinity)
+                        yamlPane.frame(minWidth: 270, idealWidth: geometry.size.width * 0.36,
+                                       maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    ForEach($draft.stages) { $stage in
-                        MechanismStageView(stage: $stage, earlier: Array(draft.stages.prefix { $0.id != stage.id }))
+                } else {
+                    VSplitView {
+                        form.frame(minHeight: 160, maxHeight: .infinity)
+                        yamlPane.frame(minHeight: 125, idealHeight: geometry.size.height * 0.35,
+                                       maxHeight: .infinity)
                     }
-                    GeometryEditButton(title: "Add stage", id: "mechanism-add-stage") { draft.addStage() }.fixedSize()
-                    GroupBox("Workflow settings") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            ViewThatFits(in: .horizontal) {
-                                HStack { budgets }.fixedSize()
-                                VStack(alignment: .leading) { budgets }
-                            }
-                            Toggle("Allow metal coordination changes", isOn: $draft.forceMetalContacts)
-                            MechanismSettingsEditor(title: "Mechanism settings", yaml: $draft.mechanismYAML,
-                                keys: draft.schema?.keys("MechanismConfig") ?? [])
-                            MechanismSettingsEditor(title: "Top-level input.yaml settings", yaml: $draft.workflowYAML,
-                                keys: draft.schema?.keys() ?? [])
-                            if !draft.schemaError.isEmpty {
-                                HStack {
-                                    Text("ChemRefine schema unavailable").foregroundStyle(.secondary).help(draft.schemaError)
-                                    Button("Retry") { Task { await draft.loadSchema() } }
-                                }.font(.caption)
-                            }
-                        }.frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }.frame(maxWidth: 880).padding(16).frame(maxWidth: .infinity)
-            }.disabled(draft.saving)
+                }
+            }
             Divider()
             if !draft.notice.isEmpty {
                 Text(draft.notice).font(.caption).textSelection(.enabled)
@@ -60,39 +38,104 @@ struct MechanismComposerView: View {
                     .padding(.horizontal, 10).padding(.top, 8)
             }
             HStack(spacing: 12) {
-                if draft.saving || loadingPreview { ProgressView().controlSize(.small) }
-                Spacer()
-                Text(draft.variantCount.map { "\($0.formatted()) combinations" } ?? "Too many combinations")
+                if draft.saving { ProgressView().controlSize(.small) }
+                Text(draft.variantCount.map { "\($0.formatted()) " + ($0 == 1 ? "combination" : "combinations") } ?? "Too many combinations")
                     .font(.caption).foregroundStyle(.secondary)
-                Button("Review YAML") {
-                    loadingPreview = true
-                    Task {
-                        defer { loadingPreview = false }
-                        do {
-                            preview = try await draft.previewYAML()
-                            reviewing = true
-                        } catch { draft.notice = error.localizedDescription }
-                    }
-                }.disabled(draft.saving || loadingPreview)
+                Spacer()
                 Button("Create input.yaml…") { draft.save(workspace) }
                     .buttonStyle(.borderedProminent).disabled(draft.saving)
                     .accessibilityIdentifier("mechanism-create")
             }.padding(10)
         }
         .task { await draft.loadSchema() }
-        .sheet(isPresented: $reviewing) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("input.yaml").font(.headline)
-                    Spacer()
-                    Button("Done") { reviewing = false }
-                }
-                ScrollView([.horizontal, .vertical]) {
-                    Text(preview).font(.system(.body, design: .monospaced)).textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }.padding().frame(minWidth: 640, minHeight: 490)
+        .onReceive(draft.objectWillChange) { _ in
+            revision += 1
+            loadingPreview = true
+            copied = false
         }
+        .task(id: revision) {
+            do {
+                try await Task.sleep(nanoseconds: 200_000_000)
+                let result = try await draft.renderYAML(allowIncomplete: true)
+                try Task.checkCancellation()
+                preview = result.yaml
+                issue = result.issue ?? ""
+                loadingPreview = false
+            } catch {
+                guard !Task.isCancelled else { return }
+                preview = ""
+                issue = error.localizedDescription
+                loadingPreview = false
+            }
+        }
+    }
+
+    private var yamlPane: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Image(systemName: "doc.plaintext").foregroundStyle(.secondary)
+                Text("input.yaml").font(.headline)
+                Spacer()
+                GeometryEditButton(title: copied ? "Copied" : "Copy YAML", id: "mechanism-copy-yaml") {
+                    pasteboard.clearContents()
+                    copied = pasteboard.setString(preview, forType: .string)
+                }.fixedSize().disabled(loadingPreview || preview.isEmpty)
+            }.padding(12)
+            Divider()
+            SourceTextView(text: preview, characterLimit: nil)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("YAML preview")
+            if loadingPreview || !issue.isEmpty {
+                Divider()
+                Text(loadingPreview ? "Updating preview…" : issue)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(3).help(issue)
+                    .padding(10)
+            }
+        }
+    }
+
+    private var form: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                GroupBox("Starting catalysts") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            GeometryEditButton(title: "Choose from BOS-TMC…", id: "mechanism-catalog") {
+                                draft.choosingCatalysts = true
+                                workspace.activeTab = "BosTMC"
+                            }.fixedSize()
+                            Button("Import XYZ…") { draft.importXYZ() }
+                        }
+                        MechanismGeometryList(geometries: $draft.catalysts)
+                        Text("Each catalyst runs as a separate alternative in the first stage.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                ForEach($draft.stages) { $stage in
+                    MechanismStageView(stage: $stage, earlier: Array(draft.stages.prefix { $0.id != stage.id }))
+                }
+                GeometryEditButton(title: "Add stage", id: "mechanism-add-stage") { draft.addStage() }.fixedSize()
+                GroupBox("Workflow settings") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ViewThatFits(in: .horizontal) {
+                            HStack { budgets }.fixedSize()
+                            VStack(alignment: .leading) { budgets }
+                        }
+                        Toggle("Allow metal coordination changes", isOn: $draft.forceMetalContacts)
+                        MechanismSettingsEditor(title: "Mechanism settings", yaml: $draft.mechanismYAML,
+                            keys: draft.schema?.keys("MechanismConfig") ?? [])
+                        MechanismSettingsEditor(title: "Top-level input.yaml settings", yaml: $draft.workflowYAML,
+                            keys: draft.schema?.keys() ?? [])
+                        if !draft.schemaError.isEmpty {
+                            HStack {
+                                Text("ChemRefine schema unavailable").foregroundStyle(.secondary).help(draft.schemaError)
+                                Button("Retry") { Task { await draft.loadSchema() } }
+                            }.font(.caption)
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }.padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        }.disabled(draft.saving)
     }
 
     @ViewBuilder private var budgets: some View {
@@ -126,7 +169,7 @@ private struct MechanismStageView: View {
                     Text("Stage \(earlier.count + 1)").font(.headline)
                     Text(stage.name.isEmpty ? "Untitled" : stage.name).foregroundStyle(.secondary).lineLimit(1)
                     Spacer()
-                    Text("\(calculationCount) calculations").font(.caption).foregroundStyle(.secondary)
+                    Text("\(calculationCount) " + (calculationCount == 1 ? "calculation" : "calculations")).font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -155,7 +198,7 @@ private struct MechanismStageView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Picker("Guesser", selection: $stage.guesser) {
-                                ForEach(draft.schema?.guessers ?? ["idpp"], id: \.self) { Text($0).tag($0) }
+                                ForEach(draft.schema?.guessers ?? ["idpp"], id: \.self) { Text(["idpp": "IDPP", "geodesic": "Geodesic", "external": "External", "fragmentflow": "FragmentFlow", "react-ot": "React-OT"][$0] ?? $0).tag($0) }
                             }.fixedSize()
                             Stepper("Images  \(stage.images)", value: $stage.images, in: 3...999).fixedSize()
                             Text("Timeout")

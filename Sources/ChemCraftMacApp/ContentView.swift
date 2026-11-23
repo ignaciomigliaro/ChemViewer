@@ -522,6 +522,7 @@ struct XYZExportDocument: FileDocument {
 struct SourceTextView: NSViewRepresentable {
     let text: String
     var focusLine: Int? = nil
+    var characterLimit: Int? = 2_000_000
     final class Coordinator { var focusedLine: Int? }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> NSScrollView {
@@ -551,7 +552,7 @@ struct SourceTextView: NSViewRepresentable {
                 focusStart = NSMaxRange(source.lineRange(for: NSRange(location: focusStart, length: 0)))
             }
         }
-        let limit = 2_000_000
+        let limit = characterLimit ?? source.length
         var offset = source.length > limit && focusStart > limit ? max(0, focusStart - limit / 2) : 0
         if offset > 0 { offset = source.lineRange(for: NSRange(location: offset, length: 0)).location }
         let length = min(limit, source.length - offset)

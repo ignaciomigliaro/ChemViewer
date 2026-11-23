@@ -49,8 +49,32 @@ enum MechanismSmokeTest {
                 "CANDIDATE_\(index + 1),Cu,0.0,1,\"\(xyz)\"\n"
             }
             try ("refcode,metal,charge,spinmult,xyz\n" + rows.joined()).write(to: csv, atomically: true, encoding: .utf8)
+            let clipboard = NSPasteboard.withUniqueName()
+            defer { clipboard.releaseGlobally() }
+            draft.previewPasteboard = clipboard
             workspace.activeTab = "ChemRefine"
             try await click("Reaction mechanism…")
+            try await click("Copy YAML", identifier: "mechanism-copy-yaml")
+            try require(clipboard.string(forType: .string)?.contains("sources: []") == true,
+                        "A fresh draft did not copy partial YAML")
+            guard let window = NSApp.windows.first(where: { window in
+                window.contentView.map { descendants($0).contains { $0.identifier?.rawValue == "mechanism-copy-yaml" } } == true
+            }), let content = window.contentView else { throw ParseError.malformed("Missing mechanism window") }
+            for width in [960, 1200] {
+                window.setContentSize(NSSize(width: width, height: 760))
+                await pause()
+                try await wait("Preview and editor did not fit at width \(width)") {
+                    let views = descendants(content)
+                    guard let source = views.compactMap({ $0 as? NSTextView }).first(where: { $0.string.contains("sources: []") }),
+                          let pane = source.enclosingScrollView,
+                          let catalog = views.first(where: { $0.identifier?.rawValue == "mechanism-catalog" }) else { return false }
+                    let previewFrame = pane.convert(pane.bounds, to: content)
+                    let catalogFrame = catalog.convert(catalog.bounds, to: content)
+                    let inside = content.bounds.insetBy(dx: -1, dy: -1).contains(previewFrame)
+                    return inside && (width < 980 ? previewFrame.width > content.bounds.width * 0.9
+                                       : previewFrame.minX > catalogFrame.maxX)
+                }
+            }
             try await click("Choose from BOS-TMC…")
             catalog.remote = false
             catalog.filesRemote = false
@@ -162,7 +186,11 @@ enum MechanismSmokeTest {
             let preview = try await draft.previewYAML()
             try require(preview.contains("engine: pyscf") && preview.contains("basis: sto-3g") && preview.contains("timeout_seconds: 321"),
                         "YAML preview omitted calculation or guesser settings")
+            try await click("Copy YAML", identifier: "mechanism-copy-yaml")
             let url = try await draft.export(to: evidence)
+            let exported = try String(contentsOf: url, encoding: .utf8)
+            try require(clipboard.string(forType: .string) == exported && exported == preview,
+                        "Live preview, copied YAML and exported YAML differ")
             try url.path.write(to: evidence.appendingPathComponent("workflow-path.txt"), atomically: true, encoding: .utf8)
             draft.visible = false
             runtime.openLocalWorkflow(url, workspace: workspace)

@@ -907,3 +907,5 @@ with details collapsed. Switch groups and return to the row. Pick Single point,
 enter HF def2-SVP and export. Confirm the generated ORCA template contains
 that method and no optimization directive. Leave the second stage's endpoint
 lists empty and check that ChemRefine accepts both stages.
+
+CV-MECHANISM-006. Open a fresh composer. Confirm the YAML pane shows the first stage and allows copying. Add a stage and inspect the updated preview. Check that the form and preview share the available space when resizing. The native harness uses an isolated pasteboard and checks complete copied text against the exported file.

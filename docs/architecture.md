@@ -1042,3 +1042,5 @@ Each stage remembers the selected calculation group. Endpoint lists start empty.
 An unset operation prompts for a choice, while an explicit “Infer from input”
 omits the operation from YAML. Method and model text belongs to its calculation
 and survives engine changes.
+
+The mechanism form and YAML share a resizable split view. Live rendering and export share the package builder, override merge and deterministic YAML emitter. The draft path accepts incomplete fields. Export enforces source, template, schema and variant checks. Edits invalidate the clipboard action until the debounced preview refresh completes.

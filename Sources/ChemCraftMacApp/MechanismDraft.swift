@@ -100,6 +100,7 @@ enum MechanismCapture: String {
 @MainActor
 final class MechanismDraft: ObservableObject {
     static let shared = MechanismDraft()
+    var previewPasteboard = NSPasteboard.general
     @Published var visible = false
     @Published var choosingCatalysts = false
     @Published var catalysts: [MechanismGeometry] = []

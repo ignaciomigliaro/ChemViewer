@@ -734,9 +734,9 @@ product cores from the 3D builder. **Create input.yaml…** packages geometries
 and templates and opens the linked mechanism in ChemRefine. See the
 [reaction mechanism guide](docs/user-guide.md#build-a-reaction-mechanism).
 
-### Multi-calculation reaction stages (0.15.0)
+### Multi-calculation reaction stages
 
 Open a stage's **Calculations** section to configure independent reactant,
-product, scoring and TS refinement sequences. Expand a row to set its engine,
-operation and write-in method. Use **Review YAML** to see the combined
-configuration, including advanced settings. [Workflow guide](docs/user-guide.md#configure-each-calculation)
+product, scoring and TS refinement sequences. Choose the engine, operation and method in each row. The **input.yaml** pane
+updates as you edit and includes advanced settings. Use **Copy YAML** to copy
+the current configuration. [Workflow guide](docs/user-guide.md#configure-each-calculation)

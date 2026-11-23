@@ -276,7 +276,7 @@ struct LocalWorkflowView: View {
                 }
             }.padding(10)
             Divider()
-            if mechanism.visible { MechanismComposerView() }
+            if mechanism.visible { MechanismComposerView(pasteboard: mechanism.previewPasteboard) }
             else if remote.workflowRemoteSelected { RemoteWorkflowView() }
             else { localContent }
         }.frame(minWidth: embedded ? 400 : 1000, minHeight: embedded ? 300 : 700)

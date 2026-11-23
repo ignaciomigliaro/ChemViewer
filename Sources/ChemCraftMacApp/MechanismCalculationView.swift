@@ -113,7 +113,11 @@ private struct MechanismCalculationView<Actions: View>: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Engine").font(.caption).foregroundStyle(.secondary)
             Picker("Engine", selection: $step.engine) {
-                ForEach(engineNames, id: \.self) { Text($0).tag($0) }
+                ForEach(engineNames, id: \.self) { engine in
+                    Text(["orca": "ORCA", "qchem": "Q-Chem", "pyscf": "PySCF",
+                          "pyscf-extopt": "PySCF ExtOpt", "mlip": "MLIP", "mlip-extopt": "MLIP ExtOpt",
+                          "mlip-train": "MLIP training"][engine] ?? engine).tag(engine)
+                }
             }.labelsHidden().frame(minWidth: 105)
         }.onChange(of: step.engine) { engine in
             let available = schema?.engines[engine]?.operations ?? []
@@ -133,7 +137,7 @@ private struct MechanismCalculationView<Actions: View>: View {
                     if step.operation == nil { Text("Choose operation…").tag(String?.none) }
                     Text("Infer from input").tag(Optional(""))
                     ForEach(operations, id: \.self) { op in
-                        Text(["opt_sp": "Geometry optimization", "sp": "Single point", "freq": "Frequencies"][op] ?? op).tag(Optional(op))
+                        Text(["opt_sp": "Geometry optimization", "sp": "Single point", "freq": "Frequencies", "goat": "GOAT", "pes": "PES", "neb": "NEB", "irc": "IRC", "md": "MD", "docker": "DOCKER", "solvator": "SOLVATOR"][op] ?? op).tag(Optional(op))
                     }
                 }.labelsHidden().frame(minWidth: 150)
             }

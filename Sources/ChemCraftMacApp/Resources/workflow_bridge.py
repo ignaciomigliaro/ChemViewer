@@ -224,12 +224,6 @@ def workflow_summary(path):
 
 def mechanism_yaml(request, target, *, write):
     import yaml
-    from chemrefine.config import Config, load_config
-
-    if 'mechanism' not in Config.model_fields:
-        raise RuntimeError('Update the ChemViewer chemistry runtime with scripts/setup-chemistry.sh for linked mechanisms.')
-    from chemrefine import mechanism_batch
-
     data = json.loads(target.read_text()) if write else request['config']
 
     def merge(base, changes):
@@ -239,6 +233,8 @@ def mechanism_yaml(request, target, *, write):
             else:
                 base[key] = value
 
+    # Preview requests and on-disk JSON must produce identical key ordering.
+    data = json.loads(json.dumps(data, sort_keys=True))
     for override in sorted(request.get('overrides', []), key=lambda item: -len(item['path'])):
         destination = data
         for part in override['path']:
@@ -255,6 +251,14 @@ def mechanism_yaml(request, target, *, write):
         merge(destination, changes)
 
     text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    if request.get('action') == 'draft-mechanism-yaml' and not write:
+        return {'yaml': text}
+    from chemrefine.config import Config, load_config
+
+    if 'mechanism' not in Config.model_fields:
+        raise RuntimeError('Update the ChemViewer chemistry runtime with scripts/setup-chemistry.sh for linked mechanisms.')
+    from chemrefine import mechanism_batch
+
     if not write:
         Config.model_validate(data)
         return {'yaml': text}
@@ -277,9 +281,11 @@ def mechanism_yaml(request, target, *, write):
 
 
 def act(request):
-    from chemrefine import agent_tools
     path = str(Path(request['config_path']).expanduser().resolve())
     action = request.get('action', 'check')
+    if action in ('write-mechanism-yaml', 'preview-mechanism-yaml', 'draft-mechanism-yaml'):
+        return mechanism_yaml(request, Path(path), write=action == 'write-mechanism-yaml')
+    from chemrefine import agent_tools
     if action == 'mechanism-schema':
         from chemrefine.scaffold import TemplatePlan, _starter_for
         schema = agent_tools.get_schema()
@@ -288,8 +294,6 @@ def act(request):
                 plan = TemplatePlan(Path('step1.' + engine['template_suffix']), False, 'step', 1, name)
                 engine['starter'] = _starter_for(plan)
         return schema
-    if action in ('write-mechanism-yaml', 'preview-mechanism-yaml'):
-        return mechanism_yaml(request, Path(path), write=action == 'write-mechanism-yaml')
     if action == 'check-python':
         if not str(request.get('python_path', '')).strip():
             raise ValueError('Choose a Python interpreter first.')

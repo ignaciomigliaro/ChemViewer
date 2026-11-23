@@ -426,7 +426,12 @@ setting** lists the keys from the installed ChemRefine schema. Values you
 enter override the generated settings. Nested mappings merge, while lists
 replace the generated list. You can set advanced values such as connectivity,
 match hints, dissociation, per-variant overrides and external guesser commands.
-**Review YAML** shows the combined configuration before writing the project.
+The **input.yaml** pane shows the combined configuration as you edit, including
+unfinished stages. Drag the divider to resize it. In a narrow window it appears
+below the form. **Copy YAML** copies the displayed text, including partial
+drafts. **Create input.yaml…** checks the workflow and writes the referenced XYZ
+files and engine templates alongside it. ORCA method keywords live in those
+templates.
 
 For cluster use, transfer the workflow folder and configure SLURM dispatch
 and templates on a host with a compatible ChemRefine runtime.

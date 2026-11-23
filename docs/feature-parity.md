@@ -766,3 +766,5 @@ The 0.15.1 native mechanism editor groups calculations by endpoint, path
 scoring and TS refinement. Method and model fields start blank. Endpoint
 preparation is optional, and the operation picker uses descriptive names for
 optimization, single points and frequencies.
+
+The 0.15.2 mechanism composer displays draft YAML beside the editor or below it in a compact window. Copy YAML copies the displayed draft. Engine and guesser display names are independent of their serialized identifiers.

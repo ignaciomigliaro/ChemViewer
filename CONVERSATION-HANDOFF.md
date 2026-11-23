@@ -1881,3 +1881,16 @@ relocated signed arm64 package checks passed. Local evidence is under
 with three optional fixture skips. The standalone runner passed 60 core cases
 and the parser, editing and project suites. XCTest is unavailable in the
 installed command-line tools. Both application folders received 0.15.1.
+
+## Live mechanism YAML and window layout — 0.15.2
+
+The composer shares the available window between the form and selectable YAML
+and copies the current draft through a native button. Engine and guesser labels
+use their conventional capitalization. The isolated Mac test checked stacked
+and side-by-side layouts at 960 and 1200 points, copied an unfinished draft,
+and matched the full clipboard text to the exported input.yaml. Native editor
+round trip, four-variant plan and ChemRefine dry run passed. Evidence is under
+/private/tmp/cv-mech-0152-final. The chemistry Python suite passed 118 tests
+with three optional skips. The signed arm64 package passed relocation and
+resource checks, 60 standalone core cases and the parser, editing and project
+suites. Both installed copies received the release.

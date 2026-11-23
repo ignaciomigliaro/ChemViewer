@@ -1055,3 +1055,8 @@ HF def2-SVP on the first reactant and leaves both endpoint preparation lists
 empty on the second stage. The independent plan check verifies the exact ORCA
 input and both empty lists after the WebKit round trip. ChemRefine dry-run
 planned all eight stages. These checks cover configuration and planning.
+
+The 0.15.2 mechanism fixture compares the live clipboard contents with the
+complete exported YAML before the ChemRefine editor opens it. The same test
+also copies a fresh, incomplete draft with an empty reactant source list.
+Export retains the existing schema, geometry and variant checks.
