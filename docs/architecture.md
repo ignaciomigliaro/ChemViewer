@@ -951,3 +951,119 @@ snapshot, invalidates stale energies and renders explicit connectivity. Drag
 preview remains local to Metal; optional new-contact inference runs once at
 release against the gesture's original coordinates, retaining pre-existing manual
 deletions. Explicit Generate merges all present geometric contacts instead.
+
+## Pasted Cartesian coordinates — 0.13.12
+
+`PastedCoordinates` in ChemCraftCore validates full XYZ trajectories or headerless
+Element X Y Z rows in angstrom, normalizes element symbols/atomic numbers and
+rejects nonfinite coordinates, unknown elements and empty frames. Full XYZ keeps
+comment/energy/frame semantics. Headerless rows require exactly four fields.
+Input is bounded to 10 MB, 10,000 atoms/frame and 500,000 atoms total. XYZ parser
+reservation is bounded by available lines so a corrupt count cannot reserve an
+unbounded atom array. The native paste sheet uses ordinary text editing and an
+explicit clipboard read; Render validates before creating a separate unsaved
+DocumentTabs workspace. Original tabs, edits and clipboard contents are retained.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+GIF renderers preserve the selected H visibility separately when clearing orange
+selection highlighting, including the second renderer used for style refitting.
+The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+## Viewport reactivation recovery — 0.13.15
+
+MolecularMTKView observes app activation and its own window's key, occlusion
+and deminiaturization notifications. It coalesces them onto the next main-queue
+turn, refreshes size-dependent render targets and explicitly draws a frame for
+a visible attached renderer. Static scenes retain on-demand rendering; animated
+scenes retain their display loop. Dismantling removes observers, and pending
+callbacks check rendering resources before acquiring a drawable. No scientific
+state or camera reset is involved.
+
+## Reaction mechanism composer — 0.14.0
+
+The native draft survives navigation among ChemRefine, BOS-TMC and Image.
+Catalyst capture uses the catalog's resolved XYZ and source metadata. Builder
+capture snapshots a complete frame or selected atoms in source row order.
+The exporter writes relative paths and generated ORCA or UMA starter templates
+in a staging directory. The local Python bridge serializes the YAML, loads
+it through the installed ChemRefine schema and checks directory expansion
+before publishing the folder. Single entries use `input`, and lists use separate
+`input_dir` slots. ChemRefine owns Cartesian expansion, chemistry planning,
+atom correspondence, optimized endpoint handoff, calculation and reports.
+The optional runtime remains separately packaged. It is pinned to the published
+mechanism revision of the user's ChemRefine fork.
+
+## ChemRefine destination header — 0.14.1
+
+The segmented destination picker and its label share their intrinsic width.
+The SSH hostname sits in a separate single-line field with middle truncation
+and a tooltip. Header actions use intrinsic button widths. Compact layouts
+give the destination control its own horizontal row.
+
+## Multi-calculation reaction stages — 0.15.0
+
+Each reaction stage stores four independent ordered calculation lists.
+ChemViewer reads the installed ChemRefine engine registry and model schema
+through the existing local workflow bridge. Each engine supplies its
+operations, template suffix, starter text and declared options. Native
+fields set common choices. Contextual YAML mappings merge into the generated
+document with broader overrides applied last. The same merge runs for preview
+and export. ChemRefine validates the schema and expands variants before the
+folder is published. Generated templates use distinct branch and step paths,
+and a custom package-relative template root receives the generated files.
+
+Each stage remembers the selected calculation group. Endpoint lists start empty.
+An unset operation prompts for a choice, while an explicit “Infer from input”
+omits the operation from YAML. Method and model text belongs to its calculation
+and survives engine changes.
+
+The mechanism form and YAML share a resizable split view. Live rendering and export share the package builder, override merge and deterministic YAML emitter. The draft path accepts incomplete fields. Export enforces source, template, schema and variant checks. Edits invalidate the clipboard action until the debounced preview refresh completes.
+
+## High-resolution graphics export
+
+PNG and GIF use the viewport's Metal pipelines with offscreen color and depth
+targets sized in output pixels. PNG uses the live camera, scene, and projected
+overlays. ImageIO records the selected DPI independently of raster size.
+GIF uses an isolated renderer with fixed framing. Rotation composes a
+right-handed, molecular-axis rotation with the starting view about the fitted
+geometry center. Samples span one turn with the endpoint excluded, and atom
+positions and distances are invariant. Captions and measurement guides are
+projected for each view and scaled when drawing into the larger raster.
+
+Fixed-scale GIF framing uses the same animation center as automatic fitting.
+The square orthographic projection spans two view units, so a selected width
+of W ångströms uses a view scale of 2/W and yields N/W pixels per ångström at
+resolution N. The depth interval expands when needed at high magnification.
+
+## Copying 2D structures
+
+The draw canvas and clipboard bitmap share the AppKit bond and atom painters.
+Copy uses the committed MolecularSketch and its atom bounds. The offscreen
+white canvas renders at up to three pixels per drawing unit, capped at 3072
+pixels on the long edge. A single pasteboard item carries PNG and TIFF.

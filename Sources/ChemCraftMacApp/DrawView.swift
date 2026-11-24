@@ -17,6 +17,8 @@ struct DrawView: View {
                         Text("2D structure").font(.headline)
                         Spacer()
                         Text("\(drawing.graph.atoms.count) atoms · \(drawing.graph.bonds.count) bonds").font(.caption).foregroundStyle(.secondary)
+                        Button("Copy 2D Image") { drawing.copy2DImage() }
+                            .disabled(drawing.graph.atoms.isEmpty)
                         Button("Fit") { drawing.fit() }
                     }.padding(10)
                     DrawingCanvas(drawing: drawing).frame(minWidth: 400, minHeight: 300)

@@ -7,6 +7,7 @@ struct ContentView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var chemistry = ChemistryRuntime.shared
     @ObservedObject private var remote = RemoteConnection.shared
+    @ObservedObject private var mechanism = MechanismDraft.shared
 
     private let tabs = ["Image", "Abstract", "Source", "Coord", "Image/Abs", "ChemRefine", "Draw", "BosTMC"]
 
@@ -33,6 +34,9 @@ struct ContentView: View {
             if !["Draw","BosTMC"].contains(workspace.activeTab) { ScrollView(.horizontal, showsIndicators: false) { classicToolbar } }
             Divider()
             if workspace.isDraggingEnabled && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) { ManipulationToolbar() }
+            if workspace.activeTab == "Image", let target = mechanism.pending {
+                MechanismCaptureBar(target: target)
+            }
             if !workspace.buildingHint.isEmpty && !["ChemRefine", "Draw", "BosTMC"].contains(workspace.activeTab) {
                 HStack {
                     if let element = workspace.pendingElement {
@@ -60,6 +64,10 @@ struct ContentView: View {
             .frame(width: 0, height: 0).allowsHitTesting(false))
         .task {
             if CommandLine.arguments.contains(where: { $0.hasSuffix("smoke-test") }) { try? await Task.sleep(nanoseconds: 800_000_000) }
+            if CommandLine.arguments.contains("--mechanism-smoke-test") { await MechanismSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--viewport-activation-smoke-test") { await ViewportActivationSmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--hydrogen-visibility-smoke-test") { await HydrogenVisibilitySmokeTest.run(workspace: workspace) }
+            if CommandLine.arguments.contains("--paste-coordinates-smoke-test") { await Task { @MainActor in await PasteCoordinatesSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--internal-coordinate-smoke-test") { await Task { @MainActor in await InternalCoordinateSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--camera-smoke-test") { await Task { @MainActor in await CameraSmokeTest.run(workspace: workspace) }.value }
             if CommandLine.arguments.contains("--file-open-smoke-test") { await Task { @MainActor in await FileOpenSmokeTest.run(workspace: workspace) }.value }
@@ -122,9 +130,11 @@ struct ContentView: View {
         } message: {
             Text(workspace.errorMessage ?? "Unknown error")
         }
+        .sheet(isPresented: $workspace.isPasteCoordinatesPresented) { PasteCoordinatesView() }
         .sheet(isPresented: $remote.presented) { RemoteConnectionView().environmentObject(workspace) }
         .sheet(isPresented: $workspace.isPeriodicTablePresented) { PeriodicTableView() }
         .sheet(isPresented: $workspace.isFragmentLibraryPresented) { FragmentBrowserView() }
+        .sheet(isPresented: $workspace.isImageExportPresented) { ImageExportView() }
         .sheet(isPresented: $workspace.isAnimationExportPresented) { AnimationExportView() }
         .sheet(isPresented: $workspace.isEnergyLandscapePresented) {
             EnergyLandscapeView()
@@ -156,9 +166,9 @@ struct ContentView: View {
     private var classicToolbar: some View {
         HStack(spacing: 5) {
             tool("Open chemistry file", "folder") { workspace.isImporterPresented = true }
+            tool("Paste Coordinates…", "doc.on.clipboard") { workspace.isPasteCoordinatesPresented = true }
             tool("Export PNG image", "camera") {
-                workspace.activeTab = "Image"
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { viewportAction("export") }
+                workspace.presentImageExport()
             }.disabled(workspace.currentFrame == nil)
             Divider().frame(height: 24)
             Menu("Build") {
@@ -174,7 +184,7 @@ struct ContentView: View {
                 .help("Toggle coordinate dragging · Control-right-drag moves atoms only while enabled")
                 .accessibilityIdentifier("coordinate-dragging-toggle")
             tool("Select connected molecule", "globe") { workspace.selectConnectedGroup() }
-            Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Toggle hydrogen visibility")
+            Button("H") { workspace.showHydrogens.toggle() }.buttonStyle(ClassicButtonStyle()).help("Show all hydrogens, or only selected hydrogens")
             ForEach([(AtomCaption.numbers, "1"), (.elements, "C1"), (.elementNumbers, "A"), (.none, "●")], id: \.0) { caption, title in
                 Button(title) { workspace.atomCaption = caption }.buttonStyle(ClassicButtonStyle()).help(caption.rawValue)
             }
@@ -192,7 +202,7 @@ struct ContentView: View {
                 .disabled(workspace.selectedMode == nil)
             tool("Play or pause geometries", "film") { workspace.toggleTrajectoryPlayback() }
                 .disabled((workspace.document?.frames.count ?? 0) < 2)
-            tool("Export trajectory or frequency GIF", "photo.on.rectangle.angled") { workspace.presentAnimationExport() }
+            tool("Export animated GIF", "photo.on.rectangle.angled") { workspace.presentAnimationExport() }
                 .disabled(workspace.currentFrame == nil)
             tool("Energy landscape", "chart.xyaxis.line") { workspace.isEnergyLandscapePresented = true }
                 .disabled((workspace.document?.frames.count ?? 0) < 2 && workspace.document?.nebProfile == nil)
@@ -214,10 +224,13 @@ struct ContentView: View {
         case "Abstract": abstractPanel
         case "Source": SourceTextView(text: workspace.sourceText, focusLine: workspace.sourceFocusLine)
         case "Coord":
-            if let frame = workspace.currentFrame {
-                CoordinateEditorView(frame: frame, embedded: true) { workspace.replaceCurrentAtoms($0) }
-                    .id("\(workspace.frameIndex)-\(workspace.geometryRevision)")
-            } else { Text("Open a structure to edit coordinates.").frame(maxWidth: .infinity, maxHeight: .infinity) }
+            VSplitView {
+                PasteCoordinatesView(embedded: true)
+                if let frame = workspace.currentFrame {
+                    CoordinateEditorView(frame: frame, embedded: true) { workspace.replaceCurrentAtoms($0) }
+                        .id("\(workspace.frameIndex)-\(workspace.geometryRevision)")
+                }
+            }
         case "Image/Abs":
             HSplitView { mainPanel; abstractPanel.frame(minWidth: 280, idealWidth: 340) }
         default: mainPanel
@@ -509,6 +522,7 @@ struct XYZExportDocument: FileDocument {
 struct SourceTextView: NSViewRepresentable {
     let text: String
     var focusLine: Int? = nil
+    var characterLimit: Int? = 2_000_000
     final class Coordinator { var focusedLine: Int? }
     func makeCoordinator() -> Coordinator { Coordinator() }
     func makeNSView(context: Context) -> NSScrollView {
@@ -538,7 +552,7 @@ struct SourceTextView: NSViewRepresentable {
                 focusStart = NSMaxRange(source.lineRange(for: NSRange(location: focusStart, length: 0)))
             }
         }
-        let limit = 2_000_000
+        let limit = characterLimit ?? source.length
         var offset = source.length > limit && focusStart > limit ? max(0, focusStart - limit / 2) : 0
         if offset > 0 { offset = source.lineRange(for: NSRange(location: offset, length: 0)).location }
         let length = min(limit, source.length - offset)

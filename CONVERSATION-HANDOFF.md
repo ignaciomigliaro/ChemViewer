@@ -1656,3 +1656,292 @@ SHA-256: 8d3505f9757528a6170828116fd90abeaa43f1d02eb1dd66b779e990f536e4e0.
 Evidence: /private/tmp/chemviewer-internal-coordinates-0.13.11 and
 /private/tmp/chemviewer-fragment-edit-build.log. Hosted/downloaded/release
 outcomes will be recorded in the release PR. No full Chemcraft parity is claimed.
+
+## Paste coordinates — 0.13.12 (2026-11-16)
+
+Added native paste sheet via Edit/Command-Shift-V, toolbar and Coord. Accepts
+complete XYZ trajectories or headerless Element X Y Z rows in Å. Render creates
+a new dirty tab, retains raw source and preserves edited documents. Validation
+rejects malformed/nonfinite/unknown/empty data before document creation. Shared
+XYZ parser now bounds reserve capacity by available rows for corrupt counts.
+Two core regressions and isolated native paste acceptance added. User AGENTS.md,
+.vscode and Tests/geometry.xyz changes remain excluded. Validation below.
+
+Local validation (2026-11-16, arm64 macOS27.2/Swift6.4.2, SDK26.5): 60 standalone
+core regressions and three migrated suites PASS; full swift test attempted and
+blocked by missing XCTest under CLT (not a passing XCTest run). Signed arm64
+build and relocated resource/SDK gates with both negative controls PASS.
+Final UUID-isolated native paste acceptance PASS: real text editor/Render,
+invalid refusal, exact scalar Cartesian oracle, original edited tab/Undo retained,
+new dirty tab/source, live Metal projection and visually inspected PNG. Native
+internal-coordinate regression also PASS. The initial test timed out because its
+singleton window awaited a reopen event; the harness now sends that event only
+to its owned UUID app. Test setup/control lookup failures were corrected before
+the passing final run; they are not relabeled as passes.
+Fixture: Tests/fixtures/pasted-coordinates.txt (synthetic, unoptimized); SHA-256
+dd1fe89a85a24b7d46013bd269cc5a03a1b3c183d24051dc4bf55c52de97be75.
+Evidence: /private/tmp/chemviewer-paste-evidence-validated and
+/private/tmp/chemviewer-paste-internal-regression. Final local executable SHA-256:
+6d51a6c12bf5f30994fce5233bcc1ab5f35eb5fdcc0717e941833bf66e7a4b15.
+Hosted XCTest/coverage, independently downloaded artifact and broad manual
+clipboard/external-display acceptance remain separate and pending.
+
+Final packaged general launch/open/Metal/XYZ-export/Undo/five-tab/negative-mode
+regression PASS. Both /Applications/ChemViewer.app and the existing
+~/Applications/ChemViewer.app were refreshed with install-macos.sh --no-build;
+running user work was not closed. Quit and reopen to use 0.13.12.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+0.13.13 local validation (2026-11-16, arm64 macOS27.2, Swift6.4.2/SDK26.5):
+60 standalone core regressions and three migrated suites PASS. UUID-isolated
+native acceptance PASS for direct paste in empty/loaded Coord tabs, no dialog,
+inline invalid refusal, exact fixture coordinates, retained original edits/Undo,
+new dirty tab/source and Metal PNG. General packaged opening/export/Undo/five-tab/
+negative-mode regression and relocated resource/SDK checks with both negative
+controls PASS. Evidence: /private/tmp/chemviewer-coord-direct-paste and
+/private/tmp/chemviewer-coord-direct-general; fixture/hash unchanged from 0.13.12.
+Both installed copies refreshed without closing user work; executable SHA-256:
+166225b80f59dd44fabca84db07346815141624e28a865504fb349c09aad35fa.
+Full XCTest remains unavailable under local CLT; hosted CI/downloaded artifact
+and broad manual clipboard/external-display acceptance remain pending.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+GIF renderers preserve the selected H visibility separately when clearing orange
+selection highlighting, including the second renderer used for style refitting.
+The new smoke checks both renderer copies and submits an offscreen Metal frame.
+
+Local acceptance (2026-11-18, arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5):
+60 standalone core regressions and three migrated suites PASS. The isolated native
+hydrogen-visibility test PASS, including actual mouse deselection, bond picking,
+caption counts, two-stage GIF renderer retention and Metal export. Captured PNG
+visually verified: O and the selected H/bond only. General packaged opening,
+export, Undo, selection, source, five tabs, depth, negative-mode and animation
+regression PASS. Relocated resource/SDK checks and both negative controls PASS.
+Full swift test attempted: blocked by missing XCTest under CLT. Initial default
+SDK27.2 build failed on its documented missing SwiftUIMacros; final compatible
+SDK26.5 build passed. Hosted CI/downloaded artifact and broader manual acceptance
+remain separate; no full Chemcraft parity claimed.
+Evidence: /private/tmp/chemviewer-hydrogen-0.13.14,
+/private/tmp/chemviewer-hydrogen-general-0.13.14,
+/private/tmp/chemviewer-hydrogen-build.log. Executable SHA-256:
+ec652228cf4431f28ad4405dd87eef6438f8f0b056865d39e02fbb67fb7f9d36.
+Both installed app copies refreshed using install-macos.sh --no-build without
+closing user work. Quit and reopen /Applications/ChemViewer.app to use 0.13.14.
+
+## Viewport activation recovery — 0.13.15 (2026-11-20)
+
+User reports that only the molecule freezes after leaving and returning to the
+app; menus/tabs continue responding. Read-only sample of installed 0.13.14
+PID 50886 showed an idle AppKit event loop, no main-thread deadlock. Sample:
+/private/tmp/chemviewer-focus-before.sample.txt. A short isolated Command-Tab
+roundtrip with original synthetic water did not reproduce the intermittent
+freeze. Missing activation recovery is confirmed; the original freeze's precise
+trigger remains unproven. Avoid presenting this as a fully reproduced root cause.
+
+Static Metal scenes have a paused display timer and relied on setNeedsDisplay.
+The new app/window activation, occlusion and deminiaturization observers coalesce
+a deferred refresh, release size-dependent targets and explicitly submit a frame.
+Camera, coordinates, selection and animation mode are retained. Dismantling
+removes observers and callbacks check resources before requesting drawables.
+
+Native regression fails against previous renderer: No new GPU frame after
+NSApplicationDidBecomeActiveNotification. Fixed regression PASS for four lifecycle
+notifications, exact atom/selection/camera preservation, subsequent camera
+rotation, continuous drawing and released-renderer isolation. The test injects
+notifications; prolonged background, full minimize/restore and external-display
+manual acceptance remain pending. Reproduce with scripts/check-macos-camera.py
+--app dist/ChemViewer.app --test viewport-activation --evidence /private/tmp/focus.
+
+Local arm64 macOS27.2.1 / Swift6.4.2 / SDK26.5 build PASS. Standalone 60 core
+cases plus three migrated building suites PASS. Full swift test attempted with
+compatible SDK: blocked by missing XCTest under CLT (not a pass). Camera 32-case
+native regression, 50 document switches, general Metal/open/export/Undo/selection/
+source/five-tab/negative-mode animation acceptance PASS. Relocated package, SDK
+and missing-resource negative controls PASS. Hosted CI/downloaded artifact
+validation remains separate. Evidence: /private/tmp/chemviewer-focus-baseline,
+/private/tmp/chemviewer-focus-fixed, /private/tmp/chemviewer-focus-camera,
+/private/tmp/chemviewer-focus-document-workspace, /private/tmp/chemviewer-focus-smoke;
+build log /private/tmp/chemviewer-focus-fixed-build.log; XCTest log
+/private/tmp/chemviewer-focus-xctest.log. Executable SHA-256:
+cf60180b54085797adb74e8bad69e6f2997fdc329d2a7ec7fdd9ee108bfe791f.
+User changes in AGENTS.md, .vscode and Tests/geometry.xyz remain excluded.
+
+## ChemRefine reaction mechanism composer — 0.14.0 (2026-11-23)
+
+Use ChemRefine → Reaction mechanism. Collect multiple BOS-TMC catalysts,
+stage substrate alternatives and fixed reagents. Capture whole builder frames
+or selected atoms for the initial and product cores. Linked stages can carry
+a previous optimized product or selected component. Create input.yaml writes
+a relocatable folder and opens it in the local ChemRefine editor. The app
+uses the published ChemRefine fork commit ac09bd97a4c14722fbb5df26f19d2876a3b1a79b.
+The runtime setup handles replacement of the earlier package with the same
+distribution version. Uncommitted ChemRefine work is accessible via the optional
+local checkout installer setting.
+
+On arm64 macOS 27.2.1 and Swift 6.4.2, the SDK 26.5 release build passed with
+a signed arm64 executable. The 60 standalone core cases and three building
+suites passed. Full XCTest was attempted and stopped at missing XCTest under
+Command Line Tools. Python regression results were 117 passed and 3 skipped
+for optional licensed fixtures, with all coverage floors met. The pre-existing
+coverage inventory omission for PastedCoordinates.swift was registered using
+its existing parser tests. The isolated native mechanism test, four-variant
+and eight-stage ASE/Python oracle, ChemRefine CLI dry run, general native
+Metal regression and relocated bundle checks with two negative controls passed.
+The initial native harness could not find a SwiftUI control. It subsequently
+exercised the actual buttons using ChemViewer's existing AppKit control wrapper.
+The original synthetic fixture's unchanged connectivity was refused during
+prototype planning and was corrected to exercise a bond edit in each stage.
+ORCA/UMA mechanism calculations, cluster submission and independently downloaded
+artifact validation are pending.
+
+Evidence at /private/tmp/cv-mechanism-validated and /private/tmp/cv-mechanism-general.
+Synthetic catalog SHA-256 1d5e7518749080c07e82c2cb4ad2ed396a5a5e210adf2a424c7afe582cc10320.
+Saved YAML SHA-256 d505abb1b43a2a7ccdd96aea5d746064805e1ab478178604095f81398752c563.
+Executable SHA-256 8e4694215e3c5e029f2ac39f7bb8b2b6ef5f329fb5d7d13816ee4761a25ba541.
+Both installed app copies were updated and verified. Quit and reopen to use
+0.14.0. User edits in AGENTS.md, .vscode and Tests/geometry.xyz were excluded.
+
+## ChemRefine destination header — 0.14.1 (2026-11-23)
+
+A long synthetic SSH hostname reproduced overlap in the 0.14.0 Run on header
+at 1100 × 760. The new picker keeps This Mac and SSH / SLURM side by side,
+with a separate hostname and intrinsic header button sizes. A compact layout
+moves the destination control as a unit to its own row. The matching 0.14.1
+physical Mac check showed the hostname truncating independently and both
+destinations and mechanism composer opening. The separate minimum-width
+layout was not captured.
+
+Signed arm64 SDK 26.5 release build, 60 standalone core cases, three building
+suites, relocated packaging with negative controls, real native mechanism
+editor round trip and four-variant planning oracle passed. Native mechanism
+evidence is in /private/tmp/cv-runon-mechanism. Both installed app copies were
+refreshed without closing user work. Executable SHA-256
+13078c94db6da133c286b8faec274340ed1eefecf013707b8a6bcd31e0c7c7c0.
+
+## Multi-calculation reaction composer — 0.15.0 (2026-11-23)
+
+The native stage card separates Structures and Calculations. Each stage has
+ordered, expandable reactant, product, path-scoring and TS-refinement lists.
+The installed ChemRefine registry supplies engine operations and setting keys.
+Methods and models are write-in, and custom template text can be entered
+directly. Contextual YAML supports the full configuration schema, with preview
+before export. Settings mappings merge recursively and lists replace.
+
+The signed arm64 SDK 26.5 build, 60 standalone core cases, three building
+suites and relocated package checks including both negative controls passed.
+Python ran 121 tests with 118 passes and three optional licensed-fixture skips.
+All existing coverage floors passed. Physical Mac visual checks confirmed the
+Calculations view, added row, registry menus and free-text method. Native
+mechanism acceptance passed with two calculations per first-stage branch,
+advanced overrides, template-root relocation, preview and WebKit round trip.
+The independent oracle and actual ChemRefine CLI dry run passed all four
+variants and eight stage plans. Mixed-engine calculations were not submitted.
+
+Evidence is at /private/tmp/cv-composer-015. Synthetic catalog SHA-256
+1d5e7518749080c07e82c2cb4ad2ed396a5a5e210adf2a424c7afe582cc10320.
+Saved YAML SHA-256 dc7fecbf7c7b544355057c58f408b36102e08011fee767d06f2019762cf2b522.
+Executable SHA-256 eeebf0c3008101639cd7522191864555cc7fa119ef16a558177ffd75252dbae5.
+Both installed app copies were refreshed and verified. Quit and reopen to
+use 0.15.0. Existing local user changes were excluded from the release.
+
+## Calculation editor defaults and layout — 0.15.1
+
+Optional endpoint preparation starts empty. Calculation rows show engine,
+operation and free-text method immediately. The native 1100 × 760 window
+was exercised with a fresh draft and an added reactant calculation. Its
+operation showed Choose operation and its method was blank with details closed.
+The native mechanism harness, independent plan check, ChemRefine dry-run and
+relocated signed arm64 package checks passed. Local evidence is under
+/private/tmp/cv-mech-0151. The chemistry interpreter passed 118 Python tests
+with three optional fixture skips. The standalone runner passed 60 core cases
+and the parser, editing and project suites. XCTest is unavailable in the
+installed command-line tools. Both application folders received 0.15.1.
+
+## Live mechanism YAML and window layout — 0.15.2
+
+The composer shares the available window between the form and selectable YAML
+and copies the current draft through a native button. Engine and guesser labels
+use their conventional capitalization. The isolated Mac test checked stacked
+and side-by-side layouts at 960 and 1200 points, copied an unfinished draft,
+and matched the full clipboard text to the exported input.yaml. Native editor
+round trip, four-variant plan and ChemRefine dry run passed. Evidence is under
+/private/tmp/cv-mech-0152-final. The chemistry Python suite passed 118 tests
+with three optional skips. The signed arm64 package passed relocation and
+resource checks, 60 standalone core cases and the parser, editing and project
+suites. Both installed copies received the release.
+
+## High-resolution PNG and rotation GIF export — 0.15.3
+
+The PNG toolbar and File actions open settings for independent width and height
+up to 4096 pixels and print DPI up to 1200. GIF export adds a full turn around a
+selected molecular axis with 1536 and 2048-pixel presets. Default GIF resolution
+is 1024 pixels. A single geometry without a mode defaults to rotation.
+
+On arm64 macOS 27.2.1, the signed release built with Swift 6.4.2 and SDK 26.5.
+The default SDK 27.2 still lacks SwiftUIMacros under the installed Command Line
+Tools. XCTest is unavailable. The 60 standalone core cases, three building
+suites, relocated package, and native animation, smooth interaction, and
+general smoke tests passed. Both installed app copies were verified against the
+release binary.
+
+The isolated physical GUI saved 48 frames for Z at 2048 × 2048 and for X at
+1024 × 1024. The 4096 × 2305 PNG reported 600 DPI in sips. The PNG File menu
+opened from Coord, and the sheet rejected 4097 pixels. Local evidence is under
+/private/tmp/cv-export-0153. Synthetic asymmetric XYZ SHA-256 is
+65b371374aaa814b8c6cae4851549cf5019e22e8e11126abf7c4122757466a9a.
+
+## Fixed GIF zoom — 0.15.4
+
+Use Framing → Fixed scale and the same frame width in ångströms and pixel
+resolution across comparable GIFs. The dialog remembers the mode, resolution,
+and last successfully exported width. Fit all frames is the initial default.
+
+The physical Mac GIF harness measured the same oxygen sphere in a rotation
+and a trajectory at 6 Å and verified half magnification at 12 Å. The GUI
+disabled Save for zero width, saved a 48-frame 1024 × 1024 rotation at 6 Å,
+and recalled 6 Å when the dialog reopened. General Metal and relocated
+package checks passed. The signed ARM64 build used SDK 26.5 and passed 60
+standalone core cases and the three building suites. XCTest is unavailable
+under the installed Command Line Tools. Both app installations were refreshed
+and matched the release binary. Evidence is under /private/tmp/cv-export-0154.
+
+## Copy the 2D drawing image — 0.15.5
+
+Draw → Copy 2D Image copies the full committed sketch onto a white background
+as a single pasteboard image with PNG and TIFF representations. It uses the
+native 2D painters independently of pan, zoom and selection. It works as soon
+as an imported SMILES produces a sketch, including with 3D preview off.
+
+On the physical Apple Silicon Mac, the native drawing and label harness
+copied a chiral structure to a private pasteboard and decoded it through
+AppKit. The 577 × 538 preview shows the hashed bond and atom labels. Manual
+GUI checks confirmed the button state on empty, imported and cleared sketches.
+The signed SDK 26.5 build, 60 standalone core checks, three building suites,
+and relocated packaging checks passed. XCTest is unavailable under the
+installed Command Line Tools. Both installed app binaries match the release.
+Evidence is under /private/tmp/cv-draw-0155.

@@ -687,3 +687,105 @@ Local native number-field/fragment/bond controls, drag auto-bond on/off, Undo,
 project save, ligand and retained camera/editing workflows PASS. Core runner58
 and independent Python Cartesian oracle PASS. Hosted/downloaded gate outcomes
 are tracked in the release PR; see scientific-validation.md for bounded evidence.
+
+## Paste coordinates — 0.13.12
+
+Native Edit → Paste Coordinates… (Command-Shift-V), toolbar clipboard icon and
+Coord action open a text sheet. Full XYZ trajectories or Element X Y Z rows in Å
+render in a new unsaved tab. Malformed input reports an error without changing
+existing documents. Core numeric and isolated native acceptance are provided;
+this adds a bounded clipboard workflow and does not establish full format parity.
+
+Local 60 core/three migrated suites, UUID-isolated native text/Render/Metal and
+original edited-tab preservation pass (2026-11-16). Hosted XCTest/downloaded
+artifact and broad manual clipboard ergonomics remain pending.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+
+## Selected hydrogen visibility — 0.13.14 (2026-11-18)
+
+With Hydrogens off, selected H atoms remain visible; unselected H atoms hide.
+All selected hydrogens are retained, including a selection mixed with heavy
+atoms. Deselecting an H hides it immediately; turning Hydrogens on restores all.
+RenderScene.isAtomVisible supplies the common rule for Metal atom/bond rendering,
+displacement arrows, captions, atom/bond picking and image/animation exports.
+A bond is visible only when both endpoints are visible. Molecular coordinates,
+connectivity, parser values and source files are unchanged by the display toggle.
+
+The native hydrogen-visibility smoke uses original synthetic O/H/H coordinates,
+actual mouse selection/deselection, live caption counts, bond picking, multiple /
+empty / heavy-only selections and exported Metal pixel differences. Validation
+outcomes are recorded in the handoff after execution. Full XCTest requires Xcode;
+the installed Command Line Tools cannot supply XCTest.
+
+Tested locally on 2026-11-18: native hydrogen selection/deselection, visible/hidden
+bond picking, captions and Metal export; general packaged regression passed.
+Evidence and remaining XCTest/hosted/manual limits are recorded in the handoff.
+
+## Viewport activation recovery — 0.13.15 (2026-11-20)
+
+Implemented an explicit Metal refresh after app activation, window uncovering,
+key-window return and restore from minimize. Static molecules previously relied
+on an on-demand invalidation with no activation recovery. The reported symptom
+is a frozen molecule while menus/tabs respond. A sample of the user's 0.13.14
+process showed an idle AppKit event loop, not a main-thread deadlock. A brief
+isolated Command-Tab test did not reproduce the intermittent freeze. The new
+regression failed on the previous renderer because activation submitted no new
+GPU frame. This establishes a recovery gap, not a proven cause for every freeze.
+Validation outcomes follow in the handoff; prolonged background and external
+display checks remain pending.
+
+## Reaction mechanism composer — 0.14.0
+
+| Workflow | Implementation and local evidence |
+|---|---|
+| BOS-TMC catalyst list, substrate alternatives and fixed reagents | Native catalyst controls exercised against a synthetic catalog. Four independent catalyst/substrate combinations passed ChemRefine planning. |
+| Initial and product core authoring | Native whole-frame and selected-atom capture passed. The one-based metal anchor, original row order, Å distances and conserved atom inventories were checked. |
+| Linked stages and workflow authoring | Generated YAML and assets opened and saved in the real embedded editor. The independent oracle verified eight stage plans, two retained catalyst identities and four fresh reagent identities in the second stage of each variant. |
+| Execution and results | Existing local runner, ORCA/UMA starter templates and a link to ChemRefine's report. This release exercised planning and the editor, with new ORCA/UMA calculations and SSH/SLURM mechanism execution pending. |
+
+ChemRefine's **Run on** control was checked on macOS 0.14.1 with a long SSH
+hostname. Both destinations and the mechanism composer remained reachable.
+
+ChemRefine 0.15.0's native composer exposes expandable calculation lists in
+every reaction stage, with installed engine and operation choices, write-in
+methods or models and contextual structured YAML overrides. Native UI acceptance,
+YAML preview and export, and ChemRefine dry-run planning passed. Execution of
+the new mixed-engine calculation sequence remains unverified.
+
+The 0.15.1 native mechanism editor groups calculations by endpoint, path
+scoring and TS refinement. Method and model fields start blank. Endpoint
+preparation is optional, and the operation picker uses descriptive names for
+optimization, single points and frequencies.
+
+The 0.15.2 mechanism composer displays draft YAML beside the editor or below it in a compact window. Copy YAML copies the displayed draft. Engine and guesser display names are independent of their serialized identifiers.
+
+## High-resolution graphics export (0.15.3)
+
+Native PNG exports accept independent pixel dimensions up to 4096 per side
+and 1–1200 print DPI. Native GIF exports add 1536 and 2048-pixel resolutions
+and X, Y, or Z rotation for a single current geometry. The physical Mac
+animation harness decodes high-resolution output and verifies axis math,
+looping, PNG print metadata, and preservation of source geometry. The portable
+viewer continues to offer viewport PNG export.
+
+GIF framing in 0.15.4 supports a fixed width in ångströms across rotation,
+frequency, and trajectory exports. The native regression checked physical
+scale in decoded GIF pixels. The physical GUI saved a fixed-scale rotation
+and recalled its width on reopening the export dialog.
+
+## Copy 2D structure (0.15.5)
+
+Native Draw can copy the current 2D sketch, including one imported from
+SMILES, as a PNG/TIFF clipboard image. The native Mac test exercised a chiral
+import and AppKit image decoding, and the GUI exposed the action only while
+the sketch contained atoms.

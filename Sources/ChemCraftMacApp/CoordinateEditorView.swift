@@ -75,7 +75,7 @@ struct CoordinateEditorView: View {
             }
         }
         .padding()
-        .frame(minWidth: 650, minHeight: 420)
+        .frame(minWidth: 650, minHeight: embedded ? 220 : 420)
     }
 
     private var elementsValid: Bool { atoms.allSatisfy { BuildingProject.validatedElement($0.element) != nil } }

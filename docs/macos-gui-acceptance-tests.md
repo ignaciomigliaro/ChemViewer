@@ -799,3 +799,163 @@ Reproduce isolated native acceptance with:
 ```bash
 python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test internal-coordinate --evidence /private/tmp/chemviewer-internal-coordinate-evidence
 ```
+
+## Paste coordinates — 0.13.12
+
+CV-PASTE-001: Open Edit → Paste Coordinates… / Command-Shift-V or the toolbar
+clipboard icon. Paste Element X Y Z rows in Å and Render. Verify a new dirty tab,
+correct atom identities/coordinates, bonds and visible molecule. Repeat with
+a complete multi-frame XYZ including a blank comment line, then export XYZ.
+CV-PASTE-002: Keep an edited document open. Submit invalid rows, unknown symbols,
+NaN and truncated XYZ: error stays in the sheet, no tab created and original
+coordinates/Undo remain. Cancel changes nothing. Render valid input and switch
+back to confirm existing edits. Test normal Command-V in the text editor and
+Paste from Clipboard; clipboard contents must not change.
+
+Automated physical-Mac subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test paste-coordinates --evidence /private/tmp/chemviewer-paste-evidence`.
+This uses a UUID-isolated app and actual text/Render controls; broad manual
+clipboard ergonomics and external-display coverage remain separate.
+
+## Direct Coord-tab paste — 0.13.13
+
+The Coord tab now always contains a multiline coordinate paste area, including
+an empty workspace. Click it, press Command-V and Render; no Edit menu or dialog
+is needed. Full XYZ or Element X Y Z rows in Å open a new unsaved document tab.
+The existing row editor remains below the paste area in a resizable split.
+Malformed input stays inline; original documents and edits remain available.
+This supersedes the 0.13.12 Coord action that opened a dialog. The optional
+Edit-menu and toolbar dialog remain available. Core parsing and units are unchanged.
+
+CV-PASTE-003: With no file open, select Coord and paste directly into its text
+area using Command-V, then Render. Repeat from a loaded edited document. No
+sheet should open. Test invalid input inline; verify the existing table below
+remains editable and original document edits/Undo survive the new rendered tab.
+The UUID-isolated paste smoke now exercises empty and loaded Coord directly
+and passed locally on 2026-11-16.
+
+
+## Selected hydrogen visibility — 0.13.14
+
+CV-HYDROGEN-001: Select a reaction H, then turn off Hydrogens using H or Display.
+Only selected H atoms remain, with bonds, labels and displacement arrows. Select
+several H atoms and a heavy atom; all selected H atoms stay visible. Deselect an
+H: it disappears. Clear selection: all H atoms hide. Turn Hydrogens on: all return.
+Hidden H atoms and their bonds must not be clickable; visible H atoms and bonds
+remain clickable. Export PNG/GIF and verify the same visibility. Confirm source
+coordinates and connectivity are unchanged.
+
+Reproduce the isolated native subset:
+`python3 scripts/check-macos-camera.py --app dist/ChemViewer.app --test hydrogen-visibility --evidence /private/tmp/chemviewer-hydrogen-0.13.14`.
+
+## Viewport activation — 0.13.15
+
+CV-FOCUS-001: Open water.xyz, rotate and select two atoms. Switch to another
+app with Command-Tab, cover ChemViewer, then return. Right-drag must rotate,
+scroll must zoom and selection must respond immediately. Repeat after minimize /
+restore and a prolonged background period. Camera and selection must survive.
+CV-FOCUS-002: Repeat with a playing normal mode and after switching document
+tabs. Verify animation resumes drawing and geometry edits/Undo remain intact.
+Run in a disposable copy; never close or modify the user's live calculations.
+
+Automated subset: `python3 scripts/check-macos-camera.py --app
+dist/ChemViewer.app --test viewport-activation --evidence
+/private/tmp/chemviewer-focus-fixed` (one line). It checks completed GPU frames
+following lifecycle notifications, preserved scientific/camera state, camera
+response, continuous rendering and dismantled-renderer isolation. Notification
+injection alone does not establish reproduction of the original intermittent
+freeze or long-background/external-display acceptance.
+
+## Reaction mechanism composer — 0.14.0
+
+CV-MECHANISM-001. Open ChemRefine → Reaction mechanism. From BOS-TMC, index a
+synthetic catalog with embedded XYZ, collect two catalyst records and try the
+same preview twice. Return to the draft and verify both entries and charges.
+Add two single-frame substrate XYZs and verify four combinations. Use the 3D
+builder to capture an initial core and a selected product core. Check that
+the metal's row is correctly numbered and source geometry and selection survive.
+
+CV-MECHANISM-002. Add a stage and choose an optimized product from its
+predecessor. Set the variant limit below the expected count and verify export is
+refused. Restore the limit, create the workflow folder and confirm the editor
+loads both stages. Verify ChemRefine expands and plans four variants with
+isolated directories, appropriate CPU budgets, atom inventories and consistent
+handoff. Validated planning requires no calculation submission.
+
+Run the isolated native subset with `python3 scripts/check-macos-camera.py
+--app dist/ChemViewer.app --test mechanism --evidence /private/tmp/cv-mechanism`
+on one line.
+
+CV-MECHANISM-003 (0.14.1). In a disposable app window, open ChemRefine and set
+a long synthetic hostname in SSH settings. Close the settings sheet and verify
+that Run on, This Mac, and SSH / SLURM read horizontally with distinct segments.
+Verify that the hostname can shorten independently, the header buttons fit,
+both destinations select their panes, and Reaction mechanism opens the draft.
+Visual baseline overlap and repaired layout were reproduced at 1100 × 760.
+
+CV-MECHANISM-004 (0.15.0). Open a reaction stage's Calculations section and
+add one calculation in each branch. Expand a row and verify the engine menu,
+engine-specific operation and write-in method. Edit a template or contextual
+YAML setting, then review and export. Reopen in ChemRefine and confirm both
+calculations in every branch plus the original stage settings. The isolated
+mechanism harness checks the four native Add calculation controls, preview,
+real WebKit round trip and fixture output used by the independent plan check.
+
+CV-MECHANISM-005. Open Calculations in a fresh stage. Reactants and products
+start empty. Add a row and check that Engine, Operation and Method are visible
+with details collapsed. Switch groups and return to the row. Pick Single point,
+enter HF def2-SVP and export. Confirm the generated ORCA template contains
+that method and no optimization directive. Leave the second stage's endpoint
+lists empty and check that ChemRefine accepts both stages.
+
+CV-MECHANISM-006. Open a fresh composer. Confirm the YAML pane shows the first stage and allows copying. Add a stage and inspect the updated preview. Check that the form and preview share the available space when resizing. The native harness uses an isolated pasteboard and checks complete copied text against the exported file.
+
+## CV-GUI-015 and GIF rotation — high-resolution export
+
+1. Open a single asymmetric geometry. From the GIF toolbar control, confirm
+   **Rotate current geometry** is selected. Choose an axis, frame count, and
+   2048 × 2048. Save and verify the dimensions and smooth looping. Repeat with
+   a different axis and confirm the direction changes.
+2. Open the PNG settings from the camera toolbar control. Enter 4096 × 2305 and
+   600 DPI, save, and inspect the dimensions and print density. Test the File
+   menu entry from a non-image tab and check that invalid settings disable Save.
+3. Repeat with captions or measurement labels and a non-default camera. Check
+   overlay alignment, image composition, and that neither export edits the
+   source structure. Exercise the existing trajectory and frequency options
+   and cancel an active GIF export.
+
+Physical Mac acceptance on 2026-11-24 opened both toolbar dialogs and saved
+a 48-frame Z-axis GIF at 2048 × 2048, a 48-frame X-axis GIF at 1024 × 1024,
+and a 4096 × 2305 PNG at 600 DPI from a synthetic asymmetric XYZ. Decoded
+quarter turns were visually distinct for both axes. The PNG dialog disabled
+Save at 4097 pixels and opened from File while on Coord. The native harnesses
+covered frequency, trajectory, cancellation, measurement overlays, and camera
+preservation.
+
+## GIF zoom and consistent scale
+
+Open two geometries with different extents. In both GIF exports choose
+**Framing → Fixed scale**, the same width in ångströms and the same resolution.
+Compare the apparent diameter of an atom of the same element and appearance
+in both GIFs. Double the width and check that the atom appears half as wide.
+Verify that an invalid width disables Save and that reopening the dialog
+recalls the last exported width. Choose **Fit all frames** to fit an animation
+automatically.
+
+On 2026-11-24, the isolated native GUI initially showed **Fit all frames**,
+blocked Save at zero width, saved a 48-frame rotation at 6 Å and 1024 × 1024,
+and recalled the fixed scale and 6 Å width on reopening. The native GIF
+pixel checks covered same-width and doubled-width comparisons.
+
+## Copy 2D image from SMILES
+
+Open **Draw**, enter `N[C@@H](C)C(=O)O` and choose **Load SMILES**. When the
+2D structure appears, select **Copy 2D Image** and paste into an app that
+accepts images. Compare atom labels and stereochemical bonds with the sketch.
+Pan or zoom the drawing and copy again to verify that the whole structure
+still fits. Clear the sketch and confirm the button is disabled.
+
+On 2026-11-24, the physical Mac GUI showed Copy 2D Image enabled with the
+six-atom chiral drawing and disabled before loading and after clearing.
+The native harness used a private pasteboard and verified AppKit image
+decoding and identical output after changing pan, zoom and selection.

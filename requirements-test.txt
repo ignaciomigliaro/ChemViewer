@@ -3,4 +3,4 @@ matplotlib==3.11.2
 rdkit==2026.9.1
 ase==3.29.0
 tblite==0.8.0
-ChemRefine[gui] @ git+https://github.com/sterling-group/ChemRefine.git@a7add556cdcf056d42fbca1bb5be17d7da063755
+ChemRefine[gui] @ git+https://github.com/ignaciomigliaro/ChemRefine.git@ac09bd97a4c14722fbb5df26f19d2876a3b1a79b

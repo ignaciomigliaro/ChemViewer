@@ -112,6 +112,10 @@ Generate 3D triggers it manually. Invalid valences show an error; correction can
 retry. Use 3D in Viewer transfers a valid generated structure as an undoable edit.
 A stale or failed preview cannot be transferred. Save drawing drafts as JSON.
 
+To paste a 2D structure into another app, enter a SMILES string, choose
+**Load SMILES**, then select **Copy 2D Image** above the drawing. The copied
+image includes any edits to the sketch and has a white background.
+
 [Drawing workflow](drawing-and-labels-2026-10-20.md),
 [ring and skeletal tools](skeletal-drawing-2026-10-20.md).
 
@@ -168,11 +172,21 @@ support across programs or justify subtracting energies from unlike methods.
 
 ## Export figures, structures and animations
 
-Use the camera control for the current PNG; coordinate copy controls offer XYZ
-or coordinate text. File → Export Animation as GIF exports a trajectory or mode
-using the current view and fixed animation bounds. Size, frame rate, playback
-speed and forward/backward trajectory controls are explicit. Labels can be included.
-GIF transparency is binary; it cannot preserve fractional edge alpha.
+Use the camera control or **File → Export Image as PNG** to set the width and
+height (up to 4096 pixels each) and print density (up to 1200 DPI). The default
+uses the viewport aspect ratio, a 2400-pixel long edge, and 300 DPI.
+
+**File → Export Animation as GIF** exports a trajectory, a vibrational mode, or
+a 360° turn of the current geometry around its molecular X, Y, or Z axis.
+Choose the pixel resolution (up to 2048 × 2048), frame rate, playback speed,
+and optional labels. For a rotation, set frames per turn. For a trajectory,
+use forward/backward playback to reverse at each end. GIF transparency
+uses binary alpha. Coordinate copy controls offer XYZ or coordinate text.
+
+For comparable GIFs, choose **Framing → Fixed scale** and reuse the same
+**Frame width (Å)** and pixel resolution. A smaller width zooms in. Increase
+the width if the molecule is cropped. ChemViewer remembers the framing mode,
+resolution, and last successfully exported fixed width.
 
 [Appearance, animation and export limits](paton-and-gif-2026-10-19.md).
 
@@ -356,3 +370,86 @@ interconnected branches that cannot separate rigidly are refused without edits.
 Numeric editing is an explicit action; the Drag toggle continues to gate only
 coordinate dragging. Camera/right-drag, middle-button pan and left selection
 retain their 0.13.10 mapping.
+
+## Paste a structure
+
+Open the **Coord** tab, click the **Paste coordinates here (⌘V)** text area,
+and paste your coordinates. Click **Render** to display the molecule in a new
+unsaved document tab. This also works before opening any file.
+
+Use complete XYZ text (atom count, comment line, then atom rows) or plain
+`Element X Y Z` rows in Å. Full XYZ may contain multiple frames. Existing
+per-atom coordinate fields remain below the paste area. Invalid input displays
+an inline error. Save Project or Export XYZ keeps the result.
+
+
+Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
+with the **H** button or Display menu. Selected H atoms and their bonds remain
+visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
+back on to show all. This also applies to exported images and animations (0.13.14).
+
+## Build a reaction mechanism
+
+1. Open **ChemRefine → Reaction mechanism…** and choose **Choose from BOS-TMC…**.
+   Search or filter the catalog, preview a structure, and click **Add previewed
+   catalyst** for each candidate. Choose **Back to mechanism** when your list is
+   ready. You can also import catalyst XYZ files.
+2. Add **Substrate alternatives** to each stage. Import multiple XYZ files at
+   once or capture structures from the 3D builder. Add reactants that participate
+   together under **Fixed reagents**. Enter molecular charges for XYZ sources
+   and the total charge and spin multiplicity of each stage. Alternatives in a
+   single list share an electronic state.
+3. Add an optional **Initial coordination core** if separate sources need a
+   starting arrangement. Under **Product definition**, add a reduced core,
+   complete product XYZ, or complete product SMILES. For a core, click
+   **Build in 3D…**, build or edit the geometry in Image, then capture the whole
+   structure or select just the motif atoms and capture those. Choose the
+   one-based metal anchor in the returned core. The core uses XYZ coordinates
+   in Å and ChemRefine perceives connectivity from the geometry.
+4. **Add stage** to reuse an earlier optimized product. Select the entire
+   single product, the unique metal complex, or a molecule matching a SMILES
+   selector. A selector occurrence starts at zero.
+5. **Create input.yaml…** writes a new folder containing the YAML, XYZ inputs
+   and starter templates and opens it in the local ChemRefine editor. **Check
+   workflow** plans the chemistry and checks engines before submission.
+   **Mechanism report…** opens ChemRefine's report after execution.
+
+Two catalyst alternatives and three substrate alternatives produce six
+independent mechanisms. Each follows the declared stages. New stages use IDPP path guessing. Enter the method for path scoring and TS
+refinement, and review the electronic states and templates for your system. A predicted transition state requires vibrational
+and IRC verification.
+
+### Configure each calculation
+
+In a stage, switch from **Structures** to **Calculations**. Add and reorder
+calculations separately for reactant preparation, product preparation, path
+scoring and TS refinement. Reactants and products start with empty preparation
+lists. Select a group, then choose **Add calculation** when you need one. Each
+row shows **Engine**, **Operation** and a write-in **Method** or **Model**.
+**Geometry optimization** is written as `opt_sp` in ChemRefine YAML. Expand
+**Calculation details** for the template, failure policy and advanced options. ChemRefine defines the
+available engines and their operations. Path scoring uses single points.
+For ORCA, the method field becomes the keywords in the generated input.
+For engines with a method or model option, the field sets that option.
+
+Use **Input template** for custom input text and **Calculation settings**
+for settings such as engine options, sample filters and per-step SLURM
+headers. The settings panels at the workflow, mechanism, stage, reactant,
+product and guesser levels expose their matching YAML mappings. **Insert
+setting** lists the keys from the installed ChemRefine schema. Values you
+enter override the generated settings. Nested mappings merge, while lists
+replace the generated list. You can set advanced values such as connectivity,
+match hints, dissociation, per-variant overrides and external guesser commands.
+The **input.yaml** pane shows the combined configuration as you edit, including
+unfinished stages. Drag the divider to resize it. In a narrow window it appears
+below the form. **Copy YAML** copies the displayed text, including partial
+drafts. **Create input.yaml…** checks the workflow and writes the referenced XYZ
+files and engine templates alongside it. ORCA method keywords live in those
+templates.
+
+For cluster use, transfer the workflow folder and configure SLURM dispatch
+and templates on a host with a compatible ChemRefine runtime.
+
+Upgrade an existing local chemistry environment with `bash scripts/setup-chemistry.sh`.
+Use `CHEMVIEWER_CHEMREFINE_MAPPING=1` for automatic SMILES atom mapping, or set
+`CHEMVIEWER_CHEMREFINE_CHECKOUT` to install a specific local ChemRefine checkout.

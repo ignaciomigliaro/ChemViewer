@@ -62,20 +62,39 @@ def inspect_workflow(path, *, prepare_models=False):
         row('Local execution', 'error', "Set dispatch: local to run from this Mac.")
     else:
         row('Local execution', 'ok', config.dispatch)
-    seed = config.input or config.default_input()
-    if Path(seed).exists():
+    mechanism = getattr(config, 'mechanism', None)
+    reaction = getattr(config, 'reaction', None)
+    seed = (config.input or config.default_input()) if mechanism is None and reaction is None else None
+    if seed is not None and Path(seed).exists():
         row('Input structures', 'ok', seed)
     try:
         config.output_dir.mkdir(parents=True, exist_ok=True)
-        config.scratch_dir.mkdir(parents=True, exist_ok=True)
-        for folder in (config.output_dir, config.scratch_dir):
+        if config.scratch_dir is not None:
+            config.scratch_dir.mkdir(parents=True, exist_ok=True)
+        folders = [folder for folder in (config.output_dir, config.scratch_dir) if folder is not None]
+        for folder in folders:
             if not os.access(folder, os.W_OK):
                 raise PermissionError(f'Not writable: {folder}')
-        row('Output and scratch', 'ok', f'{config.output_dir}\n{config.scratch_dir}')
+        row('Output and scratch', 'ok', '\n'.join(map(str, folders)))
     except OSError as error:
         row('Output and scratch', 'error', error)
     seen_executables = set()
-    for step in config.steps:
+    branches = [(config.steps, config.charge, config.multiplicity)]
+    if reaction is not None:
+        steps = reaction.reactant.steps + reaction.product.steps + reaction.ts_guesser.scoring_steps + reaction.ts_steps
+        branches = [(steps, config.charge, config.multiplicity)]
+    if mechanism is not None:
+        branches = []
+        for stage in mechanism.stages:
+            steps = stage.reactant.steps + stage.product.steps + stage.ts_guesser.scoring_steps + stage.ts_steps
+            branches.append((steps, stage.charge if stage.charge is not None else config.charge,
+                             stage.multiplicity if stage.multiplicity is not None else config.multiplicity))
+    checked_steps = set()
+    for step, charge, multiplicity in ((step, charge, spin) for steps, charge, spin in branches for step in steps):
+        signature = (step.model_dump_json(), charge, multiplicity)
+        if signature in checked_steps:
+            continue
+        checked_steps.add(signature)
         engine = get_engine(step.engine)
         label = f'Step {step.step} · {step.engine}'
         if isinstance(engine, ExecutablesDeclaring):
@@ -154,8 +173,8 @@ def inspect_workflow(path, *, prepare_models=False):
                     knobs = {key: options[key] for key in ('task_name', 'model_name', 'device', 'model_path') if key in options}
                     if model_path:
                         knobs['model_path'] = str(checkpoint)
-                    knobs['charge'] = step.charge if step.charge is not None else config.charge
-                    knobs['multiplicity'] = step.multiplicity if step.multiplicity is not None else config.multiplicity
+                    knobs['charge'] = step.charge if step.charge is not None else charge
+                    knobs['multiplicity'] = step.multiplicity if step.multiplicity is not None else multiplicity
                     code = 'import json,sys; from chemrefine.engines.mlip.calculator import build_calculator; build_calculator(**json.loads(sys.argv[1])); print("Model loaded")'
                     child_run([python, '-c', code, json.dumps(knobs)], timeout=180)
                     row(label + ' model', 'ok', 'Selected calculator and weights loaded successfully.')
@@ -203,10 +222,78 @@ def workflow_summary(path):
     return dict(steps=result, running=state['running'])
 
 
+def mechanism_yaml(request, target, *, write):
+    import yaml
+    data = json.loads(target.read_text()) if write else request['config']
+
+    def merge(base, changes):
+        for key, value in changes.items():
+            if isinstance(value, dict) and isinstance(base.get(key), dict):
+                merge(base[key], value)
+            else:
+                base[key] = value
+
+    # Preview requests and on-disk JSON must produce identical key ordering.
+    data = json.loads(json.dumps(data, sort_keys=True))
+    for override in sorted(request.get('overrides', []), key=lambda item: -len(item['path'])):
+        destination = data
+        for part in override['path']:
+            destination = destination[int(part)] if isinstance(destination, list) else destination[part]
+        label = '.'.join(override['path']) or 'workflow'
+        try:
+            changes = yaml.safe_load(override['yaml'])
+        except yaml.YAMLError as error:
+            raise ValueError(f'{label}: {error}') from error
+        if changes is None:
+            continue
+        if not isinstance(changes, dict):
+            raise ValueError(f'{label}: enter a YAML mapping of setting names and values')
+        merge(destination, changes)
+
+    text = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    if request.get('action') == 'draft-mechanism-yaml' and not write:
+        return {'yaml': text}
+    from chemrefine.config import Config, load_config
+
+    if 'mechanism' not in Config.model_fields:
+        raise RuntimeError('Update the ChemViewer chemistry runtime with scripts/setup-chemistry.sh for linked mechanisms.')
+    from chemrefine import mechanism_batch
+
+    if not write:
+        Config.model_validate(data)
+        return {'yaml': text}
+    target.write_text(text)
+    config = load_config(target)
+    if mechanism_batch.enabled(config):
+        mechanism_batch.expand(config)
+
+    # Keep package-generated templates together when the user chooses another
+    # relative directory. An external directory explicitly refers to user files.
+    generated = target.parent / 'templates'
+    if (generated.is_dir() and config.template_dir != generated
+            and config.template_dir.is_relative_to(target.parent)):
+        config.template_dir.mkdir(parents=True, exist_ok=True)
+        for source in generated.iterdir():
+            target_file = config.template_dir / source.name
+            if source.is_file() and not target_file.exists():
+                shutil.copyfile(source, target_file)
+    return {'ok': True}
+
+
 def act(request):
-    from chemrefine import agent_tools
     path = str(Path(request['config_path']).expanduser().resolve())
     action = request.get('action', 'check')
+    if action in ('write-mechanism-yaml', 'preview-mechanism-yaml', 'draft-mechanism-yaml'):
+        return mechanism_yaml(request, Path(path), write=action == 'write-mechanism-yaml')
+    from chemrefine import agent_tools
+    if action == 'mechanism-schema':
+        from chemrefine.scaffold import TemplatePlan, _starter_for
+        schema = agent_tools.get_schema()
+        for name, engine in schema['engines'].items():
+            if engine['template_driven']:
+                plan = TemplatePlan(Path('step1.' + engine['template_suffix']), False, 'step', 1, name)
+                engine['starter'] = _starter_for(plan)
+        return schema
     if action == 'check-python':
         if not str(request.get('python_path', '')).strip():
             raise ValueError('Choose a Python interpreter first.')

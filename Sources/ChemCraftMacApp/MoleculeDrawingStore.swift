@@ -158,6 +158,16 @@ final class MoleculeDrawingStore: ObservableObject {
             workspace.activeTab = "Image"
         } catch { workspace.errorMessage = error.localizedDescription }
     }
+    @discardableResult
+    func copy2DImage(to pasteboard: NSPasteboard = .general) -> Bool {
+        guard let image = MolecularDrawingCanvas.image(of: graph), ClipboardSupport.copy(image, pasteboard: pasteboard) else {
+            status = graph.atoms.isEmpty ? "Draw or load a structure first." : "Could not copy the 2D image."
+            return false
+        }
+        status = "Copied the 2D image."
+        return true
+    }
+
     func saveDrawing() {
         let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "drawing.json"
         guard panel.runModal() == .OK, let url = panel.url else { return }

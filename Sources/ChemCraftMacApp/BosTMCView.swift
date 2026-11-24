@@ -6,6 +6,7 @@ struct BosTMCView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @ObservedObject private var catalog = BosTMCStore.shared
     @ObservedObject private var connection = RemoteConnection.shared
+    @ObservedObject private var mechanism = MechanismDraft.shared
     @State private var picker: RemoteWorkflowPicker.Kind?
     @State private var pickingRoot = false
     @State private var configuration = true
@@ -20,6 +21,19 @@ struct BosTMCView: View {
                 Button("Dataset settings"){configuration.toggle()}
                 Button("Export candidates…"){catalog.export()}.disabled(!catalog.validCatalog || catalog.busy)
             }.padding(10)
+            if mechanism.choosingCatalysts {
+                HStack {
+                    Text("\(mechanism.catalysts.count) catalysts selected").font(.headline)
+                    Text(mechanism.notice).font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    GeometryEditButton(title: "Add previewed catalyst", id: "mechanism-add-catalyst") { mechanism.addCatalogCatalyst(catalog) }
+                        .disabled(catalog.xyzURL == nil || catalog.selecting)
+                    GeometryEditButton(title: "Back to mechanism", id: "mechanism-back-from-catalog") {
+                        mechanism.choosingCatalysts = false
+                        workspace.activeTab = "ChemRefine"
+                    }
+                }.padding(.horizontal, 10).padding(.bottom, 8)
+            }
             if configuration {
                 VStack(spacing:7) {
                     HStack {

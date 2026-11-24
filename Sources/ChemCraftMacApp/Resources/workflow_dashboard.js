@@ -1,6 +1,13 @@
 // ChemViewer integration; upstream ChemRefine remains unmodified.
 (() => {
   const send = payload => window.webkit.messageHandlers.chemViewerWorkflow.postMessage(payload);
+  window.chemViewerWorkflowSteps = config => {
+    const stages = config.mechanism?.stages || (config.reaction ? [config.reaction] : []);
+    return [...(config.steps || []), ...stages.flatMap(stage => [
+      ...(stage.reactant?.steps || []), ...(stage.product?.steps || []),
+      ...(stage.ts_guesser?.scoring_steps || []), ...(stage.ts_steps || [])
+    ])];
+  };
   window.chemViewerApplyUMAPython = async (path, overwrite) => {
     const b = window.Alpine && document.body && Alpine.$data(document.body);
     if (!b || !b.savedPath) throw new Error('Open a workflow first.');
@@ -14,7 +21,7 @@
     }
     let changed = 0;
     const heads = new Set(['omol','omat','odac','oc20','oc22','oc25','omc']);
-    for (const step of config.steps || []) {
+    for (const step of window.chemViewerWorkflowSteps(config)) {
       if (!['mlip','mlip-extopt','mlip-train'].includes(String(step.engine).toLowerCase())) continue;
       const task = String(step.options?.task_name || step.options?.task || 'omol').toLowerCase();
       if (!heads.has(task)) continue;

@@ -166,6 +166,9 @@ final class ChemistryRuntime: ObservableObject {
         let panel = NSOpenPanel(); panel.allowedContentTypes = [.plainText, .data]
         panel.message = "Choose an existing ChemRefine input.yaml."
         guard panel.runModal() == .OK, let url = panel.url else { return }
+        openLocalWorkflow(url, workspace: workspace)
+    }
+    func openLocalWorkflow(_ url: URL, workspace: WorkspaceStore) {
         if let guiProcess, guiProcess.isRunning { previousWorkflowServers.append(guiProcess) }
         guiProcess = nil; guiURL = nil; startWorkflowEditor(configURL: url, workspace: workspace)
     }
@@ -213,7 +216,8 @@ final class ChemistryRuntime: ObservableObject {
         if (umaPython) await window.chemViewerApplyUMAPython(umaPython, false);
         if (!b.rawEdit) {
           clearTimeout(b._timer);
-          if (orcaPath && b.cfg.steps.some(s => String(s.engine).includes('orca') || String(s.engine).includes('extopt'))) {
+          const steps = window.chemViewerWorkflowSteps?.(b.cfg) ?? b.cfg.steps ?? [];
+          if (orcaPath && steps.some(s => String(s.engine).includes('orca') || String(s.engine).includes('extopt'))) {
             b.cfg.executables = b.cfg.executables || {};
             if (!b.cfg.executables.orca || b.cfg.executables.orca === 'orca') {
               b.cfg.executables.orca = orcaPath;
@@ -246,28 +250,75 @@ struct LocalWorkflowView: View {
     var embedded = false
     @ObservedObject private var runtime = ChemistryRuntime.shared
     @ObservedObject private var remote = RemoteConnection.shared
+    @ObservedObject private var mechanism = MechanismDraft.shared
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var workspace: WorkspaceStore
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("ChemRefine").font(.headline)
-                Picker("Run on", selection: $remote.workflowRemoteSelected) {
-                    Text("This Mac").tag(false)
-                    Text(remote.profile.host.isEmpty ? "SSH / SLURM" : "SSH / SLURM · " + remote.profile.host).tag(true)
-                }.pickerStyle(.segmented).frame(maxWidth: 390)
-                Spacer()
-                Button("SSH settings…") { remote.presented = true }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    headerTitle
+                    destinationPicker
+                    destinationHost.frame(maxWidth: 160, alignment: .leading)
+                    Spacer(minLength: 8)
+                    headerActions
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        headerTitle
+                        Spacer()
+                        headerActions
+                    }
+                    HStack {
+                        destinationPicker
+                        destinationHost
+                    }
+                }
             }.padding(10)
             Divider()
-            if remote.workflowRemoteSelected { RemoteWorkflowView() }
+            if mechanism.visible { MechanismComposerView(pasteboard: mechanism.previewPasteboard) }
+            else if remote.workflowRemoteSelected { RemoteWorkflowView() }
             else { localContent }
         }.frame(minWidth: embedded ? 400 : 1000, minHeight: embedded ? 300 : 700)
+    }
+    private var headerTitle: some View {
+        Text("ChemRefine").font(.headline).fixedSize()
+    }
+    private var destinationPicker: some View {
+        HStack {
+            Text("Run on").accessibilityHidden(true)
+            Picker("Run on", selection: $remote.workflowRemoteSelected) {
+                Text("This Mac").tag(false)
+                Text("SSH / SLURM").tag(true)
+            }.pickerStyle(.segmented).labelsHidden()
+        }.fixedSize()
+    }
+    @ViewBuilder private var destinationHost: some View {
+        if !remote.profile.host.isEmpty {
+            Text(remote.profile.host)
+                .font(.caption).foregroundStyle(.secondary)
+                .lineLimit(1).truncationMode(.middle)
+                .help(remote.profile.host)
+        }
+    }
+    private var headerActions: some View {
+        HStack {
+            GeometryEditButton(title: mechanism.visible ? "Workflow editor" : "Reaction mechanism…", id: "mechanism-composer") {
+                mechanism.visible.toggle()
+                mechanism.pending = nil
+                mechanism.choosingCatalysts = false
+            }
+            Button("SSH settings…") { remote.presented = true }
+        }.fixedSize()
     }
     private var localContent: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Local workflow").font(.headline)
+                if let url = mechanism.savedURL, runtime.workflowDirectory == url.deletingLastPathComponent() {
+                    Button("Reveal input.yaml") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    Button("Mechanism report…") { openMechanismReport(url) }
+                }
                 Spacer()
                 Button("Open workflow…") { runtime.openExistingWorkflow(workspace) }
                 if runtime.guiURL != nil {
@@ -302,6 +353,15 @@ struct LocalWorkflowView: View {
         if panel.runModal() == .OK, let url = panel.url {
             workspace.open(url); workspace.activeTab = "Image"
             if !embedded { dismiss() }
+        }
+    }
+    private func openMechanismReport(_ config: URL) {
+        let output = config.deletingLastPathComponent().appendingPathComponent("outputs")
+        let reports = ["index.html", "final/index.html"].map { output.appendingPathComponent($0) }
+        if let report = reports.first(where: { FileManager.default.fileExists(atPath: $0.path) }) {
+            NSWorkspace.shared.open(report)
+        } else {
+            workspace.errorMessage = "ChemRefine writes the mechanism report after execution. If you changed output_dir, open its index.html or final/index.html."
         }
     }
 }

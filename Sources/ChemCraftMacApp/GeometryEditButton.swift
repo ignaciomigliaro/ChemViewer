@@ -6,6 +6,7 @@ import SwiftUI
 struct GeometryEditButton: NSViewRepresentable {
     let title: String
     let id: String
+    var keyEquivalent = ""
     let action: () -> Void
     @Environment(\.isEnabled) private var enabled
     func makeCoordinator() -> Coordinator { Coordinator(action) }
@@ -17,6 +18,8 @@ struct GeometryEditButton: NSViewRepresentable {
     }
     func updateNSView(_ button: NSButton, context: Context) {
         context.coordinator.action = action; button.title = title; button.isEnabled = enabled
+        button.keyEquivalent = keyEquivalent
+        button.keyEquivalentModifierMask = []
         button.setAccessibilityLabel(title)
     }
     final class Coordinator: NSObject {

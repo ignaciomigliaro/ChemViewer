@@ -707,3 +707,48 @@ interconnected branches that cannot separate rigidly are refused without edits.
 Numeric editing is an explicit action; the Drag toggle continues to gate only
 coordinate dragging. Camera/right-drag, middle-button pan and left selection
 retain their 0.13.10 mapping.
+
+## Paste coordinates — 0.13.12
+
+Use **Edit → Paste Coordinates…** (⇧⌘V), the clipboard toolbar icon or the Coord
+action. Paste full XYZ or plain `Element X Y Z` rows in Å, then click **Render**.
+The structure opens in a new unsaved tab, preserving existing documents.
+
+## Direct coordinate paste — 0.13.13
+
+Open **Coord**, paste full XYZ or `Element X Y Z` rows in Å directly into the
+text area, and click **Render**. This works in an empty workspace, without a
+menu or dialog. The existing coordinate table remains below the paste area.
+
+
+Select the reaction hydrogens you want to follow, then turn **Hydrogens** off
+with the **H** button or Display menu. Selected H atoms and their bonds remain
+visible; the other hydrogens hide. Deselect an H to hide it too, or turn Hydrogens
+back on to show all. This also applies to exported images and animations (0.13.14).
+
+### Reaction mechanism composer (0.14.0)
+
+Open **ChemRefine → Reaction mechanism…** to collect BOS-TMC catalyst
+alternatives, add substrate lists and fixed reagents, and capture initial and
+product cores from the 3D builder. **Create input.yaml…** packages geometries
+and templates and opens the linked mechanism in ChemRefine. See the
+[reaction mechanism guide](docs/user-guide.md#build-a-reaction-mechanism).
+
+### Multi-calculation reaction stages
+
+Open a stage's **Calculations** section to configure independent reactant,
+product, scoring and TS refinement sequences. Choose the engine, operation and method in each row. The **input.yaml** pane
+updates as you edit and includes advanced settings. Use **Copy YAML** to copy
+the current configuration. [Workflow guide](docs/user-guide.md#configure-each-calculation)
+
+### High-resolution graphics export
+
+**File → Export Animation as GIF** exports a geometry trajectory, a vibrational
+mode, or a full turn of the current geometry around its X, Y, or Z axis. Choose
+a pixel resolution up to 2048 × 2048. For a single geometry, **Rotate current
+geometry** is the default when no vibrational mode is selected.
+
+**File → Export Image as PNG** accepts custom width and height up to 4096 pixels
+per side and print density up to 1200 DPI. It opens at 300 DPI with a 2400-pixel
+long edge and the viewport aspect ratio. For GIFs, use pixel resolution to
+control detail.

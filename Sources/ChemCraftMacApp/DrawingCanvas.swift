@@ -144,14 +144,56 @@ final class MolecularDrawingCanvas: NSView {
         for y in stride(from: (bounds.midY + pan.y).truncatingRemainder(dividingBy: step), through: bounds.maxY, by: step) { grid.move(to: CGPoint(x: 0, y: y)); grid.line(to: CGPoint(x: bounds.width, y: y)) }
         NSColor(white: 0.94, alpha: 1).setStroke(); grid.lineWidth = 0.5; grid.stroke()
         let graph = preview ?? drawing.graph
+        Self.drawBonds(in: graph, zoom: zoom, color: .labelColor, point: point)
+        if let end = rubberEnd { NSColor.systemTeal.setStroke(); let p = NSBezierPath(); p.move(to: start); p.line(to: end); p.lineWidth = 2; p.stroke() }
+        Self.drawAtoms(in: graph, zoom: zoom, selectedID: drawing.selectedID, point: point)
+        if graph.atoms.isEmpty { NSAttributedString(string: "Draw bonds • place atoms • add rings", attributes: [.font: NSFont.systemFont(ofSize: 16), .foregroundColor: NSColor.secondaryLabelColor]).draw(at: CGPoint(x: 25, y: bounds.midY)) }
+    }
+
+    static func image(of graph: MolecularSketch) -> NSBitmapImageRep? {
+        guard let first = graph.atoms.first else { return nil }
+        let minX = graph.atoms.map(\.x).min() ?? first.x
+        let minY = graph.atoms.map(\.y).min() ?? first.y
+        let maxX = graph.atoms.map(\.x).max() ?? first.x
+        let maxY = graph.atoms.map(\.y).max() ?? first.y
+        let padding = 48.0
+        let width = maxX - minX + 2 * padding
+        let height = maxY - minY + 2 * padding
+        let scale = min(3, 3072 / max(width, height))
+        let pixelsWide = Int(ceil(width * scale))
+        let pixelsHigh = Int(ceil(height * scale))
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixelsWide, pixelsHigh: pixelsHigh,
+                                            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                            isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 32),
+              let context = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
+
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = context
+        NSColor.white.setFill()
+        CGRect(x: 0, y: 0, width: pixelsWide, height: pixelsHigh).fill()
+        context.cgContext.scaleBy(x: scale, y: scale)
+        func point(_ atom: MolecularSketch.Node) -> CGPoint {
+            CGPoint(x: padding + atom.x - minX, y: padding + atom.y - minY)
+        }
+        drawBonds(in: graph, zoom: 1, color: .black, point: point)
+        drawAtoms(in: graph, zoom: 1, selectedID: nil, point: point)
+        return bitmap
+    }
+
+    private static func drawBonds(in graph: MolecularSketch, zoom: CGFloat, color: NSColor, point: (MolecularSketch.Node) -> CGPoint) {
+        color.setStroke()
+        color.setFill()
         for edge in graph.bonds {
             guard let a = graph.atoms.first(where: { $0.id == edge.a }), let b = graph.atoms.first(where: { $0.id == edge.b }) else { continue }
-            drawBond(from: point(a), to: point(b), order: edge.order, stereo: edge.stereo)
+            drawBond(from: point(a), to: point(b), order: edge.order, stereo: edge.stereo, zoom: zoom)
         }
-        if let end = rubberEnd { NSColor.systemTeal.setStroke(); let p = NSBezierPath(); p.move(to: start); p.line(to: end); p.lineWidth = 2; p.stroke() }
+    }
+
+    private static func drawAtoms(in graph: MolecularSketch, zoom: CGFloat, selectedID: Int?, point: (MolecularSketch.Node) -> CGPoint) {
         for atom in graph.atoms {
             let position = point(atom)
-            if atom.id == drawing.selectedID { NSColor.systemTeal.withAlphaComponent(0.15).setFill(); NSBezierPath(ovalIn: CGRect(x: position.x - 13, y: position.y - 13, width: 26, height: 26)).fill() }
+            if atom.id == selectedID { NSColor.systemTeal.withAlphaComponent(0.15).setFill(); NSBezierPath(ovalIn: CGRect(x: position.x - 13, y: position.y - 13, width: 26, height: 26)).fill() }
             let connected = graph.bonds.contains { $0.a == atom.id || $0.b == atom.id }
             if atom.element == "C" && connected && atom.charge == 0 { continue }
             let charge = atom.charge == 0 ? "" : (abs(atom.charge) == 1 ? "" : String(abs(atom.charge))) + (atom.charge > 0 ? "+" : "−")
@@ -162,9 +204,9 @@ final class MolecularDrawingCanvas: NSView {
             let size = text.size(), rect = CGRect(x: position.x - size.width / 2 - 3, y: position.y - size.height / 2 - 1, width: size.width + 6, height: size.height + 2)
             NSColor.white.setFill(); rect.fill(); text.draw(at: CGPoint(x: rect.minX + 3, y: rect.minY + 1))
         }
-        if graph.atoms.isEmpty { NSAttributedString(string: "Draw bonds • place atoms • add rings", attributes: [.font: NSFont.systemFont(ofSize: 16), .foregroundColor: NSColor.secondaryLabelColor]).draw(at: CGPoint(x: 25, y: bounds.midY)) }
     }
-    private func implicitHydrogens(_ atom: MolecularSketch.Node, in graph: MolecularSketch) -> Int {
+
+    private static func implicitHydrogens(_ atom: MolecularSketch.Node, in graph: MolecularSketch) -> Int {
         let explicit = atom.explicitHs ?? 0
         if atom.noImplicit == true { return explicit }
         let valence = graph.bonds.filter { $0.a == atom.id || $0.b == atom.id }.reduce(0) { $0 + $1.order }
@@ -203,9 +245,8 @@ final class MolecularDrawingCanvas: NSView {
         func gap(_ angle: Double) -> Double { abs(atan2(sin(angle - pointer), cos(angle - pointer))) }
         return abs(gap(candidates[0]) - gap(candidates[1])) < 1e-6 ? preferred : candidates.min(by: { gap($0) < gap($1) })!
     }
-    private func drawBond(from a: CGPoint, to b: CGPoint, order: Int, stereo: String) {
+    private static func drawBond(from a: CGPoint, to b: CGPoint, order: Int, stereo: String, zoom: CGFloat) {
         let dx = b.x - a.x, dy = b.y - a.y, length = max(hypot(dx, dy), 0.01), nx = -dy / length, ny = dx / length
-        NSColor.labelColor.setStroke(); NSColor.labelColor.setFill()
         if stereo == "up" {
             let p = NSBezierPath(); p.move(to: a); p.line(to: CGPoint(x: b.x + nx * 5, y: b.y + ny * 5)); p.line(to: CGPoint(x: b.x - nx * 5, y: b.y - ny * 5)); p.close(); p.fill(); return
         }

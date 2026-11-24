@@ -24,10 +24,11 @@ struct ClassicMenuBar: View {
                 Button("SSH connection…") { RemoteConnection.shared.presented = true }
                 Button("Export XYZ…") { workspace.requestXYZExport() }
                 Button("Export ORCA Geometry…") { workspace.exportORCAGeometry() }
-                Button("Export PNG…") { action("export") }
+                Button("Export PNG…") { workspace.presentImageExport() }.disabled(workspace.currentFrame == nil)
                 Button("Export GIF…") { workspace.presentAnimationExport() }
             }
             Menu("Edit") {
+                Button("Paste Coordinates…") { workspace.isPasteCoordinatesPresented = true }
                 Button("Undo") { if workspace.activeTab == "Draw" { workspace.drawing.undo() } else { workspace.undoGeometry() } }.disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canUndo : !workspace.canUndoGeometry)
                 Button("Redo") { if workspace.activeTab == "Draw" { workspace.drawing.redo() } else { workspace.redoGeometry() } }.disabled(workspace.activeTab == "Draw" ? !workspace.drawing.canRedo : !workspace.canRedoGeometry)
                 Button("Duplicate Selected") { workspace.duplicateSelectedAtoms() }
