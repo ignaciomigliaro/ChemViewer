@@ -931,3 +931,18 @@ quarter turns were visually distinct for both axes. The PNG dialog disabled
 Save at 4097 pixels and opened from File while on Coord. The native harnesses
 covered frequency, trajectory, cancellation, measurement overlays, and camera
 preservation.
+
+## GIF zoom and consistent scale
+
+Open two geometries with different extents. In both GIF exports choose
+**Framing → Fixed scale**, the same width in ångströms and the same resolution.
+Compare the apparent diameter of an atom of the same element and appearance
+in both GIFs. Double the width and check that the atom appears half as wide.
+Verify that an invalid width disables Save and that reopening the dialog
+recalls the last exported width. Choose **Fit all frames** to fit an animation
+automatically.
+
+On 2026-11-24, the isolated native GUI initially showed **Fit all frames**,
+blocked Save at zero width, saved a 48-frame rotation at 6 Å and 1024 × 1024,
+and recalled the fixed scale and 6 Å width on reopening. The native GIF
+pixel checks covered same-width and doubled-width comparisons.

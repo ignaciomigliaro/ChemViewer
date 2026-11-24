@@ -95,6 +95,37 @@ import simd
             try await AnimationExporter.export(rotation, from: view, style: .paton, size: 2048, fps: 10, to: rotationURL, measurementIndices: [0, 1]) { _ in }
             try validate(rotationURL, count: 4, size: 2048)
 
+            // Oxygen is the only red atom in the synthetic trajectory. Its Paton
+            // diameter is 2 × 1.52 × 0.1875 Å, which sets an independent pixel oracle.
+            func oxygenDiameter(_ clip: MolecularAnimation, width: Float, filename: String) async throws -> Int {
+                let url = folder.appendingPathComponent(filename)
+                try await AnimationExporter.export(clip, from: view, style: .paton, size: 256, fps: 10,
+                                                   to: url, fixedFrameWidth: width) { _ in }
+                guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+                      let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+                    throw AnimationExportError.message("Cannot decode the fixed-scale GIF")
+                }
+                let bitmap = NSBitmapImageRep(cgImage: image)
+                let redColumns = (0..<image.width).filter { x in
+                    (0..<image.height).contains { y in
+                        guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { return false }
+                        return color.redComponent > color.greenComponent + 0.2 &&
+                            color.redComponent > color.blueComponent + 0.2
+                    }
+                }
+                guard let first = redColumns.first, let last = redColumns.last else {
+                    throw AnimationExportError.message("Cannot locate oxygen in the fixed-scale GIF")
+                }
+                let diameter = last - first + 1
+                let expectedPixels = 2 * 1.52 * 0.1875 * 256 / Double(width)
+                try require(abs(Double(diameter) - expectedPixels) < 2, "Wrong oxygen diameter at width \(width): \(diameter) px")
+                return diameter
+            }
+            let rotationDiameter = try await oxygenDiameter(rotation, width: 6, filename: "rotation-width-6.gif")
+            let trajectoryDiameter = try await oxygenDiameter(animation, width: 6, filename: "trajectory-width-6.gif")
+            let zoomedOutDiameter = try await oxygenDiameter(rotation, width: 12, filename: "rotation-width-12.gif")
+            try require(abs(rotationDiameter - trajectoryDiameter) <= 1, "Equivalent widths changed scale between exports")
+            try require(abs(rotationDiameter - 2 * zoomedOutDiameter) <= 2, "Doubling frame width did not halve GIF magnification")
             let pngURL = folder.appendingPathComponent("molecule-600dpi.png")
             let viewportState = view.captureViewportState()
             try view.exportPNG(to: pngURL, width: 4096, height: 2305, dpi: 600)
@@ -223,7 +254,7 @@ import simd
             try await Task.sleep(nanoseconds: 400_000_000)
             try require(view.window?.attachedSheet != nil, "PNG export sheet did not present")
             workspace.isImageExportPresented = false
-            print("ANIMATION_SMOKE_PASS: X/Y/Z rotation, 2048 px GIF, 4096 × 2305 PNG at 600 DPI, PNG/GIF sheets, Paton default, all styles, trajectory/ping-pong, signed frequency sinusoid, GIF counts/size/delay/loop/nonstatic, document preservation, cancellation, animated length/angle/dihedral guides and quarter-speed timing, transparent frames without trails, retained white atoms, white-background option and box-free captions")
+            print("ANIMATION_SMOKE_PASS: fixed GIF scale across exports and 2× zoom, X/Y/Z rotation, 2048 px GIF, 4096 × 2305 PNG at 600 DPI, PNG/GIF sheets, Paton default, all styles, trajectory/ping-pong, signed frequency sinusoid, GIF counts/size/delay/loop/nonstatic, document preservation, cancellation, animated length/angle/dihedral guides and quarter-speed timing, transparent frames without trails, retained white atoms, white-background option and box-free captions")
             exit(0)
         } catch { fputs("ANIMATION_SMOKE_FAIL: \(error)\n", stderr); exit(1) }
     }

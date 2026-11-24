@@ -777,3 +777,8 @@ and X, Y, or Z rotation for a single current geometry. The physical Mac
 animation harness decodes high-resolution output and verifies axis math,
 looping, PNG print metadata, and preservation of source geometry. The portable
 viewer continues to offer viewport PNG export.
+
+GIF framing in 0.15.4 supports a fixed width in ångströms across rotation,
+frequency, and trajectory exports. The native regression checked physical
+scale in decoded GIF pixels. The physical GUI saved a fixed-scale rotation
+and recalled its width on reopening the export dialog.

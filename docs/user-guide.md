@@ -179,6 +179,11 @@ and optional labels. For a rotation, set frames per turn. For a trajectory,
 use forward/backward playback to reverse at each end. GIF transparency
 uses binary alpha. Coordinate copy controls offer XYZ or coordinate text.
 
+For comparable GIFs, choose **Framing → Fixed scale** and reuse the same
+**Frame width (Å)** and pixel resolution. A smaller width zooms in. Increase
+the width if the molecule is cropped. ChemViewer remembers the framing mode,
+resolution, and last successfully exported fixed width.
+
 [Appearance, animation and export limits](paton-and-gif-2026-10-19.md).
 
 ## ChemRefine local calculations

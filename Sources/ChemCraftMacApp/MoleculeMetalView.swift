@@ -253,6 +253,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var animationStart = CACurrentMediaTime()
     private var animationElapsed: Double = 0
     private var fitScale: Float = 0.12
+    private var depthLimit: Float = 100
     var preservePlacementCamera = false
     private var orbit = simd_quatf(angle: 0, axis: SIMD3<Float>(0, 0, 1))
     private var roll: Float = 0
@@ -622,7 +623,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     /// Separate render targets: GIF creation never changes the visible scene or playback.
-    func animationRenderer(frames: [MoleculeFrame], amplitude: Float = 0, displacements: [Vector3] = [], style: MolecularStyle? = nil) -> MolecularMTKView {
+    func animationRenderer(frames: [MoleculeFrame], amplitude: Float = 0, displacements: [Vector3] = [], style: MolecularStyle? = nil, fixedFrameWidth: Float? = nil) -> MolecularMTKView {
         let renderer = MolecularMTKView()
         renderer.scene = scene
         if let style { renderer.scene.style = style }
@@ -644,7 +645,14 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             renderer.center = (low + high) / 2
             let radius = points.map { simd_length($0 - renderer.center) }.max() ?? 1
             let margin = frames.flatMap(\.atoms).map(renderer.atomRadius).max() ?? 0.5
-            renderer.fitScale = 0.88 / max(radius + margin, 0.8)
+            let extent = max(radius + margin, 0.8)
+            if let fixedFrameWidth {
+                // A square image spans [-1, 1] in orthographic view coordinates.
+                renderer.fitScale = 2 / fixedFrameWidth
+                renderer.depthLimit = max(100, extent * renderer.fitScale + 1)
+            } else {
+                renderer.fitScale = 0.88 / extent
+            }
         }
         return renderer
     }
@@ -880,8 +888,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             right: aspect,
             bottom: -1,
             top: 1,
-            near: -100,
-            far: 100
+            near: -depthLimit,
+            far: depthLimit
         )
         let translation = simd_float4x4.translation(SIMD3(pan.x * aspect, pan.y, 0))
         let rotation = cameraRotation()

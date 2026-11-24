@@ -1914,3 +1914,18 @@ The isolated physical GUI saved 48 frames for Z at 2048 × 2048 and for X at
 opened from Coord, and the sheet rejected 4097 pixels. Local evidence is under
 /private/tmp/cv-export-0153. Synthetic asymmetric XYZ SHA-256 is
 65b371374aaa814b8c6cae4851549cf5019e22e8e11126abf7c4122757466a9a.
+
+## Fixed GIF zoom — 0.15.4
+
+Use Framing → Fixed scale and the same frame width in ångströms and pixel
+resolution across comparable GIFs. The dialog remembers the mode, resolution,
+and last successfully exported width. Fit all frames is the initial default.
+
+The physical Mac GIF harness measured the same oxygen sphere in a rotation
+and a trajectory at 6 Å and verified half magnification at 12 Å. The GUI
+disabled Save for zero width, saved a 48-frame 1024 × 1024 rotation at 6 Å,
+and recalled 6 Å when the dialog reopened. General Metal and relocated
+package checks passed. The signed ARM64 build used SDK 26.5 and passed 60
+standalone core cases and the three building suites. XCTest is unavailable
+under the installed Command Line Tools. Both app installations were refreshed
+and matched the release binary. Evidence is under /private/tmp/cv-export-0154.

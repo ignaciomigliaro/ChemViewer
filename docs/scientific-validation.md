@@ -1073,3 +1073,12 @@ The 4096 × 2305 PNG decoded with 600 DPI on both axes. A separate binary check
 confirmed the IHDR dimensions and the pHYs chunk of 23622 pixels per meter in
 both axes. The viewport state and source atoms matched before and after PNG
 export. The smooth-interaction and general Metal harnesses also passed.
+
+## Fixed GIF framing (0.15.4)
+
+The native Metal animation harness decoded GIFs from a single-geometry
+rotation and a trajectory with different spatial extents. At 256 × 256 and
+a 6 Å frame width, the diameter of the same red oxygen atom agreed within
+one pixel across the clips. The 12 Å rotation gave half the pixel diameter
+within rasterization tolerance. All three diameters agreed within two
+pixels with the sphere diameter of 0.57 Å multiplied by pixels per ångström.

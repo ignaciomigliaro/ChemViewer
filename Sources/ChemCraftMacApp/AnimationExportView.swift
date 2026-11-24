@@ -69,6 +69,7 @@ struct MolecularAnimation {
 
 @MainActor enum AnimationExporter {
     static let sizes = [256, 512, 640, 800, 1024, 1536, 2048]
+    static let frameWidths: ClosedRange<Float> = 0.1...10_000
 
     static func viewport() -> MolecularMTKView? {
         func find(_ view: NSView) -> MolecularMTKView? {
@@ -80,13 +81,16 @@ struct MolecularAnimation {
         return NSApp.windows.filter { $0.sheetParent == nil && $0.isVisible }.compactMap { $0.contentView.flatMap(find) }.first
     }
 
-    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], measurementSelections: [[Int]] = [], transparentBackground: Bool = true, progress: (Double) -> Void) async throws {
+    static func export(_ animation: MolecularAnimation, from viewport: MolecularMTKView, style: MolecularStyle, size: Int, fps: Double, to url: URL, playbackSpeed: Double = 1, measurementIndices: [Int] = [], measurementSelections: [[Int]] = [], transparentBackground: Bool = true, fixedFrameWidth: Float? = nil, progress: (Double) -> Void) async throws {
         guard !animation.frames.isEmpty, animation.count >= 2, animation.count <= 2000,
               sizes.contains(size), fps >= 1, fps <= 50, playbackSpeed >= 0.125, playbackSpeed <= 1,
               animation.frames.allSatisfy({ !$0.atoms.isEmpty }),
               animation.rotationAxis == nil || (animation.frames.count == 1 && animation.mode == nil),
               animation.mode == nil || animation.mode?.displacements.count == animation.frames[0].atoms.count else {
             throw AnimationExportError.message("Choose a valid animation source and output settings (2–2,000 GIF frames).")
+        }
+        if let fixedFrameWidth, !frameWidths.contains(fixedFrameWidth) {
+            throw AnimationExportError.message("Enter a frame width from 0.1 to 10,000 Å.")
         }
         for indices in measurementSelections + (measurementIndices.isEmpty ? [] : [measurementIndices]) {
             guard (2...4).contains(indices.count), Set(indices).count == indices.count,
@@ -96,7 +100,8 @@ struct MolecularAnimation {
             }
         }
         let renderer = viewport.animationRenderer(frames: animation.frames, amplitude: animation.amplitude,
-                                                  displacements: animation.mode?.displacements ?? [], style: style)
+                                                  displacements: animation.mode?.displacements ?? [], style: style,
+                                                  fixedFrameWidth: fixedFrameWidth)
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".ChemViewer-\(UUID().uuidString).gif")
         defer { try? FileManager.default.removeItem(at: temporary) }
         let writer = try GIFWriter(url: temporary, count: animation.count)
@@ -122,7 +127,10 @@ struct AnimationExportView: View {
     @EnvironmentObject private var workspace: WorkspaceStore
     @Environment(\.dismiss) private var dismiss
     @State private var source: AnimationSource = .trajectory
-    @State private var size = 1024
+    @AppStorage("gifExportResolution") private var size = 1024
+    @AppStorage("gifFixedFraming") private var fixedFraming = false
+    @AppStorage("gifFixedFramingWidth") private var savedFrameWidth = "10"
+    @State private var frameWidthText = ""
     @State private var style = MolecularStyle.paton
     @State private var rotationAxis = GIFRotationAxis.y
     @State private var fps = 12.0
@@ -145,6 +153,12 @@ struct AnimationExportView: View {
         case .rotation: return workspace.currentFrame?.atoms.isEmpty == false
         }
     }
+    private var fixedFrameWidth: Float? {
+        guard fixedFraming, let width = Float(frameWidthText.trimmingCharacters(in: .whitespacesAndNewlines)),
+              AnimationExporter.frameWidths.contains(width) else { return nil }
+        return width
+    }
+
     private var validSelection: Bool { (2...4).contains(workspace.selectedAtomIndices.count) }
     private var exportLabels: [[Int]] {
         if !workspace.pinnedMeasurementSelections.isEmpty { return workspace.pinnedMeasurementSelections }
@@ -186,6 +200,26 @@ struct AnimationExportView: View {
                 Picker("Resolution (px)", selection: $size) { ForEach(AnimationExporter.sizes, id: \.self) { Text("\($0) × \($0)").tag($0) } }
                 Picker("Frames/s", selection: $fps) { ForEach([1.0, 2, 5, 10, 12, 20, 25, 30], id: \.self) { Text(String(Int($0))).tag($0) } }
             }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Picker("Framing", selection: $fixedFraming) {
+                        Text("Fit all frames").tag(false)
+                        Text("Fixed scale").tag(true)
+                    }
+                    if fixedFraming {
+                        Text("Frame width (Å)")
+                        TextField("Frame width (Å)", text: $frameWidthText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 76)
+                    }
+                }
+                if fixedFraming {
+                    Text(fixedFrameWidth == nil
+                         ? "Enter a frame width from 0.1 to 10,000 Å."
+                         : "Smaller widths zoom in and may crop the molecule.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }.disabled(task != nil)
             Picker("Playback speed", selection: $playbackSpeed) {
                 Text("Normal (1×)").tag(1.0)
                 Text("Half speed (0.5×)").tag(0.5)
@@ -204,7 +238,7 @@ struct AnimationExportView: View {
             }
             Text(source == .rotation
                  ? "Starts at the current viewing angle and loops through one full turn."
-                 : "Fits all frames once at the current viewing angle and loops continuously.")
+                 : "Keeps the current viewing angle and loops continuously.")
                 .font(.caption).foregroundStyle(.secondary)
             if let progress { ProgressView(value: progress); Text("Rendering \(Int(progress * 100))%…").font(.caption) }
             if let result { Text(result).foregroundStyle(.green).textSelection(.enabled) }
@@ -213,13 +247,14 @@ struct AnimationExportView: View {
                 if task != nil { Button("Cancel export") { task?.cancel() } }
                 Spacer()
                 Button("Close") { dismiss() }.disabled(task != nil)
-                Button("Save GIF…", action: save).keyboardShortcut(.defaultAction).disabled(!available || task != nil || viewport == nil)
+                Button("Save GIF…", action: save).keyboardShortcut(.defaultAction).disabled(!available || task != nil || viewport == nil || (fixedFraming && fixedFrameWidth == nil))
             }
         }
         .padding(24).frame(width: 540)
         .interactiveDismissDisabled(task != nil)
         .onAppear {
             viewport = AnimationExporter.viewport()
+            frameWidthText = savedFrameWidth
             style = workspace.renderingStyle
             if let mode = workspace.selectedMode, let frame = workspace.currentFrame,
                !frame.atoms.isEmpty, mode.displacements.count == frame.atoms.count {
@@ -232,7 +267,9 @@ struct AnimationExportView: View {
         .onDisappear { task?.cancel() }
     }
     private func save() {
-        guard available, let viewport, let frame = workspace.currentFrame else { return }
+        let exportWidth = fixedFrameWidth
+        guard available, !fixedFraming || exportWidth != nil,
+              let viewport, let frame = workspace.currentFrame else { return }
         let panel = NSSavePanel(); panel.allowedContentTypes = [.gif]; panel.nameFieldStringValue = source.filename
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let animation = MolecularAnimation(frames: source == .trajectory ? (workspace.document?.frames ?? []) : [frame], mode: source == .frequency ? workspace.selectedMode : nil, amplitude: workspace.vibrationAmplitude, samples: samples, pingPong: source == .trajectory && pingPong, rotationAxis: source == .rotation ? rotationAxis : nil)
@@ -242,11 +279,13 @@ struct AnimationExportView: View {
         let labels = includeMeasurement ? exportLabels : []
         let speed = playbackSpeed
         let transparent = transparentBackground
+        let enteredWidth = frameWidthText
         failure = nil; result = nil; progress = 0
         task = Task { @MainActor in
             defer { task = nil; progress = nil }
             do {
-                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementSelections: labels, transparentBackground: transparent) { progress = $0 }
+                try await AnimationExporter.export(animation, from: viewport, style: style, size: size, fps: fps, to: url, playbackSpeed: speed, measurementSelections: labels, transparentBackground: transparent, fixedFrameWidth: exportWidth) { progress = $0 }
+                if exportWidth != nil { savedFrameWidth = enteredWidth }
                 result = "Saved \(animation.count) frames to \(url.lastPathComponent)."
             } catch is CancellationError { result = "Export cancelled." }
             catch { failure = error.localizedDescription }

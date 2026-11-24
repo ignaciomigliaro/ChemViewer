@@ -1055,3 +1055,8 @@ right-handed, molecular-axis rotation with the starting view about the fitted
 geometry center. Samples span one turn with the endpoint excluded, and atom
 positions and distances are invariant. Captions and measurement guides are
 projected for each view and scaled when drawing into the larger raster.
+
+Fixed-scale GIF framing uses the same animation center as automatic fitting.
+The square orthographic projection spans two view units, so a selected width
+of W ångströms uses a view scale of 2/W and yields N/W pixels per ångström at
+resolution N. The depth interval expands when needed at high magnification.
