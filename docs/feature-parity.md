@@ -782,3 +782,10 @@ GIF framing in 0.15.4 supports a fixed width in ångströms across rotation,
 frequency, and trajectory exports. The native regression checked physical
 scale in decoded GIF pixels. The physical GUI saved a fixed-scale rotation
 and recalled its width on reopening the export dialog.
+
+## Copy 2D structure (0.15.5)
+
+Native Draw can copy the current 2D sketch, including one imported from
+SMILES, as a PNG/TIFF clipboard image. The native Mac test exercised a chiral
+import and AppKit image decoding, and the GUI exposed the action only while
+the sketch contained atoms.

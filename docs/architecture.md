@@ -1060,3 +1060,10 @@ Fixed-scale GIF framing uses the same animation center as automatic fitting.
 The square orthographic projection spans two view units, so a selected width
 of W ångströms uses a view scale of 2/W and yields N/W pixels per ångström at
 resolution N. The depth interval expands when needed at high magnification.
+
+## Copying 2D structures
+
+The draw canvas and clipboard bitmap share the AppKit bond and atom painters.
+Copy uses the committed MolecularSketch and its atom bounds. The offscreen
+white canvas renders at up to three pixels per drawing unit, capped at 3072
+pixels on the long edge. A single pasteboard item carries PNG and TIFF.

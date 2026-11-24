@@ -1082,3 +1082,15 @@ a 6 Å frame width, the diameter of the same red oxygen atom agreed within
 one pixel across the clips. The 12 Å rotation gave half the pixel diameter
 within rasterization tolerance. All three diameters agreed within two
 pixels with the sphere diameter of 0.57 Å multiplied by pixels per ångström.
+
+## 2D clipboard image (0.15.5)
+
+The native drawing harness imported chiral alanine
+(`N[C@@H](C)C(=O)O`) and checked that the 2D graph carried a wedge or dash.
+The copied 577 × 538 PNG and TIFF decoded at identical dimensions, and AppKit
+read the single item as an image. The PNG contained drawing pixels on a
+white background. A visual check confirmed the hashed bond and atom labels.
+The output was identical after panning, zooming and selecting an atom.
+Copy left the graph and revision intact, and an empty sketch preserved the
+existing private pasteboard item. The native drawing and 3D preview
+regressions also passed.

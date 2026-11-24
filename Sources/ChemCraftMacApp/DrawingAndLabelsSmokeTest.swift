@@ -27,7 +27,9 @@ enum DrawingAndLabelsSmokeTest {
             throw ParseError.malformed("Drawing runtime timed out")
         }
         do {
-            let evidence = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/chemviewer-drawing-evidence")
+            let args = CommandLine.arguments
+            let evidence = args.firstIndex(of: "--render-evidence").flatMap { args.indices.contains($0 + 1) ? URL(fileURLWithPath: args[$0 + 1]) : nil }
+                ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads/chemviewer-drawing-evidence")
             try FileManager.default.createDirectory(at: evidence, withIntermediateDirectories: true)
             workspace.newMolecule()
             let atoms = [Atom(id: 0, element: "C", position: Vector3(-2, 0, 0)), Atom(id: 1, element: "C", position: .zero), Atom(id: 2, element: "O", position: Vector3(2, 1, 0)), Atom(id: 3, element: "N", position: Vector3(2, 1, 2))]
@@ -161,6 +163,44 @@ enum DrawingAndLabelsSmokeTest {
             workspace.undoGeometry(); try require(workspace.currentFrame == untouchedViewer, "Accepting drawing was not undoable")
             workspace.activeTab = "Draw"; await pause()
             drawing.smilesInput = "N[C@@H](C)C(=O)O"; drawing.importSMILES(); try await waitForDrawing(drawing)
+            let imported = drawing.graph
+            let revision = drawing.revision
+            try require(imported.bonds.contains { $0.stereo != "none" }, "Chiral import has no wedge or dash")
+            let pasteboard = NSPasteboard.withUniqueName()
+            defer { pasteboard.releaseGlobally() }
+            try require(drawing.copy2DImage(to: pasteboard), "Could not copy the imported drawing without a 3D preview")
+            guard let png = pasteboard.data(forType: .png),
+                  let tiff = pasteboard.data(forType: .tiff),
+                  let bitmap = NSBitmapImageRep(data: png),
+                  let tiffBitmap = NSBitmapImageRep(data: tiff) else {
+                throw ParseError.malformed("The clipboard item did not contain readable PNG and TIFF images")
+            }
+            try require(pasteboard.pasteboardItems?.count == 1 && NSImage(pasteboard: pasteboard) != nil, "AppKit could not paste the image item")
+            try require(bitmap.pixelsWide >= 288 && bitmap.pixelsHigh >= 288 &&
+                        bitmap.pixelsWide == tiffBitmap.pixelsWide && bitmap.pixelsHigh == tiffBitmap.pixelsHigh,
+                        "Unexpected clipboard raster dimensions")
+            guard let corner = bitmap.colorAt(x: 10, y: 10)?.usingColorSpace(.deviceRGB) else {
+                throw ParseError.malformed("Could not read the image background")
+            }
+            let hasInk = stride(from: 0, to: bitmap.pixelsHigh, by: 3).contains { y in
+                stride(from: 0, to: bitmap.pixelsWide, by: 3).contains { x in
+                    guard let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { return false }
+                    return color.redComponent < 0.5 || color.greenComponent < 0.5 || color.blueComponent < 0.5
+                }
+            }
+            try require(corner.redComponent > 0.99 && corner.greenComponent > 0.99 &&
+                        corner.blueComponent > 0.99 && corner.alphaComponent > 0.99 && hasInk,
+                        "Copied drawing is blank or missing its white background")
+            let oldZoom = canvas.zoom, oldPan = canvas.pan, oldSelection = drawing.selectedID
+            canvas.zoom = 4; canvas.pan = CGPoint(x: 1000, y: -1000); drawing.selectedID = imported.atoms.first?.id
+            try require(drawing.copy2DImage(to: pasteboard) && pasteboard.data(forType: .png) == png,
+                        "Canvas pan, zoom, or selection changed the copied image")
+            canvas.zoom = oldZoom; canvas.pan = oldPan; drawing.selectedID = oldSelection
+            try require(!MoleculeDrawingStore().copy2DImage(to: pasteboard) && pasteboard.data(forType: .png) == png,
+                        "Copying an empty sketch replaced the clipboard")
+            try require(drawing.graph == imported && drawing.revision == revision, "Copy edited the graph")
+            try png.write(to: evidence.appendingPathComponent("copied-chiral-smiles.png"))
+            print("DRAWING_IMAGE_COPY_PASS: current chiral sketch copied as PNG/TIFF at \(bitmap.pixelsWide) × \(bitmap.pixelsHigh), AppKit image paste, pan and selection independence, empty sketch and revision preservation")
             drawing.generate3D(); try await waitForDrawing(drawing)
             try require(drawing.previewIsCurrent && drawing.preview!.smiles.contains("@"), "SMILES-to-drawing-to-3D lost chirality")
             workspace.presentAtomPicker(); try await Task.sleep(nanoseconds: 500_000_000)

@@ -12,7 +12,7 @@ import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--app', type=Path, required=True)
-parser.add_argument('--test', choices=['mechanism', 'viewport-activation', 'hydrogen-visibility', 'paste-coordinates', 'internal-coordinate', 'camera', 'ligand-selection', 'smooth', 'animation', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
+parser.add_argument('--test', choices=['mechanism', 'viewport-activation', 'hydrogen-visibility', 'paste-coordinates', 'internal-coordinate', 'camera', 'ligand-selection', 'smooth', 'animation', 'drawing-labels', 'fragment-placement', 'manipulation', 'fragment-rotation', 'document-workspace', 'vibration', 'smoke'], default='camera')
 parser.add_argument('--capture-window', action='store_true')
 parser.add_argument('--evidence', type=Path, required=True)
 args = parser.parse_args()

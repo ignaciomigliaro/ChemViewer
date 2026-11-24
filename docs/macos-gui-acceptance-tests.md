@@ -946,3 +946,16 @@ On 2026-11-24, the isolated native GUI initially showed **Fit all frames**,
 blocked Save at zero width, saved a 48-frame rotation at 6 Å and 1024 × 1024,
 and recalled the fixed scale and 6 Å width on reopening. The native GIF
 pixel checks covered same-width and doubled-width comparisons.
+
+## Copy 2D image from SMILES
+
+Open **Draw**, enter `N[C@@H](C)C(=O)O` and choose **Load SMILES**. When the
+2D structure appears, select **Copy 2D Image** and paste into an app that
+accepts images. Compare atom labels and stereochemical bonds with the sketch.
+Pan or zoom the drawing and copy again to verify that the whole structure
+still fits. Clear the sketch and confirm the button is disabled.
+
+On 2026-11-24, the physical Mac GUI showed Copy 2D Image enabled with the
+six-atom chiral drawing and disabled before loading and after clearing.
+The native harness used a private pasteboard and verified AppKit image
+decoding and identical output after changing pan, zoom and selection.

@@ -112,6 +112,10 @@ Generate 3D triggers it manually. Invalid valences show an error; correction can
 retry. Use 3D in Viewer transfers a valid generated structure as an undoable edit.
 A stale or failed preview cannot be transferred. Save drawing drafts as JSON.
 
+To paste a 2D structure into another app, enter a SMILES string, choose
+**Load SMILES**, then select **Copy 2D Image** above the drawing. The copied
+image includes any edits to the sketch and has a white background.
+
 [Drawing workflow](drawing-and-labels-2026-10-20.md),
 [ring and skeletal tools](skeletal-drawing-2026-10-20.md).
 

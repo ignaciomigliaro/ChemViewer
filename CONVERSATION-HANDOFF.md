@@ -1929,3 +1929,19 @@ package checks passed. The signed ARM64 build used SDK 26.5 and passed 60
 standalone core cases and the three building suites. XCTest is unavailable
 under the installed Command Line Tools. Both app installations were refreshed
 and matched the release binary. Evidence is under /private/tmp/cv-export-0154.
+
+## Copy the 2D drawing image — 0.15.5
+
+Draw → Copy 2D Image copies the full committed sketch onto a white background
+as a single pasteboard image with PNG and TIFF representations. It uses the
+native 2D painters independently of pan, zoom and selection. It works as soon
+as an imported SMILES produces a sketch, including with 3D preview off.
+
+On the physical Apple Silicon Mac, the native drawing and label harness
+copied a chiral structure to a private pasteboard and decoded it through
+AppKit. The 577 × 538 preview shows the hashed bond and atom labels. Manual
+GUI checks confirmed the button state on empty, imported and cleared sketches.
+The signed SDK 26.5 build, 60 standalone core checks, three building suites,
+and relocated packaging checks passed. XCTest is unavailable under the
+installed Command Line Tools. Both installed app binaries match the release.
+Evidence is under /private/tmp/cv-draw-0155.
