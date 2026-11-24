@@ -134,6 +134,7 @@ struct ContentView: View {
         .sheet(isPresented: $remote.presented) { RemoteConnectionView().environmentObject(workspace) }
         .sheet(isPresented: $workspace.isPeriodicTablePresented) { PeriodicTableView() }
         .sheet(isPresented: $workspace.isFragmentLibraryPresented) { FragmentBrowserView() }
+        .sheet(isPresented: $workspace.isImageExportPresented) { ImageExportView() }
         .sheet(isPresented: $workspace.isAnimationExportPresented) { AnimationExportView() }
         .sheet(isPresented: $workspace.isEnergyLandscapePresented) {
             EnergyLandscapeView()
@@ -167,8 +168,7 @@ struct ContentView: View {
             tool("Open chemistry file", "folder") { workspace.isImporterPresented = true }
             tool("Paste Coordinates…", "doc.on.clipboard") { workspace.isPasteCoordinatesPresented = true }
             tool("Export PNG image", "camera") {
-                workspace.activeTab = "Image"
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { viewportAction("export") }
+                workspace.presentImageExport()
             }.disabled(workspace.currentFrame == nil)
             Divider().frame(height: 24)
             Menu("Build") {
@@ -202,7 +202,7 @@ struct ContentView: View {
                 .disabled(workspace.selectedMode == nil)
             tool("Play or pause geometries", "film") { workspace.toggleTrajectoryPlayback() }
                 .disabled((workspace.document?.frames.count ?? 0) < 2)
-            tool("Export trajectory or frequency GIF", "photo.on.rectangle.angled") { workspace.presentAnimationExport() }
+            tool("Export animated GIF", "photo.on.rectangle.angled") { workspace.presentAnimationExport() }
                 .disabled(workspace.currentFrame == nil)
             tool("Energy landscape", "chart.xyaxis.line") { workspace.isEnergyLandscapePresented = true }
                 .disabled((workspace.document?.frames.count ?? 0) < 2 && workspace.document?.nebProfile == nil)

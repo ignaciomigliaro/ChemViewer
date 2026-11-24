@@ -909,3 +909,25 @@ that method and no optimization directive. Leave the second stage's endpoint
 lists empty and check that ChemRefine accepts both stages.
 
 CV-MECHANISM-006. Open a fresh composer. Confirm the YAML pane shows the first stage and allows copying. Add a stage and inspect the updated preview. Check that the form and preview share the available space when resizing. The native harness uses an isolated pasteboard and checks complete copied text against the exported file.
+
+## CV-GUI-015 and GIF rotation — high-resolution export
+
+1. Open a single asymmetric geometry. From the GIF toolbar control, confirm
+   **Rotate current geometry** is selected. Choose an axis, frame count, and
+   2048 × 2048. Save and verify the dimensions and smooth looping. Repeat with
+   a different axis and confirm the direction changes.
+2. Open the PNG settings from the camera toolbar control. Enter 4096 × 2305 and
+   600 DPI, save, and inspect the dimensions and print density. Test the File
+   menu entry from a non-image tab and check that invalid settings disable Save.
+3. Repeat with captions or measurement labels and a non-default camera. Check
+   overlay alignment, image composition, and that neither export edits the
+   source structure. Exercise the existing trajectory and frequency options
+   and cancel an active GIF export.
+
+Physical Mac acceptance on 2026-11-24 opened both toolbar dialogs and saved
+a 48-frame Z-axis GIF at 2048 × 2048, a 48-frame X-axis GIF at 1024 × 1024,
+and a 4096 × 2305 PNG at 600 DPI from a synthetic asymmetric XYZ. Decoded
+quarter turns were visually distinct for both axes. The PNG dialog disabled
+Save at 4097 pixels and opened from File while on Coord. The native harnesses
+covered frequency, trajectory, cancellation, measurement overlays, and camera
+preservation.

@@ -1060,3 +1060,16 @@ The 0.15.2 mechanism fixture compares the live clipboard contents with the
 complete exported YAML before the ChemRefine editor opens it. The same test
 also copies a fresh, incomplete draft with an empty reactant source list.
 Export retains the existing schema, geometry and variant checks.
+
+## High-resolution graphics export (0.15.3)
+
+On the physical Apple Silicon Mac, the packaged animation harness checked
+right-handed quarter turns against Cartesian basis vectors for all three axes,
+excluded the duplicate endpoint, and compared source coordinates before and
+after sampling. ImageIO decoded four changing 2048 × 2048 GIF frames with the
+expected delay and infinite looping. The same harness checked frequency and
+trajectory export, transparency, annotation guides, and cancellation.
+The 4096 × 2305 PNG decoded with 600 DPI on both axes. A separate binary check
+confirmed the IHDR dimensions and the pHYs chunk of 23622 pixels per meter in
+both axes. The viewport state and source atoms matched before and after PNG
+export. The smooth-interaction and general Metal harnesses also passed.

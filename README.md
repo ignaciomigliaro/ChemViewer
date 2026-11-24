@@ -740,3 +740,15 @@ Open a stage's **Calculations** section to configure independent reactant,
 product, scoring and TS refinement sequences. Choose the engine, operation and method in each row. The **input.yaml** pane
 updates as you edit and includes advanced settings. Use **Copy YAML** to copy
 the current configuration. [Workflow guide](docs/user-guide.md#configure-each-calculation)
+
+### High-resolution graphics export
+
+**File → Export Animation as GIF** exports a geometry trajectory, a vibrational
+mode, or a full turn of the current geometry around its X, Y, or Z axis. Choose
+a pixel resolution up to 2048 × 2048. For a single geometry, **Rotate current
+geometry** is the default when no vibrational mode is selected.
+
+**File → Export Image as PNG** accepts custom width and height up to 4096 pixels
+per side and print density up to 1200 DPI. It opens at 300 DPI with a 2400-pixel
+long edge and the viewport aspect ratio. For GIFs, use pixel resolution to
+control detail.

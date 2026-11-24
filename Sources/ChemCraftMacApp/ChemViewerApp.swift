@@ -106,8 +106,7 @@ struct ChemViewerApp: App {
                 Button("Export Animation as GIF…") { workspace.presentAnimationExport() }
                     .disabled(workspace.currentFrame == nil)
                 Button("Export Image as PNG…") {
-                    workspace.activeTab = "Image"
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { NotificationCenter.default.post(name: .init("ChemViewerViewportAction"), object: "export") }
+                    workspace.presentImageExport()
                 }.disabled(workspace.currentFrame == nil)
             }
         }

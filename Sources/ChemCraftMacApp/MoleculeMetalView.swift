@@ -1,6 +1,8 @@
 import ChemCraftCore
+import ImageIO
 import MetalKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum MolecularStyle: String, CaseIterable {
     case paton = "xyzrender · Paton"
@@ -12,7 +14,7 @@ enum MolecularStyle: String, CaseIterable {
     var shaderStyle: Float { self == .paton ? 2 : (self == .publication ? 1 : 0) }
 }
 
-struct MolecularViewportState {
+struct MolecularViewportState: Equatable {
     var center: SIMD3<Float>
     var fitScale: Float
     var yaw: Float
@@ -243,7 +245,7 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     private var cylinderVertexCount = 0
     private(set) var meshBuildCount = 0
     private var depthState: MTLDepthStencilState?
-    private var captureURL: URL?
+    var animationRotation: simd_quatf?
     private var cameraObserver: NSObjectProtocol?
     private var activationObservers: [NSObjectProtocol] = []
     private var activationRedrawPending = false
@@ -305,7 +307,6 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         preferredFramesPerSecond = 120
         enableSetNeedsDisplay = true
         isPaused = true
-        framebufferOnly = false
         commandQueue = device.makeCommandQueue()
         buildPipelines(device: device)
         buildMeshes(device: device)
@@ -335,10 +336,6 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             case "out": self.zoomBy(factor: 1 / 1.2, at: CGPoint(x: self.bounds.midX, y: self.bounds.midY))
             case "resetLabel":
                 self.measurementOffsets.removeValue(forKey: self.measurementKey(self.scene.selectedAtomIndices))
-            case "export":
-                let panel = NSSavePanel(); panel.nameFieldStringValue = "molecule.png"
-                panel.allowedContentTypes = [.png]
-                if panel.runModal() == .OK, let url = panel.url { self.captureURL = url }
             default: break
             }
             self.setNeedsDisplay(self.bounds)
@@ -391,7 +388,13 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         }
     }
 
-    func capture(to url: URL) { captureURL = url; draw() }
+    func capture(to url: URL) {
+        do {
+            try exportPNG(to: url, width: Int(drawableSize.width), height: Int(drawableSize.height), dpi: 72)
+        } catch {
+            onRenderingFailure?(error.localizedDescription)
+        }
+    }
 
     required init(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -504,57 +507,8 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
 
         let positions = displacedPositions()
         measurementOverlay.captions = captionAnnotations(positions: positions, size: bounds.size)
-        var selections = measurementSelections
-        if showMeasurementOverlay && !selections.contains(where: { measurementIdentity($0) == measurementIdentity(scene.selectedAtomIndices) }) { selections.insert(scene.selectedAtomIndices, at: 0) }
-        var annotations: [MeasurementAnnotation] = []
-        for indices in selections {
-            guard var annotation = MeasurementAnnotation.make(positions: positions, indices: indices, project: { self.projectPosition(positions[$0]) }) else { continue }
-            let key = measurementKey(indices)
-            annotation.labelOffset = measurementOffsets[key] ?? .zero
-            if annotation.labelOffset == .zero && annotations.contains(where: { $0.labelRect(in: bounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: bounds)) }) {
-                for row in 1...16 {
-                    let direction: CGFloat = row % 2 == 1 ? 1 : -1
-                    annotation.labelOffset.y = direction * CGFloat((row + 1) / 2) * (annotation.labelRect(in: bounds).height + 8) / max(bounds.height, 1)
-                    if !annotations.contains(where: { $0.labelRect(in: bounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: bounds)) }) { break }
-                }
-                measurementOffsets[key] = annotation.labelOffset
-            }
-            annotations.append(annotation)
-        }
-        measurementOverlay.annotations = annotations
+        measurementOverlay.annotations = liveMeasurementAnnotations(positions: positions, size: bounds.size, rememberOffsets: true)
         encodeMolecule(encoder, positions: positions, size: drawableSize)
-        if let url = captureURL {
-            captureURL = nil
-            let texture = drawable.texture
-            let rowBytes = ((texture.width * 4 + 255) / 256) * 256
-            if let pixels = device?.makeBuffer(length: rowBytes * texture.height, options: .storageModeShared), let blit = commandBuffer.makeBlitCommandEncoder() {
-                blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: .init(), sourceSize: .init(width: texture.width, height: texture.height, depth: 1), to: pixels, destinationOffset: 0, destinationBytesPerRow: rowBytes, destinationBytesPerImage: rowBytes * texture.height)
-                blit.endEncoding()
-                let annotations = measurementOverlay.annotations
-                let captions = measurementOverlay.captions
-                let overlaySize = bounds.size
-                commandBuffer.addCompletedHandler { [weak self] buffer in
-                    guard buffer.status == .completed else { return }
-                    let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: texture.width, pixelsHigh: texture.height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: rowBytes, bitsPerPixel: 32)!
-                    let source = pixels.contents().assumingMemoryBound(to: UInt8.self)
-                    let target = bitmap.bitmapData!
-                    for y in 0..<texture.height { for x in 0..<texture.width {
-                        let i = y * rowBytes + x * 4
-                        target[i] = source[i + 2]; target[i + 1] = source[i + 1]; target[i + 2] = source[i]; target[i + 3] = 255
-                    } }
-                    if (!annotations.isEmpty || !captions.isEmpty), let context = NSGraphicsContext(bitmapImageRep: bitmap) {
-                        NSGraphicsContext.saveGraphicsState()
-                        NSGraphicsContext.current = context
-                        context.cgContext.scaleBy(x: CGFloat(texture.width) / max(overlaySize.width, 1), y: CGFloat(texture.height) / max(overlaySize.height, 1))
-                        for caption in captions { caption.draw() }
-                        for annotation in annotations { annotation.draw(in: CGRect(origin: .zero, size: overlaySize)) }
-                        NSGraphicsContext.restoreGraphicsState()
-                    }
-                    do { try bitmap.representation(using: .png, properties: [:])?.write(to: url) }
-                    catch { DispatchQueue.main.async { self?.onRenderingFailure?(error.localizedDescription) } }
-                }
-            }
-        }
         commandBuffer.present(drawable)
         commandBuffer.addCompletedHandler { [weak self] buffer in
             let failure = buffer.error?.localizedDescription
@@ -565,6 +519,28 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             }
         }
         commandBuffer.commit()
+    }
+
+    private func liveMeasurementAnnotations(positions: [SIMD3<Float>], size: CGSize, rememberOffsets: Bool) -> [MeasurementAnnotation] {
+        let overlayBounds = CGRect(origin: .zero, size: size)
+        var selections = measurementSelections
+        if showMeasurementOverlay && !selections.contains(where: { measurementIdentity($0) == measurementIdentity(scene.selectedAtomIndices) }) { selections.insert(scene.selectedAtomIndices, at: 0) }
+        var annotations: [MeasurementAnnotation] = []
+        for indices in selections {
+            guard var annotation = MeasurementAnnotation.make(positions: positions, indices: indices, project: { self.projectPosition(positions[$0], size: size) }) else { continue }
+            let key = measurementKey(indices)
+            annotation.labelOffset = measurementOffsets[key] ?? .zero
+            if annotation.labelOffset == .zero && annotations.contains(where: { $0.labelRect(in: overlayBounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: overlayBounds)) }) {
+                for row in 1...16 {
+                    let direction: CGFloat = row % 2 == 1 ? 1 : -1
+                    annotation.labelOffset.y = direction * CGFloat((row + 1) / 2) * (annotation.labelRect(in: overlayBounds).height + 8) / max(size.height, 1)
+                    if !annotations.contains(where: { $0.labelRect(in: overlayBounds).insetBy(dx: -3, dy: -3).intersects(annotation.labelRect(in: overlayBounds)) }) { break }
+                }
+                if rememberOffsets { measurementOffsets[key] = annotation.labelOffset }
+            }
+            annotations.append(annotation)
+        }
+        return annotations
     }
 
     private func encodeMolecule(_ encoder: MTLRenderCommandEncoder, positions: [SIMD3<Float>], size: CGSize) {
@@ -646,9 +622,10 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     /// Separate render targets: GIF creation never changes the visible scene or playback.
-    func animationRenderer(frames: [MoleculeFrame], amplitude: Float = 0, displacements: [Vector3] = []) -> MolecularMTKView {
+    func animationRenderer(frames: [MoleculeFrame], amplitude: Float = 0, displacements: [Vector3] = [], style: MolecularStyle? = nil) -> MolecularMTKView {
         let renderer = MolecularMTKView()
         renderer.scene = scene
+        if let style { renderer.scene.style = style }
         renderer.measurementOffsets = measurementOffsets
         renderer.scene.animate = false
         renderer.scene.preservedHydrogenIndices = Array(Set(scene.preservedHydrogenIndices + scene.selectedAtomIndices.filter { scene.atoms.indices.contains($0) && scene.atoms[$0].element == "H" }))
@@ -673,23 +650,60 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     func renderAnimationFrame(_ frame: MoleculeFrame, positions: [SIMD3<Float>], size: Int, measurementIndices: [Int] = [], measurementSelections: [[Int]] = [], transparentBackground: Bool = false) throws -> CGImage {
-        guard size >= 128, size <= 2048, positions.count == frame.atoms.count, renderingReady,
-              let device, let command = commandQueue.makeCommandBuffer() else {
-            throw AnimationExportError.message("The Metal renderer is unavailable or the frame is invalid.")
+        guard (128...2048).contains(size), positions.count == frame.atoms.count else {
+            throw AnimationExportError.message("The GIF frame is invalid.")
         }
         // Assign fields directly to retain the fixed camera fitted across the entire animation.
         // scene didSet may refit for a changed atom count, so restore framing afterward.
         let fixedCenter = center, fixedScale = fitScale
         scene.atoms = frame.atoms; scene.bonds = frame.bonds
         center = fixedCenter; fitScale = fixedScale
-        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: colorPixelFormat, width: size, height: size, mipmapped: false)
+        let overlaySize = CGSize(width: min(size, 640), height: min(size, 640))
+        let selections = measurementSelections + (measurementIndices.isEmpty ? [] : [measurementIndices])
+        let annotations = selections.compactMap { animationAnnotation(positions: positions, indices: $0, size: Int(overlaySize.width)) }
+        if annotations.count != selections.count {
+            throw AnimationExportError.message("The selected measurement is undefined in a frame (coincident atoms or a collinear dihedral). Export without the label or choose different atoms.")
+        }
+        return try renderExportImage(positions: positions, width: size, height: size, overlaySize: overlaySize, annotations: annotations, transparentBackground: transparentBackground)
+    }
+
+    func exportPNG(to url: URL, width: Int, height: Int, dpi: Int) throws {
+        guard (1...4096).contains(width), (1...4096).contains(height), (1...1200).contains(dpi),
+              !scene.atoms.isEmpty else {
+            throw AnimationExportError.message("Choose a molecule, dimensions up to 4096 pixels, and a DPI between 1 and 1200.")
+        }
+        let positions = displacedPositions()
+        let overlayScale = min(CGFloat(width), CGFloat(height)) / max(1, min(bounds.width, bounds.height))
+        let overlaySize = CGSize(width: CGFloat(width) / overlayScale, height: CGFloat(height) / overlayScale)
+        let annotations = liveMeasurementAnnotations(positions: positions, size: overlaySize, rememberOffsets: false)
+        let image = try renderExportImage(positions: positions, width: width, height: height, overlaySize: overlaySize, annotations: annotations, transparentBackground: false)
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {
+            throw AnimationExportError.message("Cannot create a PNG encoder.")
+        }
+        CGImageDestinationAddImage(destination, image, [kCGImagePropertyDPIWidth: dpi, kCGImagePropertyDPIHeight: dpi] as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else {
+            throw AnimationExportError.message("Cannot encode the PNG image.")
+        }
+        try (data as Data).write(to: url, options: .atomic)
+    }
+
+    private func renderExportImage(positions: [SIMD3<Float>], width: Int, height: Int, overlaySize: CGSize, annotations: [MeasurementAnnotation], transparentBackground: Bool) throws -> CGImage {
+        guard renderingReady, positions.count == scene.atoms.count, let device,
+              let command = commandQueue.makeCommandBuffer() else {
+            throw AnimationExportError.message("The Metal renderer is unavailable or the structure is invalid.")
+        }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: colorPixelFormat, width: width, height: height, mipmapped: false)
         descriptor.usage = [.renderTarget, .shaderRead]; descriptor.storageMode = .private
-        guard let color = device.makeTexture(descriptor: descriptor) else { throw AnimationExportError.message("Cannot allocate GIF render texture.") }
+        guard let color = device.makeTexture(descriptor: descriptor) else { throw AnimationExportError.message("Cannot allocate export render texture.") }
         descriptor.textureType = sampleCount > 1 ? .type2DMultisample : .type2D
         descriptor.sampleCount = sampleCount
         let multisample = sampleCount > 1 ? device.makeTexture(descriptor: descriptor) : nil
+        guard sampleCount == 1 || multisample != nil else {
+            throw AnimationExportError.message("Cannot allocate the antialiased export texture.")
+        }
         descriptor.pixelFormat = depthStencilPixelFormat; descriptor.usage = .renderTarget
-        guard let depth = device.makeTexture(descriptor: descriptor) else { throw AnimationExportError.message("Cannot allocate GIF depth texture.") }
+        guard let depth = device.makeTexture(descriptor: descriptor) else { throw AnimationExportError.message("Cannot allocate export depth texture.") }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = multisample ?? color
         pass.colorAttachments[0].resolveTexture = multisample == nil ? nil : color
@@ -697,19 +711,19 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         pass.colorAttachments[0].storeAction = multisample == nil ? .store : .multisampleResolve
         pass.colorAttachments[0].clearColor = transparentBackground ? MTLClearColorMake(0, 0, 0, 0) : MTLClearColorMake(1, 1, 1, 1)
         pass.depthAttachment.texture = depth; pass.depthAttachment.loadAction = .clear; pass.depthAttachment.clearDepth = 1
-        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw AnimationExportError.message("Cannot encode GIF frame.") }
-        encodeMolecule(encoder, positions: positions, size: CGSize(width: size, height: size))
-        let rowBytes = ((size * 4 + 255) / 256) * 256
-        guard let buffer = device.makeBuffer(length: rowBytes * size, options: .storageModeShared),
-              let blit = command.makeBlitCommandEncoder() else { throw AnimationExportError.message("Cannot read GIF frame.") }
-        blit.copy(from: color, sourceSlice: 0, sourceLevel: 0, sourceOrigin: .init(), sourceSize: .init(width: size, height: size, depth: 1), to: buffer, destinationOffset: 0, destinationBytesPerRow: rowBytes, destinationBytesPerImage: rowBytes * size)
+        guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { throw AnimationExportError.message("Cannot encode export frame.") }
+        encodeMolecule(encoder, positions: positions, size: CGSize(width: width, height: height))
+        let rowBytes = ((width * 4 + 255) / 256) * 256
+        guard let buffer = device.makeBuffer(length: rowBytes * height, options: .storageModeShared),
+              let blit = command.makeBlitCommandEncoder() else { throw AnimationExportError.message("Cannot read export frame.") }
+        blit.copy(from: color, sourceSlice: 0, sourceLevel: 0, sourceOrigin: .init(), sourceSize: .init(width: width, height: height, depth: 1), to: buffer, destinationOffset: 0, destinationBytesPerRow: rowBytes, destinationBytesPerImage: rowBytes * height)
         blit.endEncoding(); command.commit(); command.waitUntilCompleted()
         if let error = command.error { throw error }
         let source = buffer.contents().assumingMemoryBound(to: UInt8.self)
-        var rgba = Data(count: rowBytes * size)
+        var rgba = Data(count: rowBytes * height)
         rgba.withUnsafeMutableBytes { raw in
             let target = raw.bindMemory(to: UInt8.self)
-            for i in stride(from: 0, to: rowBytes * size, by: 4) {
+            for i in stride(from: 0, to: rowBytes * height, by: 4) {
                 let alpha = transparentBackground ? source[i + 3] : 255
                 target[i + 3] = alpha
                 for channel in 0..<3 {
@@ -728,24 +742,21 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
             }
         }
         guard let provider = CGDataProvider(data: rgba as CFData),
-              let image = CGImage(width: size, height: size, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: rowBytes, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { throw AnimationExportError.message("Cannot create GIF image.") }
-        let captions = captionAnnotations(positions: positions, size: CGSize(width: size, height: size))
-        let selections = measurementSelections + (measurementIndices.isEmpty ? [] : [measurementIndices])
-        guard !selections.isEmpty || !captions.isEmpty else { return image }
-        let annotations = selections.compactMap { animationAnnotation(positions: positions, indices: $0, size: size) }
-        if annotations.count != selections.count {
-            throw AnimationExportError.message("The selected measurement is undefined in a frame (coincident atoms or a collinear dihedral). Export without the label or choose different atoms.")
-        }
-        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: size * 4, bitsPerPixel: 32),
-              let context = NSGraphicsContext(bitmapImageRep: bitmap) else { throw AnimationExportError.message("Cannot draw the GIF measurement label.") }
+              let image = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: rowBytes, space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else { throw AnimationExportError.message("Cannot create export image.") }
+        let captions = captionAnnotations(positions: positions, size: overlaySize)
+        guard !annotations.isEmpty || !captions.isEmpty else { return image }
+        guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: width * 4, bitsPerPixel: 32),
+              let context = NSGraphicsContext(bitmapImageRep: bitmap) else { throw AnimationExportError.message("Cannot draw the export labels.") }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = context
-        context.cgContext.clear(CGRect(x: 0, y: 0, width: size, height: size))
-        context.cgContext.draw(image, in: CGRect(x: 0, y: 0, width: size, height: size))
+        let imageBounds = CGRect(x: 0, y: 0, width: width, height: height)
+        context.cgContext.clear(imageBounds)
+        context.cgContext.draw(image, in: imageBounds)
+        context.cgContext.scaleBy(x: CGFloat(width) / overlaySize.width, y: CGFloat(height) / overlaySize.height)
         for caption in captions { caption.draw() }
-        for annotation in annotations { annotation.draw(in: CGRect(x: 0, y: 0, width: size, height: size), background: !transparentBackground) }
+        for annotation in annotations { annotation.draw(in: CGRect(origin: .zero, size: overlaySize), background: !transparentBackground) }
         NSGraphicsContext.restoreGraphicsState()
-        guard let annotated = bitmap.cgImage else { throw AnimationExportError.message("Cannot finish the GIF measurement label.") }
+        guard let annotated = bitmap.cgImage else { throw AnimationExportError.message("Cannot finish the export labels.") }
         return annotated
     }
 
@@ -839,9 +850,11 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
     }
 
     private func cameraRotation() -> simd_float4x4 {
-        simd_float4x4(orbit) * simd_float4x4.rotation(radians: roll, axis: SIMD3(0, 0, 1)) *
-        simd_float4x4.rotation(radians: pitch, axis: SIMD3(1, 0, 0)) *
+        let camera = simd_float4x4(orbit) * simd_float4x4.rotation(radians: roll, axis: SIMD3(0, 0, 1)) *
+            simd_float4x4.rotation(radians: pitch, axis: SIMD3(1, 0, 0)) *
             simd_float4x4.rotation(radians: yaw, axis: SIMD3(0, 1, 0))
+        if let animationRotation { return camera * simd_float4x4(animationRotation) }
+        return camera
     }
 
     private func displacedPositions() -> [SIMD3<Float>] {
@@ -1062,10 +1075,11 @@ final class MolecularMTKView: MTKView, MTKViewDelegate {
         return projectPosition(displacedPositions()[index])
     }
 
-    private func projectPosition(_ p: SIMD3<Float>) -> CGPoint? {
-        let clip = makeMVP() * SIMD4(p.x, p.y, p.z, 1)
+    private func projectPosition(_ p: SIMD3<Float>, size: CGSize? = nil) -> CGPoint? {
+        let clip = makeMVP(size: size) * SIMD4(p.x, p.y, p.z, 1)
+        let projectionSize = size ?? bounds.size
         guard abs(clip.w) > 1e-7 else { return nil }
-        return CGPoint(x: CGFloat((clip.x / clip.w + 1) / 2) * bounds.width, y: CGFloat((clip.y / clip.w + 1) / 2) * bounds.height)
+        return CGPoint(x: CGFloat((clip.x / clip.w + 1) / 2) * projectionSize.width, y: CGFloat((clip.y / clip.w + 1) / 2) * projectionSize.height)
     }
 
     override func scrollWheel(with event: NSEvent) {

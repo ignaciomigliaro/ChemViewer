@@ -1894,3 +1894,23 @@ round trip, four-variant plan and ChemRefine dry run passed. Evidence is under
 with three optional skips. The signed arm64 package passed relocation and
 resource checks, 60 standalone core cases and the parser, editing and project
 suites. Both installed copies received the release.
+
+## High-resolution PNG and rotation GIF export — 0.15.3
+
+The PNG toolbar and File actions open settings for independent width and height
+up to 4096 pixels and print DPI up to 1200. GIF export adds a full turn around a
+selected molecular axis with 1536 and 2048-pixel presets. Default GIF resolution
+is 1024 pixels. A single geometry without a mode defaults to rotation.
+
+On arm64 macOS 27.2.1, the signed release built with Swift 6.4.2 and SDK 26.5.
+The default SDK 27.2 still lacks SwiftUIMacros under the installed Command Line
+Tools. XCTest is unavailable. The 60 standalone core cases, three building
+suites, relocated package, and native animation, smooth interaction, and
+general smoke tests passed. Both installed app copies were verified against the
+release binary.
+
+The isolated physical GUI saved 48 frames for Z at 2048 × 2048 and for X at
+1024 × 1024. The 4096 × 2305 PNG reported 600 DPI in sips. The PNG File menu
+opened from Coord, and the sheet rejected 4097 pixels. Local evidence is under
+/private/tmp/cv-export-0153. Synthetic asymmetric XYZ SHA-256 is
+65b371374aaa814b8c6cae4851549cf5019e22e8e11126abf7c4122757466a9a.

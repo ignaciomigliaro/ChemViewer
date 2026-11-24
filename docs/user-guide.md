@@ -168,11 +168,16 @@ support across programs or justify subtracting energies from unlike methods.
 
 ## Export figures, structures and animations
 
-Use the camera control for the current PNG; coordinate copy controls offer XYZ
-or coordinate text. File → Export Animation as GIF exports a trajectory or mode
-using the current view and fixed animation bounds. Size, frame rate, playback
-speed and forward/backward trajectory controls are explicit. Labels can be included.
-GIF transparency is binary; it cannot preserve fractional edge alpha.
+Use the camera control or **File → Export Image as PNG** to set the width and
+height (up to 4096 pixels each) and print density (up to 1200 DPI). The default
+uses the viewport aspect ratio, a 2400-pixel long edge, and 300 DPI.
+
+**File → Export Animation as GIF** exports a trajectory, a vibrational mode, or
+a 360° turn of the current geometry around its molecular X, Y, or Z axis.
+Choose the pixel resolution (up to 2048 × 2048), frame rate, playback speed,
+and optional labels. For a rotation, set frames per turn. For a trajectory,
+use forward/backward playback to reverse at each end. GIF transparency
+uses binary alpha. Coordinate copy controls offer XYZ or coordinate text.
 
 [Appearance, animation and export limits](paton-and-gif-2026-10-19.md).
 

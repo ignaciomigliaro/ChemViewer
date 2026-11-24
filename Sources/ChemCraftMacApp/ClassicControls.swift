@@ -24,7 +24,7 @@ struct ClassicMenuBar: View {
                 Button("SSH connection…") { RemoteConnection.shared.presented = true }
                 Button("Export XYZ…") { workspace.requestXYZExport() }
                 Button("Export ORCA Geometry…") { workspace.exportORCAGeometry() }
-                Button("Export PNG…") { action("export") }
+                Button("Export PNG…") { workspace.presentImageExport() }.disabled(workspace.currentFrame == nil)
                 Button("Export GIF…") { workspace.presentAnimationExport() }
             }
             Menu("Edit") {

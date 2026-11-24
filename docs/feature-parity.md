@@ -768,3 +768,12 @@ preparation is optional, and the operation picker uses descriptive names for
 optimization, single points and frequencies.
 
 The 0.15.2 mechanism composer displays draft YAML beside the editor or below it in a compact window. Copy YAML copies the displayed draft. Engine and guesser display names are independent of their serialized identifiers.
+
+## High-resolution graphics export (0.15.3)
+
+Native PNG exports accept independent pixel dimensions up to 4096 per side
+and 1–1200 print DPI. Native GIF exports add 1536 and 2048-pixel resolutions
+and X, Y, or Z rotation for a single current geometry. The physical Mac
+animation harness decodes high-resolution output and verifies axis math,
+looping, PNG print metadata, and preservation of source geometry. The portable
+viewer continues to offer viewport PNG export.

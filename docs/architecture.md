@@ -1044,3 +1044,14 @@ omits the operation from YAML. Method and model text belongs to its calculation
 and survives engine changes.
 
 The mechanism form and YAML share a resizable split view. Live rendering and export share the package builder, override merge and deterministic YAML emitter. The draft path accepts incomplete fields. Export enforces source, template, schema and variant checks. Edits invalidate the clipboard action until the debounced preview refresh completes.
+
+## High-resolution graphics export
+
+PNG and GIF use the viewport's Metal pipelines with offscreen color and depth
+targets sized in output pixels. PNG uses the live camera, scene, and projected
+overlays. ImageIO records the selected DPI independently of raster size.
+GIF uses an isolated renderer with fixed framing. Rotation composes a
+right-handed, molecular-axis rotation with the starting view about the fitted
+geometry center. Samples span one turn with the endpoint excluded, and atom
+positions and distances are invariant. Captions and measurement guides are
+projected for each view and scaled when drawing into the larger raster.

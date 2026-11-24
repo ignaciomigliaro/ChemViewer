@@ -157,6 +157,7 @@ final class WorkspaceStore: ObservableObject {
     private var gestureIndices: [Int] = []
     private var gestureFrame = 0
     @Published var isAnimationExportPresented = false
+    @Published var isImageExportPresented = false
     @Published var isEnergyLandscapePresented = false
     @Published var sourceFocusLine: Int?
     @Published var xyzEnergyUnit: EnergyUnit? = nil { didSet { applyXYZEnergyUnit() } }
@@ -282,6 +283,14 @@ final class WorkspaceStore: ObservableObject {
             } catch {
                 if generation == loadGeneration { errorMessage = error.localizedDescription }
             }
+        }
+    }
+
+    func presentImageExport() {
+        if activeTab == "Image" || activeTab == "Image/Abs" { isImageExportPresented = true }
+        else {
+            activeTab = "Image"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.isImageExportPresented = true }
         }
     }
 
